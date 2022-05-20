@@ -2,6 +2,8 @@
 
 ![](https://github.com/DeNA/HandyRL/workflows/pytest/badge.svg?branch=master)
 
+神力参上
+
 **Quick to Start, Easy to Win**
 * Prepare your own environment
 * Let’s start large-scale distributed reinforcement learning
