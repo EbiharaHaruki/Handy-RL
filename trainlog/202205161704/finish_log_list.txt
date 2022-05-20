@@ -1,0 +1,2 @@
+trainlog/202205161704/train_log_01.txt
+trainlog/202205161704/train_log_02.txt
