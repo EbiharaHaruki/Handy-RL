@@ -1,9 +1,6 @@
-# Usage: python3 scripts/win_rate_average_plot.py [任意のlogの数] [任意のタイトル名]
+# Usage: python3 scripts/win_rate_average_plot.py [任意のlogの数] [任意のタイトル名] [ディレクトリのパス]
 # [任意のlogの数]が0の場合は全てのlogの平均
-#課題点
-##表示したグラフを保存できるようにする（自動で）
-##指定したlogで平均を取れるようにする
-#globでtrain_logを検索して読み込み
+
 from re import A
 import sys
 import numpy as np

@@ -11,7 +11,7 @@ time=270  #timeoutまでの時間
 ex_base="python3 -u main.py --train | tee ./trainlog/$DATE/train_log_xx.txt" #ログを取りながら学習させる
 current_conda=$CONDA_DEFAULT_ENV
 
-for j in `seq -f %02g 1 $N`; do #指定回数以下を実行
+for j in `seq -f %02g 1 $N`; do #指定回数以下を実s行
     num_i=$(printf "%02d" `expr $j`) #num_iに回数を格納
     tmux new-window -n 'w'$num_i #num_iという名前を付けたウィンドウを作成
     tmux send-keys -t $num_i "conda activate $current_conda" C-m
