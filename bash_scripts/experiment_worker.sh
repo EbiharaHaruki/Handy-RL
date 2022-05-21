@@ -6,7 +6,7 @@ mkdir trainlog/$DATE #実験日時のディレクトリ作成
 time=30  #timeoutまでの時間
 
 N=$1 #標準入力から実験回数を取得
-ex_base="timeout $time python3 -u main.py --worker | tee trainlog/$DATE/train_log_xxx.txt" #ログを取りながら学習させる
+ex_base="timeout $time python3 -u main.py --worker" #学習
 #current_conda=$CONDA_DEFAULT_ENV
 
 for i in `seq -f %02g 1 $N`; do #指定回数以下を実行
