@@ -16,4 +16,6 @@ echo @ikedasan $DATE の実験 $N 回やったよ！！ | bash_scripts/slack_ala
 
 plot_now="timeout 10 python3 scripts/win_rate_average_plot.py 0 sample $DATE" #回数分のログの可視化
 eval $plot_now
-zip -r trainlog/$DATE/$DATE.zip trainlog/$DATE
+cd trainlog
+zip -r trainlog/$DATE/$DATE.zip $DATE
+cd ..
