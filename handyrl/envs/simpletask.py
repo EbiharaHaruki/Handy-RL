@@ -52,6 +52,7 @@ class Head(nn.Module):
 
 class SimpleModel(nn.Module):
     def __init__(self, hyperplane_n):
+        super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 256
