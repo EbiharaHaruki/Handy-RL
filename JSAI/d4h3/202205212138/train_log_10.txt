@@ -1,0 +1,1220 @@
+{'env_args': {'env': 'simpletask', 'param': {'depth': 4, 'hyperplane_n': 3, 'treasure': [[3, 2, 2, 2]], 'set_reward': 1, 'start_random': True, 'pomdp_setting': {'pom_bool': False, 'pom_state': [1, 1]}}}, 'train_args': {'turn_based_training': False, 'observation': False, 'gamma': 0.9, 'forward_steps': 16, 'burn_in_steps': 0, 'compress_steps': 4, 'entropy_regularization': 0.5, 'entropy_regularization_decay': 1.0, 'update_episodes': 200, 'batch_size': 256, 'minimum_episodes': 10000, 'maximum_episodes': 50000, 'epochs': 200, 'num_batchers': 2, 'eval_rate': 0.1, 'worker': {'num_parallel': 1}, 'lambda': 0.7, 'policy_target': 'TD', 'value_target': 'TD', 'eval': {'opponent': ['random']}, 'seed': 0, 'restart_epoch': 0}, 'worker_args': {'server_address': '192.168.11.21', 'num_parallel': 128}}
+waiting training
+started entry server 9999
+started batcher 0
+started worker server 9998
+started server
+started batcher 1
+accepted connection from 8core!
+100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2100 2200 2300 2400 2500 2600 2700 2800 2900 3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 4000 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000 5100 5200 5300 5400 5500 5600 5700 5800 5900 6000 6100 6200 6300 6400 6500 6600 6700 6800 6900 7000 7100 7200 7300 7400 7500 7600 7700 7800 7900 8000 8100 8200 8300 8400 8500 8600 8700 8800 8900 9000 9100 9200 9300 9400 9500 9600 9700 9800 9900 10000 10100 10200 
+epoch 0
+win rate = 0.000 (0.0 / 4608)
+generation stats = -0.893 +- 0.449
+start sender
+start receiver
+started training
+loss = p:-1.427 v:0.388 ent:2.041 total:-2.060
+updated model(1)
+10300 10400 
+epoch 1
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.920 +- 0.392
+loss = p:-1.364 v:0.378 ent:2.042 total:-2.007
+updated model(3)
+10500 10600 
+epoch 2
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.893 +- 0.450
+loss = p:-1.318 v:0.370 ent:2.042 total:-1.969
+updated model(5)
+10700 10800 
+epoch 3
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.867 +- 0.499
+loss = p:-1.368 v:0.370 ent:2.042 total:-2.018
+updated model(7)
+10900 11000 
+epoch 4
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.820 +- 0.573
+loss = p:-1.407 v:0.368 ent:2.043 total:-2.061
+updated model(9)
+11100 11200 
+epoch 5
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.937 +- 0.349
+loss = p:-1.313 v:0.358 ent:2.043 total:-1.977
+updated model(11)
+11300 11400 
+epoch 6
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.929 +- 0.371
+loss = p:-1.354 v:0.360 ent:2.043 total:-2.016
+updated model(13)
+11500 11600 
+epoch 7
+win rate = 0.000 (0.0 / 48)
+generation stats = -0.910 +- 0.415
+loss = p:-1.331 v:0.358 ent:2.043 total:-1.994
+updated model(15)
+11700 11800 
+epoch 8
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.889 +- 0.458
+loss = p:-1.348 v:0.356 ent:2.043 total:-2.013
+updated model(17)
+11900 12000 
+epoch 9
+win rate = 0.000 (0.0 / 48)
+generation stats = -0.886 +- 0.463
+loss = p:-1.349 v:0.354 ent:2.043 total:-2.017
+updated model(19)
+12100 12200 
+epoch 10
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.864 +- 0.504
+loss = p:-1.323 v:0.352 ent:2.043 total:-1.992
+updated model(21)
+12300 12400 
+epoch 11
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.902 +- 0.432
+loss = p:-1.340 v:0.348 ent:2.044 total:-2.014
+updated model(23)
+12500 12600 
+epoch 12
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.907 +- 0.421
+loss = p:-1.330 v:0.350 ent:2.043 total:-2.001
+updated model(25)
+12700 12800 
+epoch 13
+win rate = 0.000 (0.0 / 63)
+generation stats = -0.867 +- 0.499
+loss = p:-1.336 v:0.349 ent:2.044 total:-2.009
+updated model(27)
+12900 13000 
+epoch 14
+win rate = 0.000 (0.0 / 49)
+generation stats = -0.882 +- 0.471
+loss = p:-1.345 v:0.349 ent:2.044 total:-2.019
+updated model(29)
+13100 13200 
+epoch 15
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.874 +- 0.486
+loss = p:-1.352 v:0.347 ent:2.044 total:-2.026
+updated model(31)
+13300 13400 
+epoch 16
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.956 +- 0.295
+loss = p:-1.332 v:0.346 ent:2.044 total:-2.008
+updated model(33)
+13500 13600 
+epoch 17
+win rate = 0.000 (0.0 / 65)
+generation stats = -0.937 +- 0.348
+loss = p:-1.318 v:0.337 ent:2.044 total:-2.003
+updated model(35)
+13700 13800 
+epoch 18
+win rate = 0.000 (0.0 / 51)
+generation stats = -0.912 +- 0.410
+loss = p:-1.359 v:0.344 ent:2.044 total:-2.037
+updated model(37)
+13900 14000 
+epoch 19
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.876 +- 0.482
+loss = p:-1.354 v:0.344 ent:2.045 total:-2.032
+updated model(39)
+14100 14200 
+epoch 20
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.910 +- 0.414
+loss = p:-1.333 v:0.340 ent:2.044 total:-2.014
+updated model(41)
+14300 14400 
+epoch 21
+win rate = 0.000 (0.0 / 63)
+generation stats = -0.928 +- 0.374
+loss = p:-1.354 v:0.335 ent:2.045 total:-2.042
+updated model(43)
+14500 14600 
+epoch 22
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.937 +- 0.351
+loss = p:-1.366 v:0.340 ent:2.045 total:-2.049
+updated model(45)
+14700 14800 
+epoch 23
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.844 +- 0.537
+loss = p:-1.356 v:0.342 ent:2.045 total:-2.037
+updated model(47)
+14900 15000 
+epoch 24
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.893 +- 0.450
+loss = p:-1.362 v:0.335 ent:2.046 total:-2.051
+updated model(49)
+15100 15200 
+epoch 25
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.903 +- 0.429
+loss = p:-1.377 v:0.335 ent:2.046 total:-2.065
+updated model(51)
+15300 15400 
+epoch 26
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.907 +- 0.421
+loss = p:-1.327 v:0.336 ent:2.046 total:-2.014
+updated model(53)
+15500 15600 
+epoch 27
+win rate = 0.000 (0.0 / 50)
+generation stats = -0.935 +- 0.355
+loss = p:-1.371 v:0.337 ent:2.045 total:-2.056
+updated model(55)
+15700 15800 
+epoch 28
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.935 +- 0.355
+loss = p:-1.341 v:0.338 ent:2.046 total:-2.026
+updated model(57)
+15900 16000 
+epoch 29
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.922 +- 0.387
+loss = p:-1.368 v:0.338 ent:2.046 total:-2.053
+updated model(59)
+16100 16200 
+epoch 30
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.911 +- 0.412
+loss = p:-1.366 v:0.333 ent:2.046 total:-2.056
+updated model(61)
+16300 16400 
+epoch 31
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.934 +- 0.358
+loss = p:-1.378 v:0.330 ent:2.046 total:-2.072
+updated model(63)
+16500 16600 
+epoch 32
+win rate = 0.000 (0.0 / 50)
+generation stats = -0.949 +- 0.315
+loss = p:-1.358 v:0.325 ent:2.046 total:-2.055
+updated model(65)
+16700 16800 
+epoch 33
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.862 +- 0.508
+loss = p:-1.358 v:0.335 ent:2.046 total:-2.047
+updated model(67)
+16900 17000 
+epoch 34
+win rate = 0.000 (0.0 / 65)
+generation stats = -0.898 +- 0.440
+loss = p:-1.338 v:0.330 ent:2.046 total:-2.031
+updated model(69)
+17100 17200 
+epoch 35
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.873 +- 0.488
+loss = p:-1.352 v:0.322 ent:2.047 total:-2.054
+updated model(71)
+17300 17400 
+epoch 36
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.860 +- 0.510
+loss = p:-1.336 v:0.327 ent:2.047 total:-2.032
+updated model(73)
+17500 17600 
+epoch 37
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.905 +- 0.426
+loss = p:-1.316 v:0.328 ent:2.046 total:-2.011
+updated model(75)
+17700 17800 
+epoch 38
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.922 +- 0.387
+loss = p:-1.397 v:0.327 ent:2.047 total:-2.093
+updated model(77)
+17900 18000 
+epoch 39
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.938 +- 0.347
+loss = p:-1.321 v:0.319 ent:2.047 total:-2.026
+updated model(79)
+18100 18200 
+epoch 40
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.845 +- 0.535
+loss = p:-1.344 v:0.321 ent:2.047 total:-2.047
+updated model(81)
+18300 18400 
+epoch 41
+win rate = 0.000 (0.0 / 65)
+generation stats = -0.892 +- 0.451
+loss = p:-1.322 v:0.317 ent:2.048 total:-2.029
+updated model(83)
+18500 18600 
+epoch 42
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.918 +- 0.397
+loss = p:-1.282 v:0.320 ent:2.048 total:-1.986
+updated model(85)
+18700 18800 
+epoch 43
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.924 +- 0.382
+loss = p:-1.341 v:0.321 ent:2.048 total:-2.044
+updated model(87)
+18900 19000 
+epoch 44
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.847 +- 0.531
+loss = p:-1.301 v:0.315 ent:2.048 total:-2.011
+updated model(89)
+19100 19200 
+epoch 45
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.866 +- 0.501
+loss = p:-1.358 v:0.319 ent:2.048 total:-2.063
+updated model(91)
+19300 19400 
+epoch 46
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.920 +- 0.392
+loss = p:-1.304 v:0.321 ent:2.048 total:-2.007
+updated model(92)
+19500 19600 
+epoch 47
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.934 +- 0.356
+loss = p:-1.363 v:0.313 ent:2.049 total:-2.074
+updated model(93)
+19700 19800 
+epoch 48
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.911 +- 0.412
+loss = p:-1.344 v:0.315 ent:2.048 total:-2.054
+updated model(95)
+19900 20000 
+epoch 49
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.907 +- 0.421
+loss = p:-1.322 v:0.311 ent:2.049 total:-2.036
+updated model(97)
+20100 20200 
+epoch 50
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.865 +- 0.502
+loss = p:-1.322 v:0.315 ent:2.048 total:-2.031
+updated model(99)
+20300 20400 
+epoch 51
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.897 +- 0.441
+loss = p:-1.334 v:0.310 ent:2.049 total:-2.049
+updated model(101)
+20500 20600 
+epoch 52
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.875 +- 0.484
+loss = p:-1.351 v:0.307 ent:2.049 total:-2.069
+updated model(103)
+20700 20800 
+epoch 53
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.905 +- 0.426
+loss = p:-1.349 v:0.310 ent:2.049 total:-2.063
+updated model(105)
+20900 21000 
+epoch 54
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.935 +- 0.353
+loss = p:-1.333 v:0.305 ent:2.050 total:-2.053
+updated model(107)
+21100 21200 
+epoch 55
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.906 +- 0.424
+loss = p:-1.311 v:0.304 ent:2.050 total:-2.032
+updated model(109)
+21300 21400 
+epoch 56
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.894 +- 0.448
+loss = p:-1.300 v:0.305 ent:2.050 total:-2.020
+updated model(111)
+21500 21600 
+epoch 57
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.847 +- 0.531
+loss = p:-1.311 v:0.305 ent:2.050 total:-2.031
+updated model(113)
+21700 21800 
+epoch 58
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.939 +- 0.344
+loss = p:-1.254 v:0.302 ent:2.050 total:-1.977
+updated model(115)
+21900 22000 
+epoch 59
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.954 +- 0.299
+loss = p:-1.365 v:0.302 ent:2.050 total:-2.087
+updated model(117)
+22100 22200 
+epoch 60
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.966 +- 0.258
+loss = p:-1.246 v:0.303 ent:2.051 total:-1.968
+updated model(119)
+22300 22400 
+epoch 61
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.880 +- 0.474
+loss = p:-1.349 v:0.303 ent:2.051 total:-2.072
+updated model(121)
+22500 22600 
+epoch 62
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.902 +- 0.431
+loss = p:-1.292 v:0.302 ent:2.051 total:-2.015
+updated model(123)
+22700 22800 
+epoch 63
+win rate = 0.000 (0.0 / 65)
+generation stats = -0.850 +- 0.527
+loss = p:-1.314 v:0.302 ent:2.051 total:-2.037
+updated model(125)
+22900 23000 
+epoch 64
+win rate = 0.000 (0.0 / 50)
+generation stats = -0.877 +- 0.480
+loss = p:-1.319 v:0.298 ent:2.051 total:-2.046
+updated model(127)
+23100 23200 
+epoch 65
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.868 +- 0.497
+loss = p:-1.341 v:0.300 ent:2.052 total:-2.067
+updated model(128)
+23300 23400 
+epoch 66
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.906 +- 0.424
+loss = p:-1.411 v:0.302 ent:2.051 total:-2.135
+updated model(129)
+23500 23600 
+epoch 67
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.903 +- 0.430
+loss = p:-1.284 v:0.296 ent:2.050 total:-2.013
+updated model(130)
+23700 23800 
+epoch 68
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.905 +- 0.426
+loss = p:-1.292 v:0.295 ent:2.053 total:-2.023
+updated model(131)
+23900 24000 
+epoch 69
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.915 +- 0.402
+loss = p:-1.290 v:0.301 ent:2.052 total:-2.015
+updated model(132)
+24100 24200 
+epoch 70
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.868 +- 0.497
+loss = p:-1.310 v:0.295 ent:2.052 total:-2.042
+updated model(133)
+24300 24400 
+epoch 71
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.957 +- 0.292
+loss = p:-1.233 v:0.298 ent:2.051 total:-1.961
+updated model(134)
+24500 24600 
+epoch 72
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.864 +- 0.504
+loss = p:-1.202 v:0.286 ent:2.053 total:-1.943
+updated model(135)
+24700 24800 
+epoch 73
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.885 +- 0.466
+loss = p:-1.345 v:0.292 ent:2.051 total:-2.079
+updated model(136)
+24900 25000 
+epoch 74
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.910 +- 0.415
+loss = p:-1.339 v:0.299 ent:2.053 total:-2.066
+updated model(137)
+25100 25200 
+epoch 75
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.787 +- 0.617
+loss = p:-1.174 v:0.294 ent:2.052 total:-1.906
+updated model(138)
+25300 25400 
+epoch 76
+win rate = 0.000 (0.0 / 50)
+generation stats = -0.866 +- 0.501
+loss = p:-1.316 v:0.292 ent:2.053 total:-2.051
+updated model(139)
+25500 25600 
+epoch 77
+win rate = 0.000 (0.0 / 49)
+generation stats = -0.857 +- 0.515
+loss = p:-1.316 v:0.292 ent:2.053 total:-2.050
+updated model(140)
+25700 25800 
+epoch 78
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.936 +- 0.352
+loss = p:-1.257 v:0.289 ent:2.053 total:-1.994
+updated model(141)
+25900 26000 
+epoch 79
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.886 +- 0.463
+loss = p:-1.290 v:0.297 ent:2.053 total:-2.019
+updated model(142)
+26100 26200 
+epoch 80
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.851 +- 0.526
+loss = p:-1.319 v:0.293 ent:2.052 total:-2.053
+updated model(143)
+26300 26400 
+epoch 81
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.941 +- 0.338
+loss = p:-1.180 v:0.295 ent:2.053 total:-1.912
+updated model(144)
+26500 26600 
+epoch 82
+win rate = 0.000 (0.0 / 66)
+generation stats = -0.868 +- 0.497
+loss = p:-1.203 v:0.294 ent:2.053 total:-1.936
+updated model(145)
+26700 26800 
+epoch 83
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.855 +- 0.519
+loss = p:-1.224 v:0.294 ent:2.053 total:-1.956
+updated model(146)
+26900 27000 
+epoch 84
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.876 +- 0.482
+loss = p:-1.207 v:0.296 ent:2.053 total:-1.937
+updated model(147)
+27100 27200 
+epoch 85
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.859 +- 0.512
+loss = p:-1.254 v:0.282 ent:2.054 total:-1.999
+updated model(148)
+27300 27400 
+epoch 86
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.955 +- 0.297
+loss = p:-1.257 v:0.287 ent:2.054 total:-1.997
+updated model(150)
+27500 27600 
+epoch 87
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.902 +- 0.432
+loss = p:-1.289 v:0.289 ent:2.053 total:-2.026
+updated model(152)
+27700 27800 
+epoch 88
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.918 +- 0.397
+loss = p:-1.255 v:0.288 ent:2.054 total:-1.994
+updated model(154)
+27900 28000 
+epoch 89
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.906 +- 0.423
+loss = p:-1.257 v:0.282 ent:2.055 total:-2.003
+updated model(156)
+28100 28200 
+epoch 90
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.910 +- 0.414
+loss = p:-1.289 v:0.285 ent:2.053 total:-2.031
+updated model(158)
+28300 28400 
+epoch 91
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.937 +- 0.351
+loss = p:-1.321 v:0.289 ent:2.055 total:-2.060
+updated model(160)
+28500 28600 
+epoch 92
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.837 +- 0.547
+loss = p:-1.269 v:0.279 ent:2.054 total:-2.017
+updated model(162)
+28700 28800 
+epoch 93
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.935 +- 0.353
+loss = p:-1.276 v:0.281 ent:2.055 total:-2.022
+updated model(164)
+28900 29000 
+epoch 94
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.850 +- 0.527
+loss = p:-1.302 v:0.282 ent:2.055 total:-2.047
+updated model(166)
+29100 29200 
+epoch 95
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.901 +- 0.434
+loss = p:-1.267 v:0.281 ent:2.054 total:-2.013
+updated model(168)
+29300 29400 
+epoch 96
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.925 +- 0.380
+loss = p:-1.304 v:0.282 ent:2.054 total:-2.050
+updated model(170)
+29500 29600 
+epoch 97
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.857 +- 0.515
+loss = p:-1.270 v:0.282 ent:2.054 total:-2.015
+updated model(172)
+29700 29800 
+epoch 98
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.938 +- 0.347
+loss = p:-1.266 v:0.281 ent:2.055 total:-2.012
+updated model(174)
+29900 30000 
+epoch 99
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.845 +- 0.535
+loss = p:-1.285 v:0.279 ent:2.055 total:-2.034
+updated model(176)
+30100 30200 
+epoch 100
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.932 +- 0.362
+loss = p:-1.272 v:0.277 ent:2.056 total:-2.023
+updated model(178)
+30300 30400 
+epoch 101
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.878 +- 0.479
+loss = p:-1.253 v:0.280 ent:2.056 total:-2.000
+updated model(180)
+30500 30600 
+epoch 102
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.937 +- 0.349
+loss = p:-1.241 v:0.274 ent:2.055 total:-1.995
+updated model(182)
+30700 30800 
+epoch 103
+win rate = 0.000 (0.0 / 69)
+generation stats = -0.876 +- 0.483
+loss = p:-1.232 v:0.280 ent:2.055 total:-1.980
+updated model(184)
+30900 31000 
+epoch 104
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.862 +- 0.508
+loss = p:-1.267 v:0.272 ent:2.056 total:-2.024
+updated model(185)
+31100 31200 
+epoch 105
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.865 +- 0.502
+loss = p:-1.270 v:0.280 ent:2.056 total:-2.018
+updated model(186)
+31300 31400 
+epoch 106
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.971 +- 0.239
+loss = p:-1.189 v:0.276 ent:2.056 total:-1.941
+updated model(187)
+31500 31600 
+epoch 107
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.944 +- 0.329
+loss = p:-1.303 v:0.270 ent:2.056 total:-2.061
+updated model(188)
+31700 31800 
+epoch 108
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.855 +- 0.519
+loss = p:-1.217 v:0.272 ent:2.057 total:-1.973
+updated model(189)
+31900 32000 
+epoch 109
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.933 +- 0.359
+loss = p:-1.246 v:0.273 ent:2.056 total:-2.001
+updated model(190)
+32100 32200 
+epoch 110
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.895 +- 0.447
+loss = p:-1.241 v:0.271 ent:2.056 total:-1.998
+updated model(191)
+32300 32400 
+epoch 111
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.860 +- 0.510
+loss = p:-1.340 v:0.271 ent:2.055 total:-2.096
+updated model(192)
+32500 32600 
+epoch 112
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.887 +- 0.462
+loss = p:-1.224 v:0.270 ent:2.057 total:-1.982
+updated model(193)
+32700 32800 
+epoch 113
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.930 +- 0.368
+loss = p:-1.232 v:0.269 ent:2.056 total:-1.990
+updated model(194)
+32900 33000 
+epoch 114
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.860 +- 0.511
+loss = p:-1.222 v:0.271 ent:2.057 total:-1.979
+updated model(195)
+33100 33200 
+epoch 115
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.852 +- 0.524
+loss = p:-1.199 v:0.273 ent:2.057 total:-1.955
+updated model(196)
+33300 33400 
+epoch 116
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.888 +- 0.460
+loss = p:-1.266 v:0.273 ent:2.057 total:-2.022
+updated model(197)
+33500 33600 
+epoch 117
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.913 +- 0.408
+loss = p:-1.262 v:0.267 ent:2.057 total:-2.024
+updated model(198)
+33700 33800 
+epoch 118
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.754 +- 0.657
+loss = p:-1.244 v:0.270 ent:2.057 total:-2.002
+updated model(199)
+33900 34000 
+epoch 119
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.912 +- 0.411
+loss = p:-1.241 v:0.262 ent:2.057 total:-2.007
+updated model(200)
+34100 34200 
+epoch 120
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.847 +- 0.531
+loss = p:-1.282 v:0.269 ent:2.057 total:-2.041
+updated model(201)
+34300 34400 
+epoch 121
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.886 +- 0.464
+loss = p:-1.230 v:0.268 ent:2.057 total:-1.990
+updated model(202)
+34500 34600 
+epoch 122
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.871 +- 0.491
+loss = p:-1.301 v:0.270 ent:2.057 total:-2.060
+updated model(203)
+34700 34800 
+epoch 123
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.952 +- 0.306
+loss = p:-1.208 v:0.268 ent:2.058 total:-1.968
+updated model(204)
+34900 35000 
+epoch 124
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.918 +- 0.397
+loss = p:-1.272 v:0.272 ent:2.057 total:-2.028
+updated model(205)
+35100 35200 
+epoch 125
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.888 +- 0.460
+loss = p:-1.255 v:0.270 ent:2.057 total:-2.014
+updated model(206)
+35300 35400 
+epoch 126
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.937 +- 0.351
+loss = p:-1.299 v:0.274 ent:2.057 total:-2.054
+updated model(207)
+35500 35600 
+epoch 127
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.857 +- 0.515
+loss = p:-1.329 v:0.263 ent:2.057 total:-2.095
+updated model(208)
+35700 35800 
+epoch 128
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.906 +- 0.423
+loss = p:-1.224 v:0.262 ent:2.058 total:-1.991
+updated model(210)
+35900 36000 
+epoch 129
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.824 +- 0.567
+loss = p:-1.242 v:0.263 ent:2.058 total:-2.008
+updated model(212)
+36100 36200 
+epoch 130
+win rate = 0.000 (0.0 / 63)
+generation stats = -0.908 +- 0.418
+loss = p:-1.226 v:0.264 ent:2.058 total:-1.991
+updated model(214)
+36300 36400 
+epoch 131
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.855 +- 0.519
+loss = p:-1.203 v:0.259 ent:2.059 total:-1.973
+updated model(216)
+36500 36600 
+epoch 132
+win rate = 0.000 (0.0 / 63)
+generation stats = -0.893 +- 0.450
+loss = p:-1.245 v:0.261 ent:2.058 total:-2.013
+updated model(218)
+36700 36800 
+epoch 133
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.872 +- 0.490
+loss = p:-1.221 v:0.265 ent:2.058 total:-1.985
+updated model(220)
+36900 37000 
+epoch 134
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.968 +- 0.251
+loss = p:-1.241 v:0.253 ent:2.059 total:-2.017
+updated model(222)
+37100 37200 
+epoch 135
+win rate = 0.000 (0.0 / 51)
+generation stats = -0.932 +- 0.362
+loss = p:-1.222 v:0.261 ent:2.058 total:-1.991
+updated model(224)
+37300 37400 
+epoch 136
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.891 +- 0.455
+loss = p:-1.208 v:0.256 ent:2.059 total:-1.982
+updated model(226)
+37500 37600 
+epoch 137
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.872 +- 0.490
+loss = p:-1.166 v:0.256 ent:2.059 total:-1.939
+updated model(228)
+37700 37800 
+epoch 138
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.965 +- 0.264
+loss = p:-1.223 v:0.261 ent:2.059 total:-1.991
+updated model(230)
+37900 38000 
+epoch 139
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.827 +- 0.563
+loss = p:-1.243 v:0.260 ent:2.059 total:-2.013
+updated model(232)
+38100 38200 
+epoch 140
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.911 +- 0.412
+loss = p:-1.187 v:0.254 ent:2.059 total:-1.963
+updated model(234)
+38300 38400 
+epoch 141
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.951 +- 0.309
+loss = p:-1.181 v:0.256 ent:2.060 total:-1.955
+updated model(236)
+38500 38600 
+epoch 142
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.923 +- 0.385
+loss = p:-1.200 v:0.253 ent:2.060 total:-1.977
+updated model(238)
+38700 38800 
+epoch 143
+win rate = 0.000 (0.0 / 66)
+generation stats = -0.899 +- 0.437
+loss = p:-1.176 v:0.256 ent:2.060 total:-1.950
+updated model(240)
+38900 39000 
+epoch 144
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.922 +- 0.386
+loss = p:-1.199 v:0.248 ent:2.060 total:-1.981
+updated model(242)
+39100 39200 
+epoch 145
+win rate = 0.000 (0.0 / 51)
+generation stats = -0.917 +- 0.398
+loss = p:-1.137 v:0.246 ent:2.060 total:-1.921
+updated model(244)
+39300 39400 
+epoch 146
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.818 +- 0.575
+loss = p:-1.193 v:0.251 ent:2.060 total:-1.972
+updated model(246)
+39500 39600 
+epoch 147
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.939 +- 0.344
+loss = p:-1.154 v:0.248 ent:2.060 total:-1.936
+updated model(248)
+39700 39800 
+epoch 148
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.875 +- 0.484
+loss = p:-1.118 v:0.250 ent:2.061 total:-1.899
+updated model(250)
+39900 40000 
+epoch 149
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.870 +- 0.493
+loss = p:-1.221 v:0.243 ent:2.061 total:-2.009
+updated model(252)
+40100 40200 
+epoch 150
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.953 +- 0.304
+loss = p:-1.175 v:0.246 ent:2.061 total:-1.960
+updated model(254)
+40300 40400 
+epoch 151
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.818 +- 0.575
+loss = p:-1.186 v:0.245 ent:2.061 total:-1.972
+updated model(256)
+40500 40600 
+epoch 152
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.924 +- 0.383
+loss = p:-1.158 v:0.242 ent:2.061 total:-1.947
+updated model(258)
+40700 40800 
+epoch 153
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.864 +- 0.504
+loss = p:-1.156 v:0.245 ent:2.062 total:-1.942
+updated model(260)
+40900 41000 
+epoch 154
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.852 +- 0.524
+loss = p:-1.187 v:0.242 ent:2.061 total:-1.975
+updated model(262)
+41100 41200 
+epoch 155
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.925 +- 0.380
+loss = p:-1.176 v:0.245 ent:2.062 total:-1.962
+updated model(264)
+41300 41400 
+epoch 156
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.831 +- 0.557
+loss = p:-1.139 v:0.241 ent:2.062 total:-1.928
+updated model(266)
+41500 41600 
+epoch 157
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.906 +- 0.424
+loss = p:-1.137 v:0.238 ent:2.062 total:-1.930
+updated model(268)
+41700 41800 
+epoch 158
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.875 +- 0.484
+loss = p:-1.183 v:0.237 ent:2.062 total:-1.977
+updated model(270)
+41900 42000 
+epoch 159
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.870 +- 0.493
+loss = p:-1.171 v:0.238 ent:2.062 total:-1.964
+updated model(272)
+42100 42200 
+epoch 160
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.908 +- 0.418
+loss = p:-1.142 v:0.242 ent:2.063 total:-1.931
+updated model(274)
+42300 42400 
+epoch 161
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.951 +- 0.310
+loss = p:-1.183 v:0.232 ent:2.063 total:-1.983
+updated model(275)
+42500 42600 
+epoch 162
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.919 +- 0.395
+loss = p:-1.132 v:0.243 ent:2.062 total:-1.920
+updated model(276)
+42700 42800 
+epoch 163
+win rate = 0.000 (0.0 / 63)
+generation stats = -0.924 +- 0.383
+loss = p:-1.100 v:0.232 ent:2.062 total:-1.900
+updated model(277)
+42900 43000 
+epoch 164
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.925 +- 0.380
+loss = p:-1.077 v:0.243 ent:2.062 total:-1.865
+updated model(278)
+43100 43200 
+epoch 165
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.839 +- 0.545
+loss = p:-1.232 v:0.236 ent:2.063 total:-2.027
+updated model(279)
+43300 43400 
+epoch 166
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.889 +- 0.458
+loss = p:-1.148 v:0.237 ent:2.063 total:-1.942
+updated model(281)
+43500 43600 
+epoch 167
+win rate = 0.000 (0.0 / 53)
+generation stats = -0.840 +- 0.543
+loss = p:-1.163 v:0.236 ent:2.063 total:-1.958
+updated model(283)
+43700 43800 
+epoch 168
+win rate = 0.000 (0.0 / 65)
+generation stats = -0.920 +- 0.392
+loss = p:-1.165 v:0.239 ent:2.063 total:-1.958
+updated model(285)
+43900 44000 
+epoch 169
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.871 +- 0.491
+loss = p:-1.146 v:0.229 ent:2.063 total:-1.948
+updated model(287)
+44100 44200 
+epoch 170
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.909 +- 0.417
+loss = p:-1.159 v:0.233 ent:2.064 total:-1.958
+updated model(289)
+44300 44400 
+epoch 171
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.895 +- 0.447
+loss = p:-1.141 v:0.225 ent:2.063 total:-1.948
+updated model(291)
+44500 44600 
+epoch 172
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.875 +- 0.484
+loss = p:-1.189 v:0.226 ent:2.063 total:-1.995
+updated model(293)
+44700 44800 
+epoch 173
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.953 +- 0.303
+loss = p:-1.141 v:0.229 ent:2.064 total:-1.945
+updated model(295)
+44900 45000 
+epoch 174
+win rate = 0.000 (0.0 / 62)
+generation stats = -0.937 +- 0.348
+loss = p:-1.157 v:0.228 ent:2.063 total:-1.960
+updated model(297)
+45100 45200 
+epoch 175
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.919 +- 0.395
+loss = p:-1.155 v:0.226 ent:2.064 total:-1.960
+updated model(299)
+45300 45400 
+epoch 176
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.933 +- 0.359
+loss = p:-1.127 v:0.230 ent:2.064 total:-1.928
+updated model(301)
+45500 45600 
+epoch 177
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.872 +- 0.490
+loss = p:-1.146 v:0.227 ent:2.064 total:-1.951
+updated model(303)
+45700 45800 
+epoch 178
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.907 +- 0.421
+loss = p:-1.113 v:0.225 ent:2.064 total:-1.919
+updated model(305)
+45900 46000 
+epoch 179
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.870 +- 0.493
+loss = p:-1.044 v:0.232 ent:2.064 total:-1.845
+updated model(307)
+46100 46200 
+epoch 180
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.908 +- 0.418
+loss = p:-1.112 v:0.222 ent:2.064 total:-1.922
+updated model(309)
+46300 46400 
+epoch 181
+win rate = 0.000 (0.0 / 55)
+generation stats = -0.906 +- 0.424
+loss = p:-1.127 v:0.227 ent:2.065 total:-1.932
+updated model(311)
+46500 46600 
+epoch 182
+win rate = 0.000 (0.0 / 66)
+generation stats = -0.887 +- 0.461
+loss = p:-1.073 v:0.231 ent:2.064 total:-1.874
+updated model(313)
+46700 46800 
+epoch 183
+win rate = 0.000 (0.0 / 65)
+generation stats = -0.926 +- 0.376
+loss = p:-1.154 v:0.222 ent:2.065 total:-1.965
+updated model(315)
+46900 47000 
+epoch 184
+win rate = 0.000 (0.0 / 52)
+generation stats = -0.908 +- 0.418
+loss = p:-1.092 v:0.216 ent:2.065 total:-1.909
+updated model(317)
+47100 47200 
+epoch 185
+win rate = 0.000 (0.0 / 66)
+generation stats = -0.957 +- 0.291
+loss = p:-1.126 v:0.221 ent:2.065 total:-1.937
+updated model(319)
+47300 47400 
+epoch 186
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.876 +- 0.482
+loss = p:-1.135 v:0.219 ent:2.065 total:-1.949
+updated model(321)
+47500 47600 
+epoch 187
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.935 +- 0.355
+loss = p:-1.081 v:0.217 ent:2.066 total:-1.897
+updated model(323)
+47700 47800 
+epoch 188
+win rate = 0.000 (0.0 / 57)
+generation stats = -0.902 +- 0.431
+loss = p:-1.102 v:0.223 ent:2.065 total:-1.912
+updated model(325)
+47900 48000 
+epoch 189
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.894 +- 0.448
+loss = p:-1.087 v:0.218 ent:2.065 total:-1.901
+updated model(327)
+48100 48200 
+epoch 190
+win rate = 0.000 (0.0 / 56)
+generation stats = -0.886 +- 0.463
+loss = p:-1.020 v:0.226 ent:2.066 total:-1.827
+updated model(329)
+48300 48400 
+epoch 191
+win rate = 0.000 (0.0 / 59)
+generation stats = -0.870 +- 0.493
+loss = p:-1.079 v:0.221 ent:2.065 total:-1.891
+updated model(330)
+48500 48600 
+epoch 192
+win rate = 0.000 (0.0 / 54)
+generation stats = -0.907 +- 0.421
+loss = p:-1.056 v:0.219 ent:2.066 total:-1.870
+updated model(331)
+48700 48800 
+epoch 193
+win rate = 0.000 (0.0 / 64)
+generation stats = -0.815 +- 0.579
+loss = p:-1.152 v:0.213 ent:2.065 total:-1.971
+updated model(332)
+48900 49000 
+epoch 194
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.891 +- 0.455
+loss = p:-1.096 v:0.218 ent:2.066 total:-1.911
+updated model(333)
+49100 49200 
+epoch 195
+win rate = 0.000 (0.0 / 58)
+generation stats = -0.895 +- 0.447
+loss = p:-1.081 v:0.219 ent:2.066 total:-1.895
+updated model(334)
+49300 49400 
+epoch 196
+win rate = 0.000 (0.0 / 49)
+generation stats = -0.950 +- 0.312
+loss = p:-1.079 v:0.221 ent:2.065 total:-1.891
+updated model(335)
+49500 49600 
+epoch 197
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.885 +- 0.466
+loss = p:-1.059 v:0.217 ent:2.066 total:-1.875
+updated model(336)
+49700 49800 
+epoch 198
+win rate = 0.000 (0.0 / 60)
+generation stats = -0.941 +- 0.339
+loss = p:-1.039 v:0.214 ent:2.066 total:-1.858
+updated model(337)
+49900 50000 
+epoch 199
+win rate = 0.000 (0.0 / 61)
+generation stats = -0.884 +- 0.467
+loss = p:-1.091 v:0.217 ent:2.066 total:-1.907
+updated model(339)
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+finished server
