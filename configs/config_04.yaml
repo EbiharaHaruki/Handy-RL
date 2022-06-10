@@ -7,8 +7,8 @@ env_args:
     env: 'simpletask'
     param:
         depth: 8 #深度(変更可能)
-        hyperplane_n: 3 #超平面次元数(変更可能)
-        treasure: [[7, 4, 4, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        hyperplane_n: 2 #超平面次元数(変更可能)
+        treasure: [[7, 4, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: 1 #報酬の値(変更可能)
         start_random: True #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         pomdp_setting: #途中報酬への対応(POMDP)

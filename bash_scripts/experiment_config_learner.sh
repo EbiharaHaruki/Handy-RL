@@ -31,7 +31,7 @@ for i in `seq -f %02g 1 $file_count`; do # 指定回数以下を実行
     mv config.yaml trainlog/Start$StartDATE/$DATE/$config
 done
 
-echo @ikedasan $StartDATE の実験やったよ！！ | bash_scripts/slack_alarm.sh #slackに実験が終わったら通知を送る機能（別途で設定する必要あり）
+echo @Ikeda Ryuji $StartDATE の実験やったよ！！ | bash_scripts/slack_alarm.sh #slackに実験が終わったら通知を送る機能（別途で設定する必要あり）
 
 cd trainlog
 zip -r Start$StartDATE.zip Start$StartDATE

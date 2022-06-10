@@ -52,12 +52,13 @@ class Head(nn.Module):
 
 class SimpleModel(nn.Module):
     def __init__(self, hyperplane_n):
-        super().__init__()
         self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(hyperplane_n + 1, 100) # Environment().hyperplane_n
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 256
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size) # Environment().hyperplane_n
         # self.fc1 = nn.Linear(Environment().hyperplane_n, 10)
-        self.head_p = nn.Linear(100, 2**hyperplane_n) # ここも同様
-        self.head_v = nn.Linear(100, 1)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # ここも同様
+        self.head_v = nn.Linear(nn_size, 1)
     def forward(self, x, hidden=None):
         h = F.relu(self.fc1(x))
         # h = F.relu(self.fc1(x[0][1:]))

@@ -7,8 +7,8 @@ env_args:
     env: 'simpletask'
     param:
         depth: 8 #深度(変更可能)
-        hyperplane_n: 4 #超平面次元数(変更可能)
-        treasure: [[7, 4, 4, 4, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        hyperplane_n: 2 #超平面次元数(変更可能)
+        treasure: [[7, 4, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: 1 #報酬の値(変更可能)
         start_random: True #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         pomdp_setting: #途中報酬への対応(POMDP)
@@ -42,9 +42,9 @@ train_args:
     # minimum_episodes: 300
     # maximum_episodes: 1000
     minimum_episodes: 100000
-    maximum_episodes: 300000
+    maximum_episodes: 200000
     # epochs: 5
-    epochs: 10000
+    epochs: 500
     num_batchers: 2
     eval_rate: 0.1
     worker:
