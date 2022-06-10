@@ -3,7 +3,10 @@
 
 from re import A
 import sys
+<<<<<<< HEAD
 from matplotlib import rc_params_from_file
+=======
+>>>>>>> daadd0c2940f22abc11987d0c50129bc9c2943aa
 import numpy as np
 import glob
 import os
@@ -35,12 +38,17 @@ def get_wp_list(path):
     #全ての文字列に対してそれぞれの情報を分別して格納する
     for line in lines:
         if line.startswith("{'env_args':"): #configのパラメータ情報を取得
+<<<<<<< HEAD
             prm = re.findall("'entropy_regularization': .....", line) #エントロピーの文字列を取得（他の文字列に置き換えることも可能）
             depth = re.findall("'depth': ...", line)
             coordinate = re.findall("'hyperplane_n': ..", line)
             config_list.append(prm)
             config_list.append(depth)
             config_list.append(coordinate)
+=======
+            prm = re.findall("'entropy_regularization': ....", line) #エントロピーの文字列を取得（他の文字列に置き換えることも可能）
+            config_list.append(prm)
+>>>>>>> daadd0c2940f22abc11987d0c50129bc9c2943aa
         if line.startswith('updated'): #startswithで最初の文字列を識別
             epoch_data_list.append({})
             epoch_list.append(len(epoch_list))
@@ -91,7 +99,10 @@ sns.set_palette(sns.color_palette(flatui, 24))
 files = os.listdir(sys.argv[3]) #対象のディレクトリ名を標準入力の３つ目から受け取る
 files_dir = [f for f in files if os.path.isdir(os.path.join(sys.argv[3], f))] #受け取ってるディレクトリの中のログディレクト名を取得
 print(files_dir) #上の詳細表示
+<<<<<<< HEAD
 files_dir.sort()
+=======
+>>>>>>> daadd0c2940f22abc11987d0c50129bc9c2943aa
 # print(len(files_dir))
 
 fig = plt.figure()
@@ -133,6 +144,7 @@ for fname in files_dir: #ディレクトリの中のログディレクトの個�
         start = start_epoch[opponent]
         # ax.plot(clipped_epoch_list[start:], wp_list[start:], label=opponent)
         label_name = str(config_list[0]) #ラベルの名称取得
+<<<<<<< HEAD
         label_name = label_name.replace(',','').replace("'", '').replace("[", '').replace("]", '').replace('"', '').rstrip("e").replace("entropy_regularization", '').replace(':', '') #ラベルの名称から邪魔な文字を消す
         label_name = "entropy regularization: " + str(label_name)
         ax.plot(clipped_game_list[start:], wp_list[start:], label=label_name)
@@ -150,6 +162,12 @@ rlabel= "random return level: "+str('{:.5f}'.format(return_p))
 
 plt.hlines(return_p, clipped_game_list[0], clipped_game_list[-1], 'r', linestyles=':', lw=1, label=rlabel )
 
+=======
+        label_name = label_name.replace(',','').replace("'", '').replace("[", '').replace("]", '').replace('"', '') #ラベルの名称から邪魔な文字を消す
+        ax.plot(clipped_game_list[start:], wp_list[start:], label=label_name)
+        last_win_rate[opponent] = wp_list[-1]
+
+>>>>>>> daadd0c2940f22abc11987d0c50129bc9c2943aa
 ax.set_xlabel('Games', size=14)
 ax.set_ylabel('Average win rate', size=14)
 ax.set_title(sys.argv[2])

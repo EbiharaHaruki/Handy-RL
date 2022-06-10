@@ -4,7 +4,7 @@
 set -eu
 
 #Incoming WebHooksのURL
-WEBHOOKURL="https://hooks.slack.com/services/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"
+WEBHOOKURL="https://hooks.slack.com/services/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"
 #メッセージを保存する一時ファイル
 MESSAGEFILE=$(mktemp -t XXXXXXXXXX)
 trap "
@@ -37,11 +37,11 @@ do
     esac
 done
 #slack 送信チャンネル
-CHANNEL=${CHANNEL:-"#research-notice"}
+CHANNEL=${CHANNEL:-"#simpletask-notice"}
 #slack 送信名
 BOTNAME=${BOTNAME:-"tu-chi_chang"}
 #slack アイコン
-FACEICON=${FACEICON:-":ghost:"}
+FACEICON=${FACEICON:-":rythmicalparrot:"}
 #見出しとなるようなメッセージ
 MESSAGE=${MESSAGE:-""}
 
