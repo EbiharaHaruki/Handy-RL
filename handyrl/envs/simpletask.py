@@ -165,8 +165,6 @@ class Environment(BaseEnvironment):
         return self.state[0] == self.depth-1
 
     def outcome(self):
-        # terminal outcome
-        # 終端状態に到達した時に報酬を与える関数
         outcomes = [-1]
         # if np.array_equal(self.state, self.treasure):
         if self.pom_bool: #True
@@ -176,7 +174,7 @@ class Environment(BaseEnvironment):
         else: #False
             if (self.state == self.treasure).all(axis=1).any(): #treasureが2次元配列じゃないと動かない #(a==b)で同じshapeか，all(axis=1)で列方向に一致しているか，any()でどれか一つにでも当てはまるか，True・Falseを返す
                 outcomes = [1]
-        # print(self.state)
+        #print(self.state)
         #print("<><><><><><> outcomes : ", 'Hit!!!' if outcomes[0]==1 else '--')
         return {p: outcomes[idx] for idx, p in enumerate(self.players())}
 
@@ -184,32 +182,22 @@ class Environment(BaseEnvironment):
         return [0]
 
     def net(self):
-        return SimpleModel(self.hyperplane_n) # 引数を入れることで解決(多分)
+        return SimpleModel(self.hyperplane_n)
 
     def observation(self, player=None):
         #if player is None:
             #player = 0
         return self.state.astype(np.float32)
-        # return np.zeros(self.hyperplane_n+1).astype(np.float32)
 
     def legal_actions(self, player):
-        #ここでちゃんとアクションを渡せてない
-        #エラーが出ない方法
-        #ここでアクションの番号を返すように変更中(未完成)
-        #1次元の場合[0,1] , 2次元の場合[0,1,2,3] , 3次元の場合[0,1,2,3,4,5,6,7]みたいにする
-        #現状は Transition の中身を変更中
-        #legal_actions = [x[0] for x in self.action_list_np]
-        #legal_actions = np.array([0,1])
-        #legal_actions = np.array([0,1,2,3])
         legal_actions = np.arange(2**self.hyperplane_n)
-        #legal_actions = np.array([0,1,2,3,4,5,6,7])
         return legal_actions
 
 if __name__ == '__main__':
     e = Environment()
     #print("tree_make",e.tree_np)
     for _ in range(100):
-        e.reset() # ここで初期地点をランダムにするか固定にするかする
+        e.reset()
         while not e.terminal():
             print(e)
             e.play()

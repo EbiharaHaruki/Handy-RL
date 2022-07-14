@@ -6,9 +6,9 @@ env_args:
     # env: 'handyrl.envs.parallel_tictactoe'  # specify by path
     env: 'simpletask'
     param:
-        depth: 8 #深度(変更可能)
+        depth: 3 #深度(変更可能)
         hyperplane_n: 1 #超平面次元数(変更可能)
-        treasure: [[7, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        treasure: [[2, 1]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: 1 #報酬の値(変更可能)
         start_random: True #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         pomdp_setting: #途中報酬への対応(POMDP)
@@ -39,10 +39,10 @@ train_args:
     update_episodes: 200
     # batch_size: 128
     batch_size: 256
-    # minimum_episodes: 300
-    # maximum_episodes: 1000
-    minimum_episodes: 100000
-    maximum_episodes: 200000
+    minimum_episodes: 300
+    maximum_episodes: 10000
+    #minimum_episodes: 100000
+    #maximum_episodes: 200000
     # epochs: 5
     epochs: 500
     num_batchers: 2
