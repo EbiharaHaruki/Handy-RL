@@ -82,7 +82,7 @@ python main.py --eval models/1.pth 100 4
 #### Extra 2: n回平均報酬グラフをプロット
 任意の実行回数分データを収集し，平均報酬をプロットします．以下のコマンドは10回分の報酬データを平均してグラフを生成します．ここで，`config.yaml`のパラメータset_rewardで報酬の値を変更できます．
 ```
-. bash_scripts/experiment.sh 10
+. bash_scripts/experiment_reward.sh 10
 ```
 
 <!-- ## ドキュメント
