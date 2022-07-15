@@ -34,7 +34,7 @@ pip3 install -r handyrl/envs/kaggle/requirements.txt
 
 ## 実行方法
 
-#### Step 1: パラメータを設定する
+### Step 1: パラメータを設定する
 `config.yaml`のパラメータをトレーニングに合わせて以下のように設定します．環境をsimpletask，パラメータをそれぞれ深度8，超平面次元数1，報酬エリア(7, 4)，報酬5で設定し，バッチサイズを64としてトレーニングを実行する場合は，以下のように設定します．
 
 ```yaml
@@ -57,14 +57,14 @@ train_args:
 
 
 
-#### Step 2: トレーニング
+### Step 2: トレーニング
 パラメータを設定したら，以下のコマンドを実行してトレーニングを開始します．トレーニングされたモデルは，`config.yaml`の`update_episodes`毎に`models`に保存されます．
 ```
 python main.py --train
 ```
 
 
-#### Step 3: 評価
+### Step 3: 評価
 トレーニング後，任意のモデルに対して評価できます．以下のコマンドは，エポック1のモデルを4プロセスで100ゲーム分評価します．
 ```
 python main.py --eval models/1.pth 100 4
@@ -73,13 +73,13 @@ python main.py --eval models/1.pth 100 4
 
 
 
-#### Extra 1: n回平均勝率グラフをプロット
+### Extra 1: n回平均勝率グラフをプロット
 任意の実行回数分データを収集し，平均勝率をプロットします．以下のコマンドは10回分の勝率データを平均してグラフを生成します．
 ```
 . bash_scripts/experiment.sh 10
 ```
 
-#### Extra 2: n回平均報酬グラフをプロット
+### Extra 2: n回平均報酬グラフをプロット
 任意の実行回数分データを収集し，平均報酬をプロットします．以下のコマンドは10回分の報酬データを平均してグラフを生成します．ここで，`config.yaml`のパラメータset_rewardで報酬の値を変更できます．
 ```
 . bash_scripts/experiment_reward.sh 10
