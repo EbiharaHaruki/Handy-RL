@@ -481,7 +481,8 @@ class Learner:
                 model_id = result['args']['model_id'][p]
                 res = result['result'][p]
                 n, r, r2 = self.results.get(model_id, (0, 0, 0))
-                self.results[model_id] = n + 1, r + res, r2 + res ** 2
+                # self.results[model_id] = n + 1, r + res, r2 + res ** 2
+                self.results[model_id] = n + 1, r + res, r2 + abs(res)
 
                 if model_id not in self.results_per_opponent:
                     self.results_per_opponent[model_id] = {}
@@ -502,6 +503,7 @@ class Learner:
                 mean = r / (n + 1e-6)
                 name_tag = ' (%s)' % name if name != '' else ''
                 print('win rate%s = %.3f (%.1f / %d)' % (name_tag, (mean + 1) / 2, (r + n) / 2, n))
+                print('average reward%s = %.3f (%.1f / %d)' % (name_tag, mean, (r + n) / 2, n))
 
             keys = self.results_per_opponent[self.model_epoch]
             if len(self.args.get('eval', {}).get('opponent', [])) <= 1 and len(keys) <= 1:
