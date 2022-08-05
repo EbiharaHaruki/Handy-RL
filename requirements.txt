@@ -3,3 +3,6 @@ numpy
 torch
 pytest
 psutil
+onnxruntime
+matplotlib
+seaborn
