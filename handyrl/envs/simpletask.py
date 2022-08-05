@@ -56,23 +56,22 @@ class SimpleModel(nn.Module):
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 256
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size) # Environment().hyperplane_n
-        # self.fc1 = nn.Linear(Environment().hyperplane_n, 10)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # ここも同様
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
         self.head_v = nn.Linear(nn_size, 1)
     def forward(self, x, hidden=None):
         h = F.relu(self.fc1(x))
-        # h = F.relu(self.fc1(x[0][1:]))
         h_p = self.head_p(h)
         h_v = self.head_v(h)
         return {'policy': h_p, 'value': torch.tanh(h_v)}
 
+
 # base class of Environment
 
 class Environment(BaseEnvironment):
-    def __init__(self, args={}):  # args = {'env': 'simpletask', param: {}}
+    def __init__(self, args={}):
         super().__init__()
-        self.param = args['param'] # env_argsにparamを置いた場合
+        self.param = args['param'] #env_argsにparamを置いた場合
         self.depth = self.param['depth'] #深度(変更可能)
         self.hyperplane_n = self.param['hyperplane_n'] #超平面次元数(変更可能)
         self.treasure = np.array(self.param['treasure']) #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
@@ -80,41 +79,16 @@ class Environment(BaseEnvironment):
         self.start_random = self.param['start_random'] #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         self.pom_bool = self.param['pomdp_setting']['pom_bool'] #POMDPを導入するか / True: 導入する, False: 導入しない
         self.pom_state = self.param['pomdp_setting']['pom_state'] #途中報酬の座標
-        self.pom_flag = 0 #途中報酬の座標を通ったら1, 通らなかったら0のまま．0だと報酬が得られない．
-
-        # self.depth = args['depth'] #深度(変更可能)
-        # self.hyperplane_n = args['hyperplane_n'] #超平面次元数(変更可能)
-        # self.treasure = np.array(args['treasure']) #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
-        # self.set_reward = args['set_reward'] #報酬の値(変更可能)
-        # self.start_random = args['start_random'] #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
-        # self.pom_bool = args['pom_bool'] #POMDPを導入するか / True: 導入する, False: 導入しない
-        # self.pom_state = args['pom_state'] #途中報酬の座標
-        # self.pom_flag = 0 #途中報酬の座標を通ったら1, 通らなかったら0のまま．0だと報酬が得られない．
+        self.pom_flag = 0 #途中報酬の座標を通ったら1, 通らなかったら0のまま．0だと報酬が得られない
         self.tree_s = []
         self.action_list = []
-        self.tree_make() # state_randomは使えるよ
+        self.tree_make() #state_randomは使える
 
     def Transition(self, action, state):
         """行動、状態を引数に次状態を返す"""
-        ##現在変更を加えている関数
-        #この関数のactionにlegal_actionが入力される
-        #↓この下の部分でaction_list_npからlegal_actionの番号に対応した行動に変換してる
-        #2次元の場合legal_action = 1が選択されていたらactionはaction_list_np[1]ということになる
-        #つまり2次元のaction_list[1]は[0 1]になる
-        #action = self.action_list_np[action]
         action = self.action_list_np[action]
-
-        # print("state : ",state)
-        # print("action : ",action)
-        # print("state_depth : ", state)
-
-        #↓ここから主に修正しているところ↓
-        #状態遷移がうまくできていないのはactionとnew_state_tmpの配列が原因？
-        #print(type(action).__module__ == "numpy")
-        #print(action)
         new_state_tmp = [state[i+1]+ action[0][i] for i in range(self.hyperplane_n)]
         new_state = (state[0]+1,) + tuple(new_state_tmp)
-
         return np.array(new_state) #新しい状態を返す
 
     def tree_make(self):
@@ -122,60 +96,47 @@ class Environment(BaseEnvironment):
             coord_seed = list(range(0,i))
             coord = list(itertools.product(coord_seed, repeat = self.hyperplane_n))
             coordinate = [(i-2,) + t for t in coord]
-            #print(new_p) #各深度の状態
             self.tree_s += coordinate
             if i == 2:
                 self.action_list = coord #行動のリスト
-
-        if not self.start_random: # 初期位置固定
+        if not self.start_random: #初期位置固定
             start = (-1,) + (0,) * self.hyperplane_n
             self.tree_s = np.insert(self.tree_s, 0, start, axis=0)
-
         self.tree_np = np.array(self.tree_s)
-        #self.action_list_np = self.action_list
         self.action_list_np = np.array(self.action_list)
-        #print("tree_make : ",self.tree_np)
-        # print("action_list: ",self.action_list_np)
 
     def reset(self, args={}): #タスクリセット
-        # print(self.action_list)
         if self.start_random: #初期位置をランダムにする場合 (True)
-            start = np.random.randint(len(self.action_list_np)) #初期座標ランダム選択    # start: 2*超平面次元 通りある
-            self.state = self.tree_np[start] #初期座標にリセット  # [0, x, y], start = 4;
+            start = np.random.randint(len(self.action_list_np)) #初期座標ランダム選択    #start: 2*超平面次元通りある
+            self.state = self.tree_np[start] #初期座標にリセット  #[0, x, y], start = 4;
         else: #初期位置を固定にする場合 (False)
-            self.state = self.tree_np[0] # [-1, 0], [-1, 0, 0]を最初に入れる
-        #print("<><><> start state", self.state)
-        # self.a_cnt = 0
+            self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
 
     def play(self, action, player):
         a = np.array([action], )
-        next_s = self.Transition(a,self.state)
-        #print("<><><> action : ",a)
-        #print("<><><> new state : ",next_s)
+        next_s = self.Transition(a, self.state)
         self.state = next_s
-        #self.a_cnt += 1
         if self.pom_bool and np.array_equal(self.state, self.pom_state):
-            #print('途中報酬の座標を通りました!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             self.pom_flag = 1
-
-    # def action_length(self):
-    #     return len(self.action_list_np)
 
     def terminal(self):
         return self.state[0] == self.depth-1
 
     def outcome(self):
         outcomes = [-1]
-        # if np.array_equal(self.state, self.treasure):
         if self.pom_bool: #True
             if self.pom_flag and (self.state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
-                outcomes = [1]
+                outcomes = [self.set_reward]
             self.pom_flag = 0
         else: #False
             if (self.state == self.treasure).all(axis=1).any(): #treasureが2次元配列じゃないと動かない #(a==b)で同じshapeか，all(axis=1)で列方向に一致しているか，any()でどれか一つにでも当てはまるか，True・Falseを返す
+<<<<<<< HEAD
                 outcomes = [1]
         #print(self.state)
         #print("<><><><><><> outcomes : ", 'Hit!!!' if outcomes[0]==1 else '--')
+=======
+                outcomes = [self.set_reward]
+>>>>>>> 43fc513b7add9b0155952019e70395e8c62b385c
         return {p: outcomes[idx] for idx, p in enumerate(self.players())}
 
     def players(self):
@@ -185,8 +146,6 @@ class Environment(BaseEnvironment):
         return SimpleModel(self.hyperplane_n)
 
     def observation(self, player=None):
-        #if player is None:
-            #player = 0
         return self.state.astype(np.float32)
 
     def legal_actions(self, player):
@@ -195,7 +154,6 @@ class Environment(BaseEnvironment):
 
 if __name__ == '__main__':
     e = Environment()
-    #print("tree_make",e.tree_np)
     for _ in range(100):
         e.reset()
         while not e.terminal():
