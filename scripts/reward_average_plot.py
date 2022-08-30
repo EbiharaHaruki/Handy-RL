@@ -47,6 +47,7 @@ def get_reward_list(path):
 
         prev_line = line
 
+    epoch_data_list = [s for s in epoch_data_list if s != {}]
     game_list = game_list[:len(epoch_data_list)]
 
     clipped_epoch_list = epoch_list[n//2:-n//2+1]
