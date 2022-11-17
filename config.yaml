@@ -53,5 +53,5 @@ train_args:
 
 
 worker_args:
-    server_address: '192.168.11.23'
+    server_address: '192.168.11.24'
     num_parallel: 128
