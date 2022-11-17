@@ -1,5 +1,5 @@
 #! /bin/bash
-# Usage: . bash_scripts/experiment.sh [任意の実行回数]
+# Usage: . bash_scripts/experiment_win_rate.sh [任意の実行回数]
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成

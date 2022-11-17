@@ -175,7 +175,7 @@ class RNDModel(nn.Module):
         # (.backward) RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
         # loss.backward()
         self.optimizer.step()
-    
+
     def forward(self, x, hidden=None):
         h = F.relu(self.fc1(x))
         h_p = self.head_p(h)
@@ -215,6 +215,8 @@ class Environment(BaseEnvironment):
             self.treasure_error() #報酬が正しい場所に置けてるかの確認
         if self.random_trasures_bool:
             self.random_trasures()
+        self.uns_bool = self.param['uns_setting']['uns_bool'] #非定常の有無
+        self.uns_num = self.param['uns_setting']['uns_num'] #非定常の周期
 
     def Transition(self, action, state):
         """行動、状態を引数に次状態を返す"""
@@ -300,6 +302,12 @@ class Environment(BaseEnvironment):
                 if (self.state == self.treasure).all(axis=1).any(): #treasureが2次元配列じゃないと動かない #(a==b)で同じshapeか，all(axis=1)で列方向に一致しているか，any()でどれか一つにでも当てはまるか，True・Falseを返す
                     treasure_num = np.where((self.treasure == self.state).all(axis=1))[0][0]
                     outcomes = [self.set_reward[treasure_num]]
+        if self.uns_bool:
+            self.n = self.n + 1
+            if self.n % self.uns_num == 0:
+                print("self.tresure_before = ",self.treasure)
+                self.treasure = np.array(random.sample(self.goal_depth_place,self.random_trasures_num))
+                print("self.tresure_after = ",self.treasure)
         return {p: outcomes[idx] for idx, p in enumerate(self.players())}
 
     def players(self):
