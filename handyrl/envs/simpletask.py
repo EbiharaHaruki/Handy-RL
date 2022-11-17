@@ -217,6 +217,7 @@ class Environment(BaseEnvironment):
             self.random_trasures()
         self.uns_bool = self.param['uns_setting']['uns_bool'] #非定常の有無
         self.uns_num = self.param['uns_setting']['uns_num'] #非定常の周期
+        self.n = 0 #実行回数
 
     def Transition(self, action, state):
         """行動、状態を引数に次状態を返す"""
@@ -305,9 +306,9 @@ class Environment(BaseEnvironment):
         if self.uns_bool:
             self.n = self.n + 1
             if self.n % self.uns_num == 0:
-                print("self.tresure_before = ",self.treasure)
+                #print("self.tresure_before = ",self.treasure)
                 self.treasure = np.array(random.sample(self.goal_depth_place,self.random_trasures_num))
-                print("self.tresure_after = ",self.treasure)
+                #print("self.tresure_after = ",self.treasure)
         return {p: outcomes[idx] for idx, p in enumerate(self.players())}
 
     def players(self):
@@ -315,9 +316,9 @@ class Environment(BaseEnvironment):
 
     def net(self):
         # 切り替え可能
-        # return SimpleModel(self.hyperplane_n)
+        return SimpleModel(self.hyperplane_n)
         # return CountBasedModel(self.hyperplane_n)
-        return RNDModel(self.hyperplane_n)
+        # return RNDModel(self.hyperplane_n)
 
     def observation(self, player=None):
         return self.state.astype(np.float32)
