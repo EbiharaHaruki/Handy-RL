@@ -1,4 +1,4 @@
 JSAI/
 *.pyc
 *.pth
-trainlog/*
+trainlog/
