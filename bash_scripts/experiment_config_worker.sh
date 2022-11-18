@@ -1,7 +1,7 @@
 #!/bin/bash
 # Usage: . bash_scripts/experiment_config_worker.sh [任意の実行回数]
 
-time=160  #timeoutまでの時間
+time=130  #timeoutまでの時間
 N=$1 #標準入力から実験回数を取得
 
 cd configs
