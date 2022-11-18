@@ -195,6 +195,7 @@ class Environment(BaseEnvironment):
         self.hyperplane_n = self.param['hyperplane_n'] #超平面次元数(変更可能)
         self.treasure = np.array(self.param['treasure']) #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         self.set_reward = self.param['set_reward'] #報酬の値(変更可能)
+        self.other_reward = self.param['other_reward'] #treasure以外に到達した時の報酬設定
         self.start_random = self.param['start_random'] #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         self.pom_bool = self.param['pomdp_setting']['pom_bool'] #POMDPを導入するか / True: 導入する, False: 導入しない
         self.pom_state = self.param['pomdp_setting']['pom_state'] #途中報酬の座標
@@ -288,7 +289,7 @@ class Environment(BaseEnvironment):
 
     def outcome(self):
         # 終端状態に到達した時に報酬を与える関数
-        outcomes = [0]
+        outcomes = [self.other_reward]
         if self.pom_bool: #True
             if self.pom_flag and (self.state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
                 outcomes = [self.set_reward]

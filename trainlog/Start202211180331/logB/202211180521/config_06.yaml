@@ -10,7 +10,6 @@ env_args:
         hyperplane_n: 1 #超平面次元数(変更可能)
         treasure: [[7, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: [1] #報酬の値(変更可能)
-        other_reward: 0 #treasure以外に到達した時の報酬設定
         start_random: True #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         pomdp_setting: #途中報酬への対応(POMDP)
             pom_bool: False #途中報酬を導入するか否か
@@ -24,7 +23,7 @@ env_args:
             random_reward_p: [[1], [0.9, 0.1]] #報酬の確率 , 各要素の合計値は1になるように設定
         uns_setting:
             uns_bool: True #非定常の導入するか否か
-            uns_num: 50000 #非定常の周期（報酬位置をどの程度の間隔で変更するか）
+            uns_num: 20000 #非定常の周期（報酬位置をどの程度の間隔で変更するか）
 
 train_args:
     turn_based_training: False
@@ -33,8 +32,8 @@ train_args:
     forward_steps: 16
     burn_in_steps: 0  # for RNNs
     compress_steps: 4
-    entropy_regularization: 0
-    entropy_regularization_decay: 1.0
+    entropy_regularization: 1.0
+    entropy_regularization_decay: 0
     update_episodes: 200
     batch_size: 256
     minimum_episodes: 100000
@@ -54,5 +53,5 @@ train_args:
 
 
 worker_args:
-    server_address: '192.168.11.23'
+    server_address: '192.168.11.24'
     num_parallel: 128

@@ -1,0 +1,3520 @@
+{'env_args': {'env': 'simpletask', 'param': {'depth': 5, 'hyperplane_n': 1, 'treasure': [[4, 2]], 'set_reward': [1], 'start_random': True, 'pomdp_setting': {'pom_bool': False, 'pom_state': [1, 1]}, 'random_trasures_setting': {'random_trasures_bool': False, 'random_trasures_num': 1}, 'random_reward_setting': {'random_reward_bool': False, 'random_reward': [[1], [1, 100]], 'random_reward_p': [[1], [0.9, 0.1]]}, 'uns_setting': {'uns_bool': True, 'uns_num': 50000}}}, 'train_args': {'turn_based_training': False, 'observation': False, 'gamma': 0.9, 'forward_steps': 16, 'burn_in_steps': 0, 'compress_steps': 4, 'entropy_regularization': 0, 'entropy_regularization_decay': 1.0, 'update_episodes': 200, 'batch_size': 256, 'minimum_episodes': 100000, 'maximum_episodes': 200000, 'epochs': 500, 'num_batchers': 2, 'eval_rate': 0.1, 'worker': {'num_parallel': 1}, 'lambda': 0.7, 'policy_target': 'TD', 'value_target': 'TD', 'eval': {'opponent': ['random']}, 'seed': 0, 'restart_epoch': 0}, 'worker_args': {'server_address': '192.168.11.23', 'num_parallel': 128}}
+started batcher 0
+waiting training
+started entry server 9999started worker server 9998
+started batcher 1
+started server
+
+accepted connection from 8core!
+100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2100 2200 2300 2400 2500 2600 2700 2800 2900 3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 4000 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000 5100 5200 5300 5400 5500 5600 5700 5800 5900 6000 6100 6200 6300 6400 6500 6600 6700 6800 6900 7000 7100 7200 7300 7400 7500 7600 7700 7800 7900 8000 8100 8200 8300 8400 8500 8600 8700 8800 8900 9000 9100 9200 9300 9400 9500 9600 9700 9800 9900 10000 10100 10200 10300 10400 10500 10600 10700 10800 10900 11000 11100 11200 11300 11400 11500 11600 11700 11800 11900 12000 12100 12200 12300 12400 12500 12600 12700 12800 12900 13000 13100 13200 13300 13400 13500 13600 13700 13800 13900 14000 14100 14200 14300 14400 14500 14600 14700 14800 14900 15000 15100 15200 15300 15400 15500 15600 15700 15800 15900 16000 16100 16200 16300 16400 16500 16600 16700 16800 16900 17000 17100 17200 17300 17400 17500 17600 17700 17800 17900 18000 18100 18200 18300 18400 18500 18600 18700 18800 18900 19000 19100 19200 19300 19400 19500 19600 19700 19800 19900 20000 20100 20200 20300 20400 20500 20600 20700 20800 20900 21000 21100 21200 21300 21400 21500 21600 21700 21800 21900 22000 22100 22200 22300 22400 22500 22600 22700 22800 22900 23000 23100 23200 23300 23400 23500 23600 23700 23800 23900 24000 24100 24200 24300 24400 24500 24600 24700 24800 24900 25000 25100 25200 25300 25400 25500 25600 25700 25800 25900 26000 26100 26200 26300 26400 26500 26600 26700 26800 26900 27000 27100 27200 27300 27400 27500 27600 27700 27800 27900 28000 28100 28200 28300 28400 28500 28600 28700 28800 28900 29000 29100 29200 29300 29400 29500 29600 29700 29800 29900 30000 30100 30200 30300 30400 30500 30600 30700 30800 30900 31000 31100 31200 31300 31400 31500 31600 31700 31800 31900 32000 32100 32200 32300 32400 32500 32600 32700 32800 32900 33000 33100 33200 33300 33400 33500 33600 33700 33800 33900 34000 34100 34200 34300 34400 34500 34600 34700 34800 34900 35000 35100 35200 35300 35400 35500 35600 35700 35800 35900 36000 36100 36200 36300 36400 36500 36600 36700 36800 36900 37000 37100 37200 37300 37400 37500 37600 37700 37800 37900 38000 38100 38200 38300 38400 38500 38600 38700 38800 38900 39000 39100 39200 39300 39400 39500 39600 39700 39800 39900 40000 40100 40200 40300 40400 40500 40600 40700 40800 40900 41000 41100 41200 41300 41400 41500 41600 41700 41800 41900 42000 42100 42200 42300 42400 42500 42600 42700 42800 42900 43000 43100 43200 43300 43400 43500 43600 43700 43800 43900 44000 44100 44200 44300 44400 44500 44600 44700 44800 44900 45000 45100 45200 45300 45400 45500 45600 45700 45800 45900 46000 46100 46200 46300 46400 46500 46600 46700 46800 46900 47000 47100 47200 47300 47400 47500 47600 47700 47800 47900 48000 48100 48200 48300 48400 48500 48600 48700 48800 48900 49000 49100 49200 49300 49400 49500 49600 49700 49800 49900 50000 50100 50200 50300 50400 50500 50600 50700 50800 50900 51000 51100 51200 51300 51400 51500 51600 51700 51800 51900 52000 52100 52200 52300 52400 52500 52600 52700 52800 52900 53000 53100 53200 53300 53400 53500 53600 53700 53800 53900 54000 54100 54200 54300 54400 54500 54600 54700 54800 54900 55000 55100 55200 55300 55400 55500 55600 55700 55800 55900 56000 56100 56200 56300 56400 56500 56600 56700 56800 56900 57000 57100 57200 57300 57400 57500 57600 57700 57800 57900 58000 58100 58200 58300 58400 58500 58600 58700 58800 58900 59000 59100 59200 59300 59400 59500 59600 59700 59800 59900 60000 60100 60200 60300 60400 60500 60600 60700 60800 60900 61000 61100 61200 61300 61400 61500 61600 61700 61800 61900 62000 62100 62200 62300 62400 62500 62600 62700 62800 62900 63000 63100 63200 63300 63400 63500 63600 63700 63800 63900 64000 64100 64200 64300 64400 64500 64600 64700 64800 64900 65000 65100 65200 65300 65400 65500 65600 65700 65800 65900 66000 66100 66200 66300 66400 66500 66600 66700 66800 66900 67000 67100 67200 67300 67400 67500 67600 67700 67800 67900 68000 68100 68200 68300 68400 68500 68600 68700 68800 68900 69000 69100 69200 69300 69400 69500 69600 69700 69800 69900 70000 70100 70200 70300 70400 70500 70600 70700 70800 70900 71000 71100 71200 71300 71400 71500 71600 71700 71800 71900 72000 72100 72200 72300 72400 72500 72600 72700 72800 72900 73000 73100 73200 73300 73400 73500 73600 73700 73800 73900 74000 74100 74200 74300 74400 74500 74600 74700 74800 74900 75000 75100 75200 75300 75400 75500 75600 75700 75800 75900 76000 76100 76200 76300 76400 76500 76600 76700 76800 76900 77000 77100 77200 77300 77400 77500 77600 77700 77800 77900 78000 78100 78200 78300 78400 78500 78600 78700 78800 78900 79000 79100 79200 79300 79400 79500 79600 79700 79800 79900 80000 80100 80200 80300 80400 80500 80600 80700 80800 80900 81000 81100 81200 81300 81400 81500 81600 81700 81800 81900 82000 82100 82200 82300 82400 82500 82600 82700 82800 82900 83000 83100 83200 83300 83400 83500 83600 83700 83800 83900 84000 84100 84200 84300 84400 84500 84600 84700 84800 84900 85000 85100 85200 85300 85400 85500 85600 85700 85800 85900 86000 86100 86200 86300 86400 86500 86600 86700 86800 86900 87000 87100 87200 87300 87400 87500 87600 87700 87800 87900 88000 88100 88200 88300 88400 88500 88600 88700 88800 88900 89000 89100 89200 89300 89400 89500 89600 89700 89800 89900 90000 90100 90200 90300 90400 90500 90600 90700 90800 90900 91000 91100 91200 91300 91400 91500 91600 91700 91800 91900 92000 92100 92200 92300 92400 92500 92600 92700 92800 92900 93000 93100 93200 93300 93400 93500 93600 93700 93800 93900 94000 94100 94200 94300 94400 94500 94600 94700 94800 94900 95000 95100 95200 95300 95400 95500 95600 95700 95800 95900 96000 96100 96200 96300 96400 96500 96600 96700 96800 96900 97000 97100 97200 97300 97400 97500 97600 97700 97800 97900 98000 98100 98200 98300 98400 98500 98600 98700 98800 98900 99000 99100 99200 99300 99400 99500 99600 99700 99800 99900 100000 100100 100200 
+epoch 0
+win rate = 0.500 (22630.0 / 45260)
+average reward = 0.000 (22630.0 / 45260)
+generation stats = 0.306 +- 0.461
+start sender
+start receiver
+started training
+loss = p:0.143 v:0.079 ent:0.674 total:0.222
+updated model(1)
+100300 100400 
+epoch 1
+win rate = 0.500 (33.5 / 67)
+average reward = 0.000 (33.5 / 67)
+generation stats = 0.360 +- 0.480
+loss = p:0.121 v:0.070 ent:0.671 total:0.191
+updated model(3)
+100500 100600 
+epoch 2
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.339 +- 0.473
+loss = p:0.112 v:0.069 ent:0.666 total:0.181
+updated model(5)
+100700 100800 
+epoch 3
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.371 +- 0.483
+loss = p:0.106 v:0.069 ent:0.662 total:0.175
+updated model(7)
+100900 101000 
+epoch 4
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.398 +- 0.490
+loss = p:0.112 v:0.075 ent:0.659 total:0.187
+updated model(9)
+101100 101200 
+epoch 5
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.353 +- 0.478
+loss = p:0.098 v:0.071 ent:0.655 total:0.170
+updated model(11)
+101300 101400 
+epoch 6
+win rate = 0.500 (25.0 / 50)
+average reward = 0.000 (25.0 / 50)
+generation stats = 0.292 +- 0.455
+loss = p:0.095 v:0.070 ent:0.654 total:0.165
+updated model(12)
+101500 101600 
+epoch 7
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.296 +- 0.456
+loss = p:0.089 v:0.069 ent:0.651 total:0.158
+updated model(13)
+101700 101800 
+epoch 8
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.406 +- 0.491
+loss = p:0.076 v:0.064 ent:0.650 total:0.140
+updated model(14)
+101900 102000 
+epoch 9
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.416 +- 0.493
+loss = p:0.079 v:0.067 ent:0.648 total:0.146
+updated model(16)
+102100 102200 
+epoch 10
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.385 +- 0.487
+loss = p:0.078 v:0.067 ent:0.645 total:0.145
+updated model(18)
+102300 102400 
+epoch 11
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.310 +- 0.463
+loss = p:0.078 v:0.069 ent:0.643 total:0.147
+updated model(20)
+102500 102600 
+epoch 12
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.385 +- 0.487
+loss = p:0.077 v:0.067 ent:0.641 total:0.145
+updated model(21)
+102700 102800 
+epoch 13
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.314 +- 0.464
+loss = p:0.070 v:0.067 ent:0.639 total:0.137
+updated model(23)
+102900 103000 
+epoch 14
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.344 +- 0.475
+loss = p:0.053 v:0.061 ent:0.637 total:0.115
+updated model(25)
+103100 103200 
+epoch 15
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.371 +- 0.483
+loss = p:0.072 v:0.068 ent:0.635 total:0.140
+updated model(27)
+103300 103400 
+epoch 16
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.389 +- 0.487
+loss = p:0.080 v:0.072 ent:0.633 total:0.152
+updated model(29)
+103500 103600 
+epoch 17
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.351 +- 0.477
+loss = p:0.068 v:0.068 ent:0.630 total:0.136
+updated model(31)
+103700 103800 
+epoch 18
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.298 +- 0.457
+loss = p:0.076 v:0.071 ent:0.629 total:0.147
+updated model(33)
+103900 104000 
+epoch 19
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.360 +- 0.480
+loss = p:0.058 v:0.066 ent:0.626 total:0.124
+updated model(35)
+104100 104200 
+epoch 20
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.326 +- 0.469
+loss = p:0.064 v:0.070 ent:0.624 total:0.134
+updated model(37)
+104300 104400 
+epoch 21
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.386 +- 0.487
+loss = p:0.072 v:0.072 ent:0.622 total:0.144
+updated model(39)
+104500 104600 
+epoch 22
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.379 +- 0.485
+loss = p:0.060 v:0.069 ent:0.619 total:0.128
+updated model(41)
+104700 104800 
+epoch 23
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.405 +- 0.491
+loss = p:0.065 v:0.071 ent:0.616 total:0.136
+updated model(43)
+104900 105000 
+epoch 24
+win rate = 0.500 (24.5 / 49)
+average reward = 0.000 (24.5 / 49)
+generation stats = 0.391 +- 0.488
+loss = p:0.048 v:0.066 ent:0.613 total:0.114
+updated model(45)
+105100 105200 
+epoch 25
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.357 +- 0.479
+loss = p:0.061 v:0.070 ent:0.613 total:0.132
+updated model(47)
+105300 105400 
+epoch 26
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.344 +- 0.475
+loss = p:0.061 v:0.070 ent:0.610 total:0.131
+updated model(49)
+105500 105600 
+epoch 27
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.353 +- 0.478
+loss = p:0.062 v:0.071 ent:0.607 total:0.133
+updated model(50)
+105700 105800 
+epoch 28
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.385 +- 0.487
+loss = p:0.040 v:0.062 ent:0.606 total:0.102
+updated model(51)
+105900 106000 
+epoch 29
+win rate = 0.500 (33.5 / 67)
+average reward = 0.000 (33.5 / 67)
+generation stats = 0.362 +- 0.480
+loss = p:0.044 v:0.065 ent:0.603 total:0.108
+updated model(52)
+106100 106200 
+epoch 30
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.336 +- 0.472
+loss = p:0.039 v:0.064 ent:0.604 total:0.103
+updated model(53)
+106300 106400 
+epoch 31
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.386 +- 0.487
+loss = p:0.074 v:0.073 ent:0.604 total:0.147
+updated model(54)
+106500 106600 
+epoch 32
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.396 +- 0.489
+loss = p:0.054 v:0.067 ent:0.602 total:0.121
+updated model(56)
+106700 106800 
+epoch 33
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.386 +- 0.487
+loss = p:0.049 v:0.065 ent:0.598 total:0.115
+updated model(58)
+106900 107000 
+epoch 34
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.448 +- 0.497
+loss = p:0.049 v:0.066 ent:0.597 total:0.115
+updated model(60)
+107100 107200 
+epoch 35
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.398 +- 0.490
+loss = p:0.041 v:0.063 ent:0.597 total:0.104
+updated model(62)
+107300 107400 
+epoch 36
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.350 +- 0.477
+loss = p:0.058 v:0.068 ent:0.592 total:0.126
+updated model(64)
+107500 107600 
+epoch 37
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.369 +- 0.482
+loss = p:0.047 v:0.066 ent:0.591 total:0.113
+updated model(66)
+107700 107800 
+epoch 38
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.405 +- 0.491
+loss = p:0.037 v:0.063 ent:0.587 total:0.101
+updated model(68)
+107900 108000 
+epoch 39
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.358 +- 0.479
+loss = p:0.042 v:0.065 ent:0.585 total:0.107
+updated model(70)
+108100 108200 
+epoch 40
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.390 +- 0.488
+loss = p:0.041 v:0.064 ent:0.585 total:0.105
+updated model(72)
+108300 108400 
+epoch 41
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.359 +- 0.480
+loss = p:0.048 v:0.066 ent:0.582 total:0.113
+updated model(74)
+108500 108600 
+epoch 42
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.435 +- 0.496
+loss = p:0.043 v:0.064 ent:0.581 total:0.107
+updated model(76)
+108700 108800 
+epoch 43
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.446 +- 0.497
+loss = p:0.062 v:0.072 ent:0.578 total:0.134
+updated model(77)
+108900 109000 
+epoch 44
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.419 +- 0.493
+loss = p:0.040 v:0.062 ent:0.578 total:0.102
+updated model(78)
+109100 109200 
+epoch 45
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.362 +- 0.481
+loss = p:0.042 v:0.063 ent:0.575 total:0.105
+updated model(79)
+109300 109400 
+epoch 46
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.419 +- 0.493
+loss = p:0.047 v:0.066 ent:0.572 total:0.113
+updated model(81)
+109500 109600 
+epoch 47
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.388 +- 0.487
+loss = p:0.037 v:0.061 ent:0.572 total:0.098
+updated model(83)
+109700 109800 
+epoch 48
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.362 +- 0.480
+loss = p:0.030 v:0.059 ent:0.566 total:0.089
+updated model(85)
+109900 110000 
+epoch 49
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.471 +- 0.499
+loss = p:0.036 v:0.061 ent:0.566 total:0.097
+updated model(87)
+110100 110200 
+epoch 50
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.432 +- 0.495
+loss = p:0.037 v:0.061 ent:0.564 total:0.098
+updated model(88)
+110300 110400 
+epoch 51
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.271 +- 0.445
+loss = p:0.047 v:0.064 ent:0.564 total:0.111
+updated model(89)
+110500 110600 
+epoch 52
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.367 +- 0.482
+loss = p:0.045 v:0.065 ent:0.564 total:0.110
+updated model(90)
+110700 110800 
+epoch 53
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.339 +- 0.473
+loss = p:0.046 v:0.063 ent:0.564 total:0.109
+updated model(91)
+110900 111000 
+epoch 54
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.374 +- 0.484
+loss = p:0.026 v:0.057 ent:0.559 total:0.083
+updated model(92)
+111100 111200 
+epoch 55
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.431 +- 0.495
+loss = p:0.035 v:0.060 ent:0.561 total:0.094
+updated model(93)
+111300 111400 
+epoch 56
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.350 +- 0.477
+loss = p:0.031 v:0.058 ent:0.561 total:0.089
+updated model(94)
+111500 111600 
+epoch 57
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.449 +- 0.497
+loss = p:0.040 v:0.063 ent:0.559 total:0.103
+updated model(95)
+111700 111800 
+epoch 58
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.454 +- 0.498
+loss = p:0.033 v:0.059 ent:0.555 total:0.092
+updated model(97)
+111900 112000 
+epoch 59
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.468 +- 0.499
+loss = p:0.036 v:0.059 ent:0.553 total:0.095
+updated model(99)
+112100 112200 
+epoch 60
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.351 +- 0.477
+loss = p:0.043 v:0.062 ent:0.552 total:0.105
+updated model(101)
+112300 112400 
+epoch 61
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.309 +- 0.462
+loss = p:0.031 v:0.059 ent:0.549 total:0.090
+updated model(102)
+112500 112600 
+epoch 62
+win rate = 0.500 (33.5 / 67)
+average reward = 0.000 (33.5 / 67)
+generation stats = 0.426 +- 0.494
+loss = p:0.043 v:0.062 ent:0.549 total:0.105
+updated model(103)
+112700 112800 
+epoch 63
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.350 +- 0.477
+loss = p:0.016 v:0.054 ent:0.549 total:0.070
+updated model(104)
+112900 113000 
+epoch 64
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.351 +- 0.477
+loss = p:0.043 v:0.061 ent:0.548 total:0.104
+updated model(105)
+113100 113200 
+epoch 65
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.378 +- 0.485
+loss = p:0.042 v:0.060 ent:0.546 total:0.102
+updated model(107)
+113300 113400 
+epoch 66
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.414 +- 0.493
+loss = p:0.038 v:0.060 ent:0.543 total:0.097
+updated model(109)
+113500 113600 
+epoch 67
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.496 +- 0.500
+loss = p:0.031 v:0.056 ent:0.544 total:0.088
+updated model(111)
+113700 113800 
+epoch 68
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.399 +- 0.490
+loss = p:0.028 v:0.056 ent:0.538 total:0.084
+updated model(113)
+113900 114000 
+epoch 69
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.294 +- 0.456
+loss = p:0.048 v:0.062 ent:0.542 total:0.110
+updated model(115)
+114100 114200 
+epoch 70
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.361 +- 0.480
+loss = p:0.025 v:0.057 ent:0.539 total:0.082
+updated model(117)
+114300 114400 
+epoch 71
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.364 +- 0.481
+loss = p:0.032 v:0.057 ent:0.538 total:0.089
+updated model(119)
+114500 114600 
+epoch 72
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.357 +- 0.479
+loss = p:0.038 v:0.058 ent:0.531 total:0.096
+updated model(120)
+114700 114800 
+epoch 73
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.393 +- 0.488
+loss = p:0.032 v:0.057 ent:0.542 total:0.090
+updated model(121)
+114900 115000 
+epoch 74
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.325 +- 0.468
+loss = p:0.048 v:0.062 ent:0.534 total:0.111
+updated model(122)
+115100 115200 
+epoch 75
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.349 +- 0.477
+loss = p:0.042 v:0.058 ent:0.534 total:0.100
+updated model(124)
+115300 115400 
+epoch 76
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.421 +- 0.494
+loss = p:0.029 v:0.056 ent:0.532 total:0.085
+updated model(126)
+115500 115600 
+epoch 77
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.319 +- 0.466
+loss = p:0.036 v:0.059 ent:0.529 total:0.095
+updated model(128)
+115700 115800 
+epoch 78
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.408 +- 0.491
+loss = p:0.032 v:0.056 ent:0.531 total:0.088
+updated model(130)
+115900 116000 
+epoch 79
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.395 +- 0.489
+loss = p:0.021 v:0.054 ent:0.530 total:0.076
+updated model(132)
+116100 116200 
+epoch 80
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.376 +- 0.484
+loss = p:0.020 v:0.053 ent:0.526 total:0.073
+updated model(134)
+116300 116400 
+epoch 81
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.359 +- 0.480
+loss = p:0.034 v:0.056 ent:0.526 total:0.090
+updated model(136)
+116500 116600 
+epoch 82
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.437 +- 0.496
+loss = p:0.035 v:0.058 ent:0.526 total:0.093
+updated model(138)
+116700 116800 
+epoch 83
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.403 +- 0.491
+loss = p:0.027 v:0.055 ent:0.525 total:0.081
+updated model(140)
+116900 117000 
+epoch 84
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.357 +- 0.479
+loss = p:0.043 v:0.059 ent:0.524 total:0.102
+updated model(142)
+117100 117200 
+epoch 85
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.341 +- 0.474
+loss = p:0.029 v:0.054 ent:0.526 total:0.083
+updated model(144)
+117300 117400 
+epoch 86
+win rate = 0.500 (24.5 / 49)
+average reward = 0.000 (24.5 / 49)
+generation stats = 0.336 +- 0.472
+loss = p:0.027 v:0.053 ent:0.526 total:0.080
+updated model(146)
+117500 117600 
+epoch 87
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.424 +- 0.494
+loss = p:0.038 v:0.056 ent:0.521 total:0.095
+updated model(148)
+117700 117800 
+epoch 88
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.346 +- 0.476
+loss = p:0.028 v:0.054 ent:0.522 total:0.083
+updated model(150)
+117900 118000 
+epoch 89
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.350 +- 0.477
+loss = p:0.034 v:0.055 ent:0.521 total:0.089
+updated model(152)
+118100 118200 
+epoch 90
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.412 +- 0.492
+loss = p:0.035 v:0.057 ent:0.520 total:0.092
+updated model(154)
+118300 118400 
+epoch 91
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.381 +- 0.486
+loss = p:0.035 v:0.056 ent:0.521 total:0.091
+updated model(156)
+118500 118600 
+epoch 92
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.397 +- 0.489
+loss = p:0.025 v:0.055 ent:0.520 total:0.080
+updated model(158)
+118700 118800 
+epoch 93
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.344 +- 0.475
+loss = p:0.020 v:0.053 ent:0.518 total:0.073
+updated model(159)
+118900 119000 
+epoch 94
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.369 +- 0.483
+loss = p:0.024 v:0.054 ent:0.522 total:0.078
+updated model(161)
+119100 119200 
+epoch 95
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.450 +- 0.497
+loss = p:0.026 v:0.055 ent:0.515 total:0.080
+updated model(163)
+119300 119400 
+epoch 96
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.386 +- 0.487
+loss = p:0.031 v:0.054 ent:0.518 total:0.084
+updated model(165)
+119500 119600 
+epoch 97
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.425 +- 0.494
+loss = p:0.009 v:0.051 ent:0.518 total:0.059
+updated model(167)
+119700 119800 
+epoch 98
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.418 +- 0.493
+loss = p:0.019 v:0.051 ent:0.520 total:0.070
+updated model(169)
+119900 120000 
+epoch 99
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.394 +- 0.489
+loss = p:0.026 v:0.054 ent:0.519 total:0.080
+updated model(171)
+120100 120200 
+epoch 100
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.383 +- 0.486
+loss = p:0.035 v:0.057 ent:0.517 total:0.092
+updated model(173)
+120300 120400 
+epoch 101
+win rate = 0.500 (34.5 / 69)
+average reward = 0.000 (34.5 / 69)
+generation stats = 0.454 +- 0.498
+loss = p:0.035 v:0.055 ent:0.517 total:0.090
+updated model(175)
+120500 120600 
+epoch 102
+win rate = 0.500 (24.0 / 48)
+average reward = 0.000 (24.0 / 48)
+generation stats = 0.441 +- 0.496
+loss = p:0.029 v:0.055 ent:0.520 total:0.083
+updated model(177)
+120700 120800 
+epoch 103
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.357 +- 0.479
+loss = p:0.023 v:0.054 ent:0.516 total:0.076
+updated model(179)
+120900 121000 
+epoch 104
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.405 +- 0.491
+loss = p:0.038 v:0.057 ent:0.513 total:0.095
+updated model(181)
+121100 121200 
+epoch 105
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.372 +- 0.483
+loss = p:0.030 v:0.056 ent:0.522 total:0.085
+updated model(183)
+121300 121400 
+epoch 106
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.412 +- 0.492
+loss = p:0.025 v:0.054 ent:0.514 total:0.079
+updated model(185)
+121500 121600 
+epoch 107
+win rate = 0.500 (33.5 / 67)
+average reward = 0.000 (33.5 / 67)
+generation stats = 0.377 +- 0.485
+loss = p:0.018 v:0.053 ent:0.516 total:0.071
+updated model(187)
+121700 121800 
+epoch 108
+win rate = 0.500 (23.5 / 47)
+average reward = 0.000 (23.5 / 47)
+generation stats = 0.404 +- 0.491
+loss = p:0.018 v:0.051 ent:0.518 total:0.069
+updated model(189)
+121900 122000 
+epoch 109
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.455 +- 0.498
+loss = p:0.017 v:0.052 ent:0.513 total:0.069
+updated model(191)
+122100 122200 
+epoch 110
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.450 +- 0.497
+loss = p:0.025 v:0.054 ent:0.519 total:0.079
+updated model(193)
+122300 122400 
+epoch 111
+win rate = 0.500 (34.5 / 69)
+average reward = 0.000 (34.5 / 69)
+generation stats = 0.410 +- 0.492
+loss = p:0.025 v:0.053 ent:0.512 total:0.078
+updated model(195)
+122500 122600 
+epoch 112
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.331 +- 0.471
+loss = p:0.020 v:0.053 ent:0.518 total:0.073
+updated model(197)
+122700 122800 
+epoch 113
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.333 +- 0.471
+loss = p:0.022 v:0.054 ent:0.516 total:0.076
+updated model(199)
+122900 123000 
+epoch 114
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.399 +- 0.490
+loss = p:0.022 v:0.053 ent:0.517 total:0.075
+updated model(201)
+123100 123200 
+epoch 115
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.392 +- 0.488
+loss = p:0.017 v:0.052 ent:0.513 total:0.069
+updated model(203)
+123300 123400 
+epoch 116
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.425 +- 0.494
+loss = p:0.018 v:0.051 ent:0.518 total:0.069
+updated model(205)
+123500 123600 
+epoch 117
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.450 +- 0.497
+loss = p:0.011 v:0.051 ent:0.517 total:0.062
+updated model(207)
+123700 123800 
+epoch 118
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.411 +- 0.492
+loss = p:0.023 v:0.054 ent:0.514 total:0.077
+updated model(209)
+123900 124000 
+epoch 119
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.411 +- 0.492
+loss = p:0.006 v:0.050 ent:0.509 total:0.056
+updated model(211)
+124100 124200 
+epoch 120
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.441 +- 0.496
+loss = p:0.028 v:0.056 ent:0.515 total:0.084
+updated model(212)
+124300 124400 
+epoch 121
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.355 +- 0.479
+loss = p:0.012 v:0.050 ent:0.522 total:0.062
+updated model(213)
+124500 124600 
+epoch 122
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.444 +- 0.497
+loss = p:0.022 v:0.053 ent:0.520 total:0.076
+updated model(214)
+124700 124800 
+epoch 123
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.459 +- 0.498
+loss = p:0.017 v:0.052 ent:0.506 total:0.069
+updated model(215)
+124900 125000 
+epoch 124
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.440 +- 0.496
+loss = p:-0.008 v:0.045 ent:0.509 total:0.037
+updated model(216)
+125100 125200 
+epoch 125
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.409 +- 0.492
+loss = p:0.004 v:0.048 ent:0.513 total:0.052
+updated model(217)
+125300 125400 
+epoch 126
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.492 +- 0.500
+loss = p:0.013 v:0.049 ent:0.516 total:0.062
+updated model(218)
+125500 125600 
+epoch 127
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.386 +- 0.487
+loss = p:0.023 v:0.054 ent:0.510 total:0.077
+updated model(219)
+125700 125800 
+epoch 128
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.366 +- 0.482
+loss = p:0.025 v:0.054 ent:0.520 total:0.079
+updated model(221)
+125900 126000 
+epoch 129
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.394 +- 0.489
+loss = p:0.002 v:0.046 ent:0.515 total:0.048
+updated model(223)
+126100 126200 
+epoch 130
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.379 +- 0.485
+loss = p:0.003 v:0.049 ent:0.512 total:0.051
+updated model(225)
+126300 126400 
+epoch 131
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.439 +- 0.496
+loss = p:0.023 v:0.052 ent:0.514 total:0.075
+updated model(227)
+126500 126600 
+epoch 132
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.403 +- 0.491
+loss = p:0.022 v:0.053 ent:0.517 total:0.075
+updated model(229)
+126700 126800 
+epoch 133
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.348 +- 0.476
+loss = p:0.015 v:0.051 ent:0.514 total:0.066
+updated model(231)
+126900 127000 
+epoch 134
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.479 +- 0.500
+loss = p:0.025 v:0.054 ent:0.512 total:0.080
+updated model(233)
+127100 127200 
+epoch 135
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.417 +- 0.493
+loss = p:0.020 v:0.051 ent:0.526 total:0.072
+updated model(234)
+127300 127400 
+epoch 136
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.429 +- 0.495
+loss = p:0.027 v:0.053 ent:0.520 total:0.079
+updated model(235)
+127500 127600 
+epoch 137
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.456 +- 0.498
+loss = p:0.007 v:0.050 ent:0.512 total:0.056
+updated model(236)
+127700 127800 
+epoch 138
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.541 +- 0.498
+loss = p:0.015 v:0.051 ent:0.526 total:0.066
+updated model(237)
+127900 128000 
+epoch 139
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.426 +- 0.495
+loss = p:0.011 v:0.050 ent:0.519 total:0.061
+updated model(239)
+128100 128200 
+epoch 140
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.443 +- 0.497
+loss = p:0.013 v:0.051 ent:0.526 total:0.064
+updated model(241)
+128300 128400 
+epoch 141
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.380 +- 0.485
+loss = p:0.013 v:0.051 ent:0.518 total:0.064
+updated model(243)
+128500 128600 
+epoch 142
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.425 +- 0.494
+loss = p:0.015 v:0.052 ent:0.522 total:0.067
+updated model(245)
+128700 128800 
+epoch 143
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.411 +- 0.492
+loss = p:0.017 v:0.052 ent:0.525 total:0.070
+updated model(247)
+128900 129000 
+epoch 144
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.411 +- 0.492
+loss = p:0.017 v:0.052 ent:0.526 total:0.069
+updated model(249)
+129100 129200 
+epoch 145
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.457 +- 0.498
+loss = p:0.015 v:0.053 ent:0.526 total:0.068
+updated model(251)
+129300 129400 
+epoch 146
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.426 +- 0.495
+loss = p:0.014 v:0.052 ent:0.526 total:0.065
+updated model(253)
+129500 129600 
+epoch 147
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.492 +- 0.500
+loss = p:0.013 v:0.052 ent:0.527 total:0.065
+updated model(255)
+129700 129800 
+epoch 148
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.444 +- 0.497
+loss = p:0.008 v:0.050 ent:0.532 total:0.058
+updated model(257)
+129900 130000 
+epoch 149
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.545 +- 0.498
+loss = p:0.009 v:0.050 ent:0.528 total:0.059
+updated model(259)
+130100 130200 
+epoch 150
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.402 +- 0.490
+loss = p:0.017 v:0.053 ent:0.525 total:0.071
+updated model(261)
+130300 130400 
+epoch 151
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.484 +- 0.500
+loss = p:0.021 v:0.054 ent:0.533 total:0.076
+updated model(263)
+130500 130600 
+epoch 152
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.465 +- 0.499
+loss = p:0.014 v:0.053 ent:0.527 total:0.067
+updated model(264)
+130700 130800 
+epoch 153
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.371 +- 0.483
+loss = p:-0.002 v:0.047 ent:0.528 total:0.045
+updated model(265)
+130900 131000 
+epoch 154
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.419 +- 0.493
+loss = p:0.018 v:0.053 ent:0.542 total:0.070
+updated model(266)
+131100 131200 
+epoch 155
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.549 +- 0.498
+loss = p:0.023 v:0.055 ent:0.532 total:0.077
+updated model(267)
+131300 131400 
+epoch 156
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.426 +- 0.495
+loss = p:0.002 v:0.048 ent:0.532 total:0.050
+updated model(268)
+131500 131600 
+epoch 157
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.431 +- 0.495
+loss = p:0.010 v:0.050 ent:0.527 total:0.060
+updated model(270)
+131700 131800 
+epoch 158
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.391 +- 0.488
+loss = p:0.014 v:0.053 ent:0.527 total:0.068
+updated model(272)
+131900 132000 
+epoch 159
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.424 +- 0.494
+loss = p:0.004 v:0.050 ent:0.535 total:0.054
+updated model(274)
+132100 132200 
+epoch 160
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.455 +- 0.498
+loss = p:0.006 v:0.050 ent:0.524 total:0.056
+updated model(276)
+132300 132400 
+epoch 161
+win rate = 0.500 (33.0 / 66)
+average reward = 0.000 (33.0 / 66)
+generation stats = 0.482 +- 0.500
+loss = p:-0.005 v:0.048 ent:0.537 total:0.043
+updated model(278)
+132500 132600 
+epoch 162
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.425 +- 0.494
+loss = p:0.010 v:0.050 ent:0.537 total:0.059
+updated model(280)
+132700 132800 
+epoch 163
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.540 +- 0.498
+loss = p:0.015 v:0.052 ent:0.543 total:0.068
+updated model(282)
+132900 133000 
+epoch 164
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.445 +- 0.497
+loss = p:0.005 v:0.049 ent:0.538 total:0.054
+updated model(284)
+133100 133200 
+epoch 165
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.471 +- 0.499
+loss = p:0.018 v:0.054 ent:0.550 total:0.072
+updated model(286)
+133300 133400 
+epoch 166
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.375 +- 0.484
+loss = p:0.009 v:0.050 ent:0.536 total:0.059
+updated model(288)
+133500 133600 
+epoch 167
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.427 +- 0.495
+loss = p:0.005 v:0.050 ent:0.542 total:0.054
+updated model(290)
+133700 133800 
+epoch 168
+win rate = 0.500 (34.5 / 69)
+average reward = 0.000 (34.5 / 69)
+generation stats = 0.468 +- 0.499
+loss = p:0.017 v:0.053 ent:0.542 total:0.070
+updated model(292)
+133900 134000 
+epoch 169
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.519 +- 0.500
+loss = p:0.006 v:0.049 ent:0.535 total:0.055
+updated model(294)
+134100 134200 
+epoch 170
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.487 +- 0.500
+loss = p:0.008 v:0.051 ent:0.547 total:0.059
+updated model(296)
+134300 134400 
+epoch 171
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.461 +- 0.498
+loss = p:0.009 v:0.051 ent:0.546 total:0.060
+updated model(298)
+134500 134600 
+epoch 172
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.431 +- 0.495
+loss = p:0.004 v:0.050 ent:0.543 total:0.053
+updated model(300)
+134700 134800 
+epoch 173
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.500 +- 0.500
+loss = p:0.006 v:0.049 ent:0.544 total:0.055
+updated model(301)
+134900 135000 
+epoch 174
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.455 +- 0.498
+loss = p:0.001 v:0.050 ent:0.537 total:0.052
+updated model(302)
+135100 135200 
+epoch 175
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.430 +- 0.495
+loss = p:0.021 v:0.054 ent:0.555 total:0.075
+updated model(303)
+135300 135400 
+epoch 176
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.462 +- 0.499
+loss = p:0.014 v:0.052 ent:0.532 total:0.066
+updated model(304)
+135500 135600 
+epoch 177
+win rate = 0.500 (34.0 / 68)
+average reward = 0.000 (34.0 / 68)
+generation stats = 0.510 +- 0.500
+loss = p:0.003 v:0.050 ent:0.544 total:0.053
+updated model(305)
+135700 135800 
+epoch 178
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.443 +- 0.497
+loss = p:0.007 v:0.051 ent:0.533 total:0.059
+updated model(306)
+135900 136000 
+epoch 179
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.473 +- 0.499
+loss = p:0.007 v:0.050 ent:0.548 total:0.057
+updated model(307)
+136100 136200 
+epoch 180
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.429 +- 0.495
+loss = p:0.004 v:0.051 ent:0.549 total:0.054
+updated model(309)
+136300 136400 
+epoch 181
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.473 +- 0.499
+loss = p:0.007 v:0.052 ent:0.557 total:0.059
+updated model(311)
+136500 136600 
+epoch 182
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.527 +- 0.499
+loss = p:0.008 v:0.051 ent:0.548 total:0.059
+updated model(313)
+136700 136800 
+epoch 183
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.565 +- 0.496
+loss = p:0.006 v:0.050 ent:0.561 total:0.056
+updated model(315)
+136900 137000 
+epoch 184
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.504 +- 0.500
+loss = p:0.011 v:0.052 ent:0.544 total:0.063
+updated model(317)
+137100 137200 
+epoch 185
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.500 +- 0.500
+loss = p:0.003 v:0.050 ent:0.545 total:0.053
+updated model(319)
+137300 137400 
+epoch 186
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.538 +- 0.499
+loss = p:0.015 v:0.053 ent:0.549 total:0.067
+updated model(321)
+137500 137600 
+epoch 187
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.508 +- 0.500
+loss = p:-0.004 v:0.049 ent:0.549 total:0.045
+updated model(323)
+137700 137800 
+epoch 188
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.440 +- 0.496
+loss = p:0.012 v:0.052 ent:0.548 total:0.064
+updated model(325)
+137900 138000 
+epoch 189
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.471 +- 0.499
+loss = p:-0.008 v:0.049 ent:0.552 total:0.042
+updated model(327)
+138100 138200 
+epoch 190
+win rate = 0.500 (25.0 / 50)
+average reward = 0.000 (25.0 / 50)
+generation stats = 0.426 +- 0.495
+loss = p:0.020 v:0.054 ent:0.558 total:0.074
+updated model(328)
+138300 138400 
+epoch 191
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.560 +- 0.496
+loss = p:0.011 v:0.053 ent:0.551 total:0.064
+updated model(330)
+138500 138600 
+epoch 192
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.475 +- 0.499
+loss = p:0.007 v:0.052 ent:0.552 total:0.059
+updated model(332)
+138700 138800 
+epoch 193
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.468 +- 0.499
+loss = p:-0.000 v:0.050 ent:0.558 total:0.050
+updated model(334)
+138900 139000 
+epoch 194
+win rate = 0.500 (33.0 / 66)
+average reward = 0.000 (33.0 / 66)
+generation stats = 0.526 +- 0.499
+loss = p:-0.002 v:0.050 ent:0.553 total:0.048
+updated model(336)
+139100 139200 
+epoch 195
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.530 +- 0.499
+loss = p:0.006 v:0.052 ent:0.550 total:0.058
+updated model(338)
+139300 139400 
+epoch 196
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.477 +- 0.499
+loss = p:-0.002 v:0.050 ent:0.561 total:0.047
+updated model(340)
+139500 139600 
+epoch 197
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.612 +- 0.487
+loss = p:0.011 v:0.052 ent:0.549 total:0.063
+updated model(342)
+139700 139800 
+epoch 198
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.565 +- 0.496
+loss = p:0.008 v:0.051 ent:0.557 total:0.060
+updated model(344)
+139900 140000 
+epoch 199
+win rate = 0.500 (33.0 / 66)
+average reward = 0.000 (33.0 / 66)
+generation stats = 0.511 +- 0.500
+loss = p:-0.001 v:0.050 ent:0.558 total:0.049
+updated model(346)
+140100 140200 
+epoch 200
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.549 +- 0.498
+loss = p:-0.003 v:0.050 ent:0.562 total:0.047
+updated model(348)
+140300 140400 
+epoch 201
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.516 +- 0.500
+loss = p:-0.004 v:0.049 ent:0.554 total:0.044
+updated model(349)
+140500 140600 
+epoch 202
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.488 +- 0.500
+loss = p:0.004 v:0.052 ent:0.556 total:0.055
+updated model(351)
+140700 140800 
+epoch 203
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.538 +- 0.499
+loss = p:-0.002 v:0.050 ent:0.567 total:0.048
+updated model(353)
+140900 141000 
+epoch 204
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.488 +- 0.500
+loss = p:-0.000 v:0.050 ent:0.561 total:0.050
+updated model(355)
+141100 141200 
+epoch 205
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.483 +- 0.500
+loss = p:0.004 v:0.051 ent:0.564 total:0.055
+updated model(356)
+141300 141400 
+epoch 206
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.470 +- 0.499
+loss = p:-0.001 v:0.050 ent:0.549 total:0.049
+updated model(357)
+141500 141600 
+epoch 207
+win rate = 0.500 (33.0 / 66)
+average reward = 0.000 (33.0 / 66)
+generation stats = 0.508 +- 0.500
+loss = p:-0.000 v:0.052 ent:0.565 total:0.051
+updated model(358)
+141700 141800 
+epoch 208
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.556 +- 0.497
+loss = p:-0.006 v:0.049 ent:0.561 total:0.043
+updated model(359)
+141900 142000 
+epoch 209
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.544 +- 0.498
+loss = p:-0.002 v:0.049 ent:0.565 total:0.047
+updated model(360)
+142100 142200 
+epoch 210
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.441 +- 0.497
+loss = p:0.008 v:0.052 ent:0.556 total:0.059
+updated model(361)
+142300 142400 
+epoch 211
+win rate = 0.500 (25.0 / 50)
+average reward = 0.000 (25.0 / 50)
+generation stats = 0.480 +- 0.500
+loss = p:0.011 v:0.053 ent:0.560 total:0.063
+updated model(362)
+142500 142600 
+epoch 212
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.529 +- 0.499
+loss = p:-0.009 v:0.049 ent:0.570 total:0.040
+updated model(363)
+142700 142800 
+epoch 213
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.544 +- 0.498
+loss = p:0.008 v:0.052 ent:0.570 total:0.061
+updated model(365)
+142900 143000 
+epoch 214
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.441 +- 0.497
+loss = p:0.011 v:0.053 ent:0.560 total:0.064
+updated model(367)
+143100 143200 
+epoch 215
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.563 +- 0.496
+loss = p:-0.003 v:0.050 ent:0.565 total:0.048
+updated model(369)
+143300 143400 
+epoch 216
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.595 +- 0.491
+loss = p:0.009 v:0.053 ent:0.567 total:0.063
+updated model(370)
+143500 143600 
+epoch 217
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.504 +- 0.500
+loss = p:-0.010 v:0.049 ent:0.558 total:0.038
+updated model(371)
+143700 143800 
+epoch 218
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.602 +- 0.490
+loss = p:0.005 v:0.052 ent:0.560 total:0.057
+updated model(373)
+143900 144000 
+epoch 219
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.579 +- 0.494
+loss = p:0.008 v:0.052 ent:0.565 total:0.061
+updated model(375)
+144100 144200 
+epoch 220
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.590 +- 0.492
+loss = p:0.001 v:0.052 ent:0.561 total:0.053
+updated model(377)
+144300 144400 
+epoch 221
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.569 +- 0.495
+loss = p:0.012 v:0.055 ent:0.566 total:0.067
+updated model(379)
+144500 144600 
+epoch 222
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.559 +- 0.496
+loss = p:-0.002 v:0.051 ent:0.568 total:0.049
+updated model(381)
+144700 144800 
+epoch 223
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.524 +- 0.499
+loss = p:0.005 v:0.053 ent:0.569 total:0.058
+updated model(383)
+144900 145000 
+epoch 224
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.528 +- 0.499
+loss = p:0.008 v:0.054 ent:0.572 total:0.062
+updated model(384)
+145100 145200 
+epoch 225
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.500 +- 0.500
+loss = p:-0.000 v:0.051 ent:0.562 total:0.051
+updated model(385)
+145300 145400 
+epoch 226
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.589 +- 0.492
+loss = p:-0.002 v:0.052 ent:0.574 total:0.050
+updated model(386)
+145500 145600 
+epoch 227
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.609 +- 0.488
+loss = p:-0.010 v:0.051 ent:0.563 total:0.041
+updated model(387)
+145700 145800 
+epoch 228
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.558 +- 0.497
+loss = p:-0.001 v:0.052 ent:0.567 total:0.051
+updated model(388)
+145900 146000 
+epoch 229
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.504 +- 0.500
+loss = p:0.008 v:0.054 ent:0.564 total:0.063
+updated model(389)
+146100 146200 
+epoch 230
+win rate = 0.500 (29.0 / 58)
+average reward = 0.000 (29.0 / 58)
+generation stats = 0.641 +- 0.480
+loss = p:0.000 v:0.052 ent:0.566 total:0.052
+updated model(391)
+146300 146400 
+epoch 231
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.508 +- 0.500
+loss = p:-0.007 v:0.051 ent:0.566 total:0.043
+updated model(393)
+146500 146600 
+epoch 232
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.500 +- 0.500
+loss = p:-0.006 v:0.052 ent:0.563 total:0.046
+updated model(395)
+146700 146800 
+epoch 233
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.565 +- 0.496
+loss = p:-0.000 v:0.053 ent:0.566 total:0.052
+updated model(397)
+146900 147000 
+epoch 234
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.579 +- 0.494
+loss = p:-0.012 v:0.051 ent:0.563 total:0.039
+updated model(399)
+147100 147200 
+epoch 235
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.515 +- 0.500
+loss = p:-0.009 v:0.051 ent:0.564 total:0.042
+updated model(401)
+147300 147400 
+epoch 236
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.507 +- 0.500
+loss = p:0.005 v:0.054 ent:0.567 total:0.059
+updated model(403)
+147500 147600 
+epoch 237
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.508 +- 0.500
+loss = p:-0.003 v:0.051 ent:0.558 total:0.049
+updated model(405)
+147700 147800 
+epoch 238
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.574 +- 0.495
+loss = p:0.006 v:0.054 ent:0.561 total:0.060
+updated model(406)
+147900 148000 
+epoch 239
+win rate = 0.500 (26.0 / 52)
+average reward = 0.000 (26.0 / 52)
+generation stats = 0.500 +- 0.500
+loss = p:0.004 v:0.053 ent:0.567 total:0.057
+updated model(408)
+148100 148200 
+epoch 240
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.592 +- 0.491
+loss = p:-0.010 v:0.051 ent:0.565 total:0.041
+updated model(410)
+148300 148400 
+epoch 241
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.603 +- 0.489
+loss = p:0.009 v:0.054 ent:0.568 total:0.063
+updated model(412)
+148500 148600 
+epoch 242
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.584 +- 0.493
+loss = p:0.005 v:0.055 ent:0.566 total:0.059
+updated model(414)
+148700 148800 
+epoch 243
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.529 +- 0.499
+loss = p:-0.011 v:0.051 ent:0.563 total:0.040
+updated model(416)
+148900 149000 
+epoch 244
+win rate = 0.500 (31.5 / 63)
+average reward = 0.000 (31.5 / 63)
+generation stats = 0.621 +- 0.485
+loss = p:-0.008 v:0.051 ent:0.561 total:0.043
+updated model(418)
+149100 149200 
+epoch 245
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.548 +- 0.498
+loss = p:-0.009 v:0.051 ent:0.571 total:0.043
+updated model(420)
+149300 149400 
+epoch 246
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.592 +- 0.491
+loss = p:-0.003 v:0.052 ent:0.565 total:0.049
+updated model(422)
+149500 149600 
+epoch 247
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.574 +- 0.495
+loss = p:-0.004 v:0.052 ent:0.557 total:0.048
+updated model(423)
+149700 149800 
+epoch 248
+win rate = 0.500 (24.5 / 49)
+average reward = 0.000 (24.5 / 49)
+generation stats = 0.579 +- 0.494
+loss = p:0.005 v:0.054 ent:0.569 total:0.060
+updated model(424)
+149900 150000 
+epoch 249
+win rate = 0.500 (30.5 / 61)
+average reward = 0.000 (30.5 / 61)
+generation stats = 0.553 +- 0.497
+loss = p:-0.000 v:0.053 ent:0.561 total:0.053
+updated model(426)
+150100 150200 
+epoch 250
+win rate = 0.500 (25.5 / 51)
+average reward = 0.000 (25.5 / 51)
+generation stats = 0.579 +- 0.494
+loss = p:-0.004 v:0.052 ent:0.562 total:0.049
+updated model(428)
+150300 150400 
+epoch 251
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.695 +- 0.460
+loss = p:0.001 v:0.052 ent:0.551 total:0.052
+updated model(430)
+150500 150600 
+epoch 252
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.504 +- 0.500
+loss = p:-0.005 v:0.052 ent:0.562 total:0.047
+updated model(432)
+150700 150800 
+epoch 253
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.568 +- 0.495
+loss = p:0.004 v:0.053 ent:0.560 total:0.057
+updated model(434)
+150900 151000 
+epoch 254
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.631 +- 0.483
+loss = p:0.001 v:0.053 ent:0.563 total:0.054
+updated model(436)
+151100 151200 
+epoch 255
+win rate = 0.500 (26.5 / 53)
+average reward = 0.000 (26.5 / 53)
+generation stats = 0.616 +- 0.486
+loss = p:-0.006 v:0.052 ent:0.564 total:0.046
+updated model(438)
+151300 151400 
+epoch 256
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.672 +- 0.469
+loss = p:-0.007 v:0.052 ent:0.554 total:0.045
+updated model(440)
+151500 151600 
+epoch 257
+win rate = 0.500 (28.5 / 57)
+average reward = 0.000 (28.5 / 57)
+generation stats = 0.626 +- 0.484
+loss = p:0.006 v:0.053 ent:0.557 total:0.059
+updated model(442)
+151700 151800 
+epoch 258
+win rate = 0.500 (29.5 / 59)
+average reward = 0.000 (29.5 / 59)
+generation stats = 0.492 +- 0.500
+loss = p:0.002 v:0.054 ent:0.563 total:0.056
+updated model(444)
+151900 152000 
+epoch 259
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.567 +- 0.496
+loss = p:-0.004 v:0.053 ent:0.556 total:0.049
+updated model(446)
+152100 152200 
+epoch 260
+win rate = 0.500 (31.0 / 62)
+average reward = 0.000 (31.0 / 62)
+generation stats = 0.644 +- 0.479
+loss = p:-0.010 v:0.052 ent:0.560 total:0.042
+updated model(448)
+152300 152400 
+epoch 261
+win rate = 0.500 (24.5 / 49)
+average reward = 0.000 (24.5 / 49)
+generation stats = 0.647 +- 0.478
+loss = p:-0.004 v:0.053 ent:0.562 total:0.048
+updated model(450)
+152500 152600 
+epoch 262
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.647 +- 0.478
+loss = p:-0.004 v:0.053 ent:0.560 total:0.048
+updated model(452)
+152700 152800 
+epoch 263
+win rate = 0.500 (27.5 / 55)
+average reward = 0.000 (27.5 / 55)
+generation stats = 0.605 +- 0.489
+loss = p:-0.010 v:0.051 ent:0.560 total:0.041
+updated model(454)
+152900 153000 
+epoch 264
+win rate = 0.500 (32.0 / 64)
+average reward = 0.000 (32.0 / 64)
+generation stats = 0.607 +- 0.488
+loss = p:-0.001 v:0.053 ent:0.563 total:0.052
+updated model(456)
+153100 153200 
+epoch 265
+win rate = 0.500 (28.0 / 56)
+average reward = 0.000 (28.0 / 56)
+generation stats = 0.566 +- 0.496
+loss = p:-0.025 v:0.048 ent:0.552 total:0.024
+updated model(457)
+153300 153400 
+epoch 266
+win rate = 0.500 (30.0 / 60)
+average reward = 0.000 (30.0 / 60)
+generation stats = 0.581 +- 0.493
+loss = p:-0.006 v:0.051 ent:0.547 total:0.045
+updated model(458)
+153500 153600 
+epoch 267
+win rate = 0.500 (32.5 / 65)
+average reward = 0.000 (32.5 / 65)
+generation stats = 0.587 +- 0.492
+loss = p:0.004 v:0.054 ent:0.558 total:0.058
+updated model(459)
+153700 153800 
+epoch 268
+win rate = 0.500 (27.0 / 54)
+average reward = 0.000 (27.0 / 54)
+generation stats = 0.630 +- 0.483
+loss = p:-0.004 v:0.053 ent:0.565 total:0.049
+updated model(461)
+153900 154000 
+epoch 269
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.545 +- 0.498
+loss = p:-0.008 v:0.052 ent:0.560 total:0.044
+updated model(463)
+154100 154200 
+epoch 270
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.533 +- 0.499
+loss = p:-0.009 v:0.053 ent:0.565 total:0.044
+updated model(465)
+154300 154400 
+epoch 271
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.644 +- 0.479
+loss = p:-0.004 v:0.052 ent:0.553 total:0.048
+updated model(467)
+154500 154600 
+epoch 272
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.516 +- 0.500
+loss = p:-0.016 v:0.051 ent:0.558 total:0.035
+updated model(469)
+154700 154800 
+epoch 273
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.581 +- 0.493
+loss = p:0.001 v:0.054 ent:0.567 total:0.055
+updated model(471)
+154900 155000 
+epoch 274
+win rate = 1.000 (69.0 / 69)
+average reward = 1.000 (69.0 / 69)
+generation stats = 0.618 +- 0.486
+loss = p:-0.007 v:0.053 ent:0.566 total:0.045
+updated model(474)
+155100 155200 
+epoch 275
+win rate = 1.000 (69.0 / 69)
+average reward = 1.000 (69.0 / 69)
+generation stats = 0.606 +- 0.489
+loss = p:-0.003 v:0.053 ent:0.554 total:0.050
+updated model(476)
+155300 155400 
+epoch 276
+win rate = 1.000 (74.0 / 74)
+average reward = 1.000 (74.0 / 74)
+generation stats = 0.569 +- 0.495
+loss = p:-0.013 v:0.052 ent:0.555 total:0.039
+updated model(478)
+155500 155600 
+epoch 277
+win rate = 1.000 (49.0 / 49)
+average reward = 1.000 (49.0 / 49)
+generation stats = 0.602 +- 0.490
+loss = p:-0.006 v:0.052 ent:0.570 total:0.047
+updated model(479)
+155700 155800 
+epoch 278
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.662 +- 0.473
+loss = p:-0.006 v:0.053 ent:0.559 total:0.047
+updated model(480)
+155900 156000 
+epoch 279
+win rate = 1.000 (66.0 / 66)
+average reward = 1.000 (66.0 / 66)
+generation stats = 0.636 +- 0.481
+loss = p:-0.011 v:0.053 ent:0.563 total:0.042
+updated model(482)
+156100 156200 
+epoch 280
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.585 +- 0.493
+loss = p:-0.002 v:0.053 ent:0.558 total:0.051
+updated model(484)
+156300 156400 
+epoch 281
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.696 +- 0.460
+loss = p:-0.006 v:0.053 ent:0.556 total:0.047
+updated model(486)
+156500 156600 
+epoch 282
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.680 +- 0.466
+loss = p:0.003 v:0.056 ent:0.566 total:0.059
+updated model(488)
+156700 156800 
+epoch 283
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.610 +- 0.488
+loss = p:-0.018 v:0.050 ent:0.556 total:0.033
+updated model(490)
+156900 157000 
+epoch 284
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.566 +- 0.496
+loss = p:-0.008 v:0.052 ent:0.558 total:0.044
+updated model(492)
+157100 157200 
+epoch 285
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.591 +- 0.492
+loss = p:-0.005 v:0.054 ent:0.563 total:0.049
+updated model(494)
+157300 157400 
+epoch 286
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.566 +- 0.496
+loss = p:-0.008 v:0.053 ent:0.565 total:0.045
+updated model(496)
+157500 157600 
+epoch 287
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.705 +- 0.456
+loss = p:0.015 v:0.056 ent:0.567 total:0.072
+updated model(498)
+157700 157800 
+epoch 288
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.664 +- 0.472
+loss = p:-0.013 v:0.051 ent:0.548 total:0.038
+updated model(499)
+157900 158000 
+epoch 289
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.664 +- 0.472
+loss = p:-0.010 v:0.054 ent:0.557 total:0.043
+updated model(501)
+158100 158200 
+epoch 290
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.598 +- 0.490
+loss = p:-0.017 v:0.051 ent:0.554 total:0.035
+updated model(503)
+158300 158400 
+epoch 291
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.654 +- 0.476
+loss = p:-0.005 v:0.053 ent:0.557 total:0.048
+updated model(505)
+158500 158600 
+epoch 292
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.609 +- 0.488
+loss = p:-0.009 v:0.053 ent:0.557 total:0.044
+updated model(507)
+158700 158800 
+epoch 293
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.638 +- 0.481
+loss = p:-0.011 v:0.053 ent:0.548 total:0.041
+updated model(509)
+158900 159000 
+epoch 294
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.630 +- 0.483
+loss = p:-0.002 v:0.055 ent:0.563 total:0.053
+updated model(511)
+159100 159200 
+epoch 295
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.634 +- 0.482
+loss = p:-0.001 v:0.055 ent:0.556 total:0.053
+updated model(513)
+159300 159400 
+epoch 296
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.684 +- 0.465
+loss = p:-0.027 v:0.052 ent:0.553 total:0.025
+updated model(514)
+159500 159600 
+epoch 297
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.689 +- 0.463
+loss = p:-0.011 v:0.053 ent:0.553 total:0.042
+updated model(515)
+159700 159800 
+epoch 298
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.600 +- 0.490
+loss = p:-0.007 v:0.055 ent:0.558 total:0.048
+updated model(516)
+159900 160000 
+epoch 299
+win rate = 1.000 (50.0 / 50)
+average reward = 1.000 (50.0 / 50)
+generation stats = 0.687 +- 0.464
+loss = p:-0.011 v:0.053 ent:0.544 total:0.042
+updated model(518)
+160100 160200 
+epoch 300
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.681 +- 0.466
+loss = p:-0.003 v:0.054 ent:0.550 total:0.051
+updated model(520)
+160300 160400 
+epoch 301
+win rate = 1.000 (65.0 / 65)
+average reward = 1.000 (65.0 / 65)
+generation stats = 0.641 +- 0.480
+loss = p:-0.005 v:0.054 ent:0.549 total:0.049
+updated model(522)
+160500 160600 
+epoch 302
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.576 +- 0.494
+loss = p:-0.008 v:0.053 ent:0.548 total:0.045
+updated model(524)
+160700 160800 
+epoch 303
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.630 +- 0.483
+loss = p:-0.018 v:0.053 ent:0.545 total:0.035
+updated model(526)
+160900 161000 
+epoch 304
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.630 +- 0.483
+loss = p:0.001 v:0.055 ent:0.549 total:0.056
+updated model(528)
+161100 161200 
+epoch 305
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.594 +- 0.491
+loss = p:-0.009 v:0.053 ent:0.553 total:0.044
+updated model(530)
+161300 161400 
+epoch 306
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.628 +- 0.483
+loss = p:-0.011 v:0.054 ent:0.544 total:0.043
+updated model(532)
+161500 161600 
+epoch 307
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.669 +- 0.470
+loss = p:-0.011 v:0.053 ent:0.542 total:0.042
+updated model(534)
+161700 161800 
+epoch 308
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.611 +- 0.487
+loss = p:-0.017 v:0.052 ent:0.546 total:0.035
+updated model(536)
+161900 162000 
+epoch 309
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.677 +- 0.468
+loss = p:-0.014 v:0.054 ent:0.551 total:0.040
+updated model(538)
+162100 162200 
+epoch 310
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.636 +- 0.481
+loss = p:-0.012 v:0.053 ent:0.536 total:0.041
+updated model(540)
+162300 162400 
+epoch 311
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.684 +- 0.465
+loss = p:-0.013 v:0.053 ent:0.544 total:0.040
+updated model(542)
+162500 162600 
+epoch 312
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.614 +- 0.487
+loss = p:-0.008 v:0.054 ent:0.548 total:0.046
+updated model(544)
+162700 162800 
+epoch 313
+win rate = 1.000 (49.0 / 49)
+average reward = 1.000 (49.0 / 49)
+generation stats = 0.632 +- 0.482
+loss = p:-0.016 v:0.053 ent:0.542 total:0.037
+updated model(546)
+162900 163000 
+epoch 314
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.613 +- 0.487
+loss = p:-0.011 v:0.053 ent:0.535 total:0.041
+updated model(548)
+163100 163200 
+epoch 315
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.639 +- 0.480
+loss = p:-0.016 v:0.053 ent:0.546 total:0.037
+updated model(550)
+163300 163400 
+epoch 316
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.631 +- 0.482
+loss = p:-0.018 v:0.051 ent:0.532 total:0.034
+updated model(551)
+163500 163600 
+epoch 317
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.651 +- 0.477
+loss = p:-0.000 v:0.054 ent:0.537 total:0.054
+updated model(552)
+163700 163800 
+epoch 318
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.649 +- 0.477
+loss = p:0.013 v:0.057 ent:0.544 total:0.071
+updated model(553)
+163900 164000 
+epoch 319
+win rate = 1.000 (65.0 / 65)
+average reward = 1.000 (65.0 / 65)
+generation stats = 0.676 +- 0.468
+loss = p:0.000 v:0.054 ent:0.540 total:0.055
+updated model(554)
+164100 164200 
+epoch 320
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.573 +- 0.495
+loss = p:-0.031 v:0.051 ent:0.537 total:0.020
+updated model(555)
+164300 164400 
+epoch 321
+win rate = 1.000 (67.0 / 67)
+average reward = 1.000 (67.0 / 67)
+generation stats = 0.625 +- 0.484
+loss = p:-0.015 v:0.053 ent:0.547 total:0.038
+updated model(556)
+164500 164600 
+epoch 322
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.674 +- 0.469
+loss = p:-0.019 v:0.051 ent:0.542 total:0.032
+updated model(557)
+164700 164800 
+epoch 323
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.648 +- 0.478
+loss = p:-0.005 v:0.053 ent:0.531 total:0.048
+updated model(558)
+164900 165000 
+epoch 324
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.579 +- 0.494
+loss = p:-0.015 v:0.053 ent:0.539 total:0.038
+updated model(560)
+165100 165200 
+epoch 325
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.677 +- 0.468
+loss = p:-0.015 v:0.052 ent:0.540 total:0.038
+updated model(562)
+165300 165400 
+epoch 326
+win rate = 1.000 (66.0 / 66)
+average reward = 1.000 (66.0 / 66)
+generation stats = 0.695 +- 0.461
+loss = p:-0.012 v:0.055 ent:0.547 total:0.042
+updated model(563)
+165500 165600 
+epoch 327
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.653 +- 0.476
+loss = p:-0.016 v:0.052 ent:0.538 total:0.037
+updated model(564)
+165700 165800 
+epoch 328
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.654 +- 0.476
+loss = p:-0.008 v:0.055 ent:0.544 total:0.047
+updated model(565)
+165900 166000 
+epoch 329
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.575 +- 0.494
+loss = p:-0.021 v:0.051 ent:0.532 total:0.030
+updated model(566)
+166100 166200 
+epoch 330
+win rate = 1.000 (50.0 / 50)
+average reward = 1.000 (50.0 / 50)
+generation stats = 0.631 +- 0.483
+loss = p:-0.001 v:0.055 ent:0.543 total:0.054
+updated model(568)
+166300 166400 
+epoch 331
+win rate = 1.000 (66.0 / 66)
+average reward = 1.000 (66.0 / 66)
+generation stats = 0.632 +- 0.482
+loss = p:-0.017 v:0.053 ent:0.535 total:0.036
+updated model(570)
+166500 166600 
+epoch 332
+win rate = 1.000 (47.0 / 47)
+average reward = 1.000 (47.0 / 47)
+generation stats = 0.641 +- 0.480
+loss = p:-0.010 v:0.053 ent:0.538 total:0.043
+updated model(572)
+166700 166800 
+epoch 333
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.677 +- 0.468
+loss = p:-0.001 v:0.055 ent:0.544 total:0.054
+updated model(574)
+166900 167000 
+epoch 334
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.695 +- 0.461
+loss = p:-0.008 v:0.053 ent:0.538 total:0.045
+updated model(576)
+167100 167200 
+epoch 335
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.617 +- 0.486
+loss = p:-0.012 v:0.053 ent:0.538 total:0.041
+updated model(578)
+167300 167400 
+epoch 336
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.682 +- 0.466
+loss = p:-0.017 v:0.053 ent:0.545 total:0.036
+updated model(580)
+167500 167600 
+epoch 337
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.638 +- 0.480
+loss = p:-0.019 v:0.054 ent:0.538 total:0.035
+updated model(582)
+167700 167800 
+epoch 338
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.664 +- 0.472
+loss = p:-0.023 v:0.052 ent:0.531 total:0.029
+updated model(584)
+167900 168000 
+epoch 339
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.730 +- 0.444
+loss = p:-0.014 v:0.054 ent:0.533 total:0.039
+updated model(586)
+168100 168200 
+epoch 340
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.689 +- 0.463
+loss = p:-0.021 v:0.053 ent:0.536 total:0.032
+updated model(588)
+168300 168400 
+epoch 341
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.674 +- 0.469
+loss = p:-0.011 v:0.053 ent:0.535 total:0.042
+updated model(590)
+168500 168600 
+epoch 342
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.682 +- 0.466
+loss = p:-0.012 v:0.055 ent:0.536 total:0.042
+updated model(592)
+168700 168800 
+epoch 343
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.659 +- 0.474
+loss = p:-0.019 v:0.053 ent:0.533 total:0.034
+updated model(594)
+168900 169000 
+epoch 344
+win rate = 1.000 (67.0 / 67)
+average reward = 1.000 (67.0 / 67)
+generation stats = 0.709 +- 0.454
+loss = p:0.001 v:0.056 ent:0.528 total:0.057
+updated model(596)
+169100 169200 
+epoch 345
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.716 +- 0.451
+loss = p:-0.004 v:0.055 ent:0.538 total:0.051
+updated model(598)
+169300 169400 
+epoch 346
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.653 +- 0.476
+loss = p:-0.015 v:0.055 ent:0.529 total:0.039
+updated model(600)
+169500 169600 
+epoch 347
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.646 +- 0.478
+loss = p:-0.002 v:0.056 ent:0.527 total:0.053
+updated model(602)
+169700 169800 
+epoch 348
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.659 +- 0.474
+loss = p:-0.016 v:0.054 ent:0.538 total:0.038
+updated model(604)
+169900 170000 
+epoch 349
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.642 +- 0.479
+loss = p:-0.014 v:0.054 ent:0.532 total:0.040
+updated model(606)
+170100 170200 
+epoch 350
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.623 +- 0.485
+loss = p:-0.020 v:0.054 ent:0.529 total:0.034
+updated model(608)
+170300 170400 
+epoch 351
+win rate = 1.000 (65.0 / 65)
+average reward = 1.000 (65.0 / 65)
+generation stats = 0.611 +- 0.488
+loss = p:-0.004 v:0.056 ent:0.527 total:0.052
+updated model(610)
+170500 170600 
+epoch 352
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.664 +- 0.472
+loss = p:-0.007 v:0.055 ent:0.532 total:0.049
+updated model(612)
+170700 170800 
+epoch 353
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.689 +- 0.463
+loss = p:-0.030 v:0.052 ent:0.526 total:0.022
+updated model(614)
+170900 171000 
+epoch 354
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.622 +- 0.485
+loss = p:-0.018 v:0.054 ent:0.532 total:0.036
+updated model(616)
+171100 171200 
+epoch 355
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.661 +- 0.473
+loss = p:-0.021 v:0.053 ent:0.518 total:0.031
+updated model(618)
+171300 171400 
+epoch 356
+win rate = 1.000 (65.0 / 65)
+average reward = 1.000 (65.0 / 65)
+generation stats = 0.674 +- 0.469
+loss = p:-0.013 v:0.054 ent:0.529 total:0.041
+updated model(620)
+171500 171600 
+epoch 357
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.602 +- 0.490
+loss = p:-0.016 v:0.053 ent:0.529 total:0.038
+updated model(622)
+171700 171800 
+epoch 358
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.694 +- 0.461
+loss = p:-0.016 v:0.054 ent:0.533 total:0.038
+updated model(624)
+171900 172000 
+epoch 359
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.618 +- 0.486
+loss = p:-0.013 v:0.054 ent:0.514 total:0.040
+updated model(626)
+172100 172200 
+epoch 360
+win rate = 1.000 (43.0 / 43)
+average reward = 1.000 (43.0 / 43)
+generation stats = 0.713 +- 0.452
+loss = p:-0.018 v:0.054 ent:0.525 total:0.036
+updated model(627)
+172300 172400 
+epoch 361
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.633 +- 0.482
+loss = p:-0.018 v:0.054 ent:0.520 total:0.035
+updated model(628)
+172500 172600 
+epoch 362
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.637 +- 0.481
+loss = p:-0.005 v:0.055 ent:0.533 total:0.050
+updated model(629)
+172700 172800 
+epoch 363
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.714 +- 0.452
+loss = p:-0.019 v:0.053 ent:0.519 total:0.035
+updated model(630)
+172900 173000 
+epoch 364
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.667 +- 0.471
+loss = p:-0.003 v:0.055 ent:0.521 total:0.052
+updated model(631)
+173100 173200 
+epoch 365
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.664 +- 0.472
+loss = p:-0.010 v:0.053 ent:0.514 total:0.043
+updated model(632)
+173300 173400 
+epoch 366
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.672 +- 0.469
+loss = p:-0.011 v:0.054 ent:0.532 total:0.043
+updated model(634)
+173500 173600 
+epoch 367
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.672 +- 0.470
+loss = p:-0.017 v:0.054 ent:0.526 total:0.037
+updated model(636)
+173700 173800 
+epoch 368
+win rate = 1.000 (50.0 / 50)
+average reward = 1.000 (50.0 / 50)
+generation stats = 0.605 +- 0.489
+loss = p:-0.014 v:0.053 ent:0.525 total:0.039
+updated model(638)
+173900 174000 
+epoch 369
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.638 +- 0.481
+loss = p:-0.022 v:0.053 ent:0.521 total:0.030
+updated model(640)
+174100 174200 
+epoch 370
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.692 +- 0.462
+loss = p:-0.006 v:0.055 ent:0.524 total:0.049
+updated model(642)
+174300 174400 
+epoch 371
+win rate = 1.000 (66.0 / 66)
+average reward = 1.000 (66.0 / 66)
+generation stats = 0.727 +- 0.446
+loss = p:-0.024 v:0.053 ent:0.518 total:0.029
+updated model(644)
+174500 174600 
+epoch 372
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.723 +- 0.447
+loss = p:-0.031 v:0.053 ent:0.522 total:0.022
+updated model(645)
+174700 174800 
+epoch 373
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.679 +- 0.467
+loss = p:-0.023 v:0.054 ent:0.513 total:0.031
+updated model(646)
+174900 175000 
+epoch 374
+win rate = 1.000 (70.0 / 70)
+average reward = 1.000 (70.0 / 70)
+generation stats = 0.641 +- 0.480
+loss = p:-0.021 v:0.054 ent:0.529 total:0.033
+updated model(647)
+175100 175200 
+epoch 375
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.672 +- 0.469
+loss = p:-0.000 v:0.056 ent:0.531 total:0.056
+updated model(648)
+175300 175400 
+epoch 376
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.648 +- 0.477
+loss = p:-0.008 v:0.054 ent:0.520 total:0.046
+updated model(649)
+175500 175600 
+epoch 377
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.738 +- 0.440
+loss = p:-0.017 v:0.054 ent:0.522 total:0.037
+updated model(650)
+175700 175800 
+epoch 378
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.664 +- 0.472
+loss = p:-0.002 v:0.056 ent:0.513 total:0.053
+updated model(651)
+175900 176000 
+epoch 379
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.714 +- 0.452
+loss = p:-0.010 v:0.055 ent:0.529 total:0.045
+updated model(653)
+176100 176200 
+epoch 380
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.681 +- 0.466
+loss = p:-0.027 v:0.053 ent:0.520 total:0.027
+updated model(655)
+176300 176400 
+epoch 381
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.704 +- 0.456
+loss = p:-0.014 v:0.055 ent:0.519 total:0.041
+updated model(657)
+176500 176600 
+epoch 382
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.721 +- 0.448
+loss = p:-0.020 v:0.054 ent:0.522 total:0.034
+updated model(659)
+176700 176800 
+epoch 383
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.699 +- 0.459
+loss = p:-0.029 v:0.053 ent:0.515 total:0.024
+updated model(661)
+176900 177000 
+epoch 384
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.686 +- 0.464
+loss = p:-0.018 v:0.055 ent:0.526 total:0.037
+updated model(663)
+177100 177200 
+epoch 385
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.690 +- 0.462
+loss = p:-0.017 v:0.055 ent:0.517 total:0.038
+updated model(665)
+177300 177400 
+epoch 386
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.719 +- 0.450
+loss = p:-0.006 v:0.055 ent:0.523 total:0.049
+updated model(667)
+177500 177600 
+epoch 387
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.703 +- 0.457
+loss = p:-0.011 v:0.055 ent:0.524 total:0.044
+updated model(669)
+177700 177800 
+epoch 388
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.725 +- 0.446
+loss = p:-0.016 v:0.055 ent:0.519 total:0.039
+updated model(671)
+177900 178000 
+epoch 389
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.684 +- 0.465
+loss = p:-0.017 v:0.054 ent:0.516 total:0.037
+updated model(673)
+178100 178200 
+epoch 390
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.720 +- 0.449
+loss = p:-0.012 v:0.056 ent:0.526 total:0.044
+updated model(675)
+178300 178400 
+epoch 391
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.765 +- 0.424
+loss = p:-0.009 v:0.054 ent:0.510 total:0.045
+updated model(677)
+178500 178600 
+epoch 392
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.719 +- 0.450
+loss = p:-0.022 v:0.054 ent:0.513 total:0.033
+updated model(679)
+178700 178800 
+epoch 393
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.683 +- 0.465
+loss = p:-0.023 v:0.054 ent:0.517 total:0.031
+updated model(681)
+178900 179000 
+epoch 394
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.692 +- 0.462
+loss = p:-0.009 v:0.055 ent:0.517 total:0.046
+updated model(683)
+179100 179200 
+epoch 395
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.735 +- 0.441
+loss = p:-0.016 v:0.054 ent:0.511 total:0.038
+updated model(685)
+179300 179400 
+epoch 396
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.766 +- 0.424
+loss = p:-0.017 v:0.055 ent:0.510 total:0.038
+updated model(687)
+179500 179600 
+epoch 397
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.718 +- 0.450
+loss = p:-0.020 v:0.054 ent:0.513 total:0.034
+updated model(689)
+179700 179800 
+epoch 398
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.722 +- 0.448
+loss = p:-0.028 v:0.055 ent:0.515 total:0.026
+updated model(691)
+179900 180000 
+epoch 399
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.699 +- 0.459
+loss = p:-0.021 v:0.054 ent:0.511 total:0.034
+updated model(693)
+180100 180200 
+epoch 400
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.764 +- 0.424
+loss = p:-0.030 v:0.054 ent:0.509 total:0.024
+updated model(694)
+180300 180400 
+epoch 401
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.720 +- 0.449
+loss = p:-0.019 v:0.055 ent:0.514 total:0.036
+updated model(696)
+180500 180600 
+epoch 402
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.679 +- 0.467
+loss = p:-0.016 v:0.054 ent:0.506 total:0.038
+updated model(698)
+180700 180800 
+epoch 403
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.706 +- 0.456
+loss = p:-0.033 v:0.053 ent:0.509 total:0.020
+updated model(699)
+180900 181000 
+epoch 404
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.695 +- 0.460
+loss = p:-0.008 v:0.055 ent:0.508 total:0.047
+updated model(700)
+181100 181200 
+epoch 405
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.702 +- 0.458
+loss = p:-0.023 v:0.055 ent:0.512 total:0.032
+updated model(701)
+181300 181400 
+epoch 406
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.725 +- 0.447
+loss = p:-0.019 v:0.054 ent:0.496 total:0.035
+updated model(702)
+181500 181600 
+epoch 407
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.748 +- 0.434
+loss = p:-0.022 v:0.054 ent:0.511 total:0.032
+updated model(704)
+181700 181800 
+epoch 408
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.692 +- 0.462
+loss = p:-0.009 v:0.055 ent:0.512 total:0.046
+updated model(706)
+181900 182000 
+epoch 409
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.667 +- 0.471
+loss = p:-0.016 v:0.055 ent:0.514 total:0.039
+updated model(708)
+182100 182200 
+epoch 410
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.704 +- 0.456
+loss = p:-0.030 v:0.054 ent:0.507 total:0.025
+updated model(710)
+182300 182400 
+epoch 411
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.748 +- 0.434
+loss = p:-0.017 v:0.055 ent:0.513 total:0.038
+updated model(712)
+182500 182600 
+epoch 412
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.646 +- 0.478
+loss = p:-0.021 v:0.055 ent:0.515 total:0.034
+updated model(714)
+182700 182800 
+epoch 413
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.785 +- 0.411
+loss = p:-0.008 v:0.055 ent:0.510 total:0.047
+updated model(716)
+182900 183000 
+epoch 414
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.763 +- 0.425
+loss = p:-0.011 v:0.055 ent:0.512 total:0.044
+updated model(718)
+183100 183200 
+epoch 415
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.744 +- 0.436
+loss = p:-0.013 v:0.054 ent:0.502 total:0.041
+updated model(720)
+183300 183400 
+epoch 416
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.704 +- 0.456
+loss = p:-0.011 v:0.055 ent:0.497 total:0.043
+updated model(722)
+183500 183600 
+epoch 417
+win rate = 1.000 (65.0 / 65)
+average reward = 1.000 (65.0 / 65)
+generation stats = 0.733 +- 0.442
+loss = p:-0.027 v:0.054 ent:0.506 total:0.027
+updated model(724)
+183700 183800 
+epoch 418
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.685 +- 0.464
+loss = p:-0.014 v:0.055 ent:0.504 total:0.041
+updated model(726)
+183900 184000 
+epoch 419
+win rate = 1.000 (48.0 / 48)
+average reward = 1.000 (48.0 / 48)
+generation stats = 0.672 +- 0.469
+loss = p:-0.005 v:0.056 ent:0.507 total:0.051
+updated model(728)
+184100 184200 
+epoch 420
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.765 +- 0.424
+loss = p:-0.027 v:0.054 ent:0.496 total:0.027
+updated model(730)
+184300 184400 
+epoch 421
+win rate = 1.000 (67.0 / 67)
+average reward = 1.000 (67.0 / 67)
+generation stats = 0.664 +- 0.472
+loss = p:-0.027 v:0.055 ent:0.509 total:0.028
+updated model(732)
+184500 184600 
+epoch 422
+win rate = 1.000 (71.0 / 71)
+average reward = 1.000 (71.0 / 71)
+generation stats = 0.723 +- 0.447
+loss = p:-0.019 v:0.056 ent:0.514 total:0.036
+updated model(733)
+184700 184800 
+epoch 423
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.724 +- 0.447
+loss = p:-0.007 v:0.056 ent:0.519 total:0.049
+updated model(734)
+184900 185000 
+epoch 424
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.769 +- 0.422
+loss = p:-0.014 v:0.056 ent:0.514 total:0.042
+updated model(735)
+185100 185200 
+epoch 425
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.740 +- 0.439
+loss = p:-0.013 v:0.055 ent:0.498 total:0.043
+updated model(736)
+185300 185400 
+epoch 426
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.717 +- 0.450
+loss = p:-0.024 v:0.055 ent:0.508 total:0.031
+updated model(737)
+185500 185600 
+epoch 427
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.746 +- 0.435
+loss = p:-0.014 v:0.055 ent:0.502 total:0.041
+updated model(739)
+185700 185800 
+epoch 428
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.809 +- 0.393
+loss = p:-0.023 v:0.054 ent:0.507 total:0.031
+updated model(741)
+185900 186000 
+epoch 429
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.710 +- 0.454
+loss = p:-0.017 v:0.055 ent:0.510 total:0.038
+updated model(743)
+186100 186200 
+epoch 430
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.811 +- 0.391
+loss = p:-0.012 v:0.056 ent:0.508 total:0.044
+updated model(745)
+186300 186400 
+epoch 431
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.701 +- 0.458
+loss = p:-0.003 v:0.055 ent:0.499 total:0.052
+updated model(747)
+186500 186600 
+epoch 432
+win rate = 1.000 (66.0 / 66)
+average reward = 1.000 (66.0 / 66)
+generation stats = 0.779 +- 0.415
+loss = p:-0.027 v:0.055 ent:0.502 total:0.028
+updated model(749)
+186700 186800 
+epoch 433
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.713 +- 0.452
+loss = p:-0.013 v:0.055 ent:0.500 total:0.042
+updated model(751)
+186900 187000 
+epoch 434
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.738 +- 0.440
+loss = p:-0.018 v:0.055 ent:0.504 total:0.037
+updated model(753)
+187100 187200 
+epoch 435
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.754 +- 0.431
+loss = p:-0.031 v:0.054 ent:0.502 total:0.024
+updated model(755)
+187300 187400 
+epoch 436
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.648 +- 0.477
+loss = p:-0.020 v:0.055 ent:0.509 total:0.035
+updated model(757)
+187500 187600 
+epoch 437
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.651 +- 0.477
+loss = p:-0.024 v:0.056 ent:0.506 total:0.031
+updated model(758)
+187700 187800 
+epoch 438
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.685 +- 0.464
+loss = p:-0.023 v:0.055 ent:0.502 total:0.032
+updated model(759)
+187900 188000 
+epoch 439
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.769 +- 0.421
+loss = p:-0.025 v:0.055 ent:0.494 total:0.030
+updated model(760)
+188100 188200 
+epoch 440
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.694 +- 0.461
+loss = p:-0.028 v:0.055 ent:0.499 total:0.026
+updated model(761)
+188300 188400 
+epoch 441
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.756 +- 0.430
+loss = p:-0.033 v:0.054 ent:0.499 total:0.021
+updated model(762)
+188500 188600 
+epoch 442
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.790 +- 0.407
+loss = p:-0.004 v:0.056 ent:0.511 total:0.051
+updated model(763)
+188700 188800 
+epoch 443
+win rate = 1.000 (47.0 / 47)
+average reward = 1.000 (47.0 / 47)
+generation stats = 0.739 +- 0.439
+loss = p:-0.015 v:0.055 ent:0.500 total:0.040
+updated model(764)
+188900 189000 
+epoch 444
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.746 +- 0.435
+loss = p:-0.025 v:0.054 ent:0.495 total:0.030
+updated model(765)
+189100 189200 
+epoch 445
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.695 +- 0.460
+loss = p:-0.015 v:0.055 ent:0.485 total:0.040
+updated model(766)
+189300 189400 
+epoch 446
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.705 +- 0.456
+loss = p:-0.014 v:0.055 ent:0.511 total:0.041
+updated model(767)
+189500 189600 
+epoch 447
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.772 +- 0.420
+loss = p:-0.015 v:0.055 ent:0.496 total:0.040
+updated model(769)
+189700 189800 
+epoch 448
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.686 +- 0.464
+loss = p:-0.017 v:0.056 ent:0.504 total:0.038
+updated model(771)
+189900 190000 
+epoch 449
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.690 +- 0.463
+loss = p:-0.002 v:0.055 ent:0.503 total:0.052
+updated model(772)
+190100 190200 
+epoch 450
+win rate = 1.000 (70.0 / 70)
+average reward = 1.000 (70.0 / 70)
+generation stats = 0.684 +- 0.465
+loss = p:-0.030 v:0.055 ent:0.495 total:0.025
+updated model(773)
+190300 190400 
+epoch 451
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.692 +- 0.462
+loss = p:-0.021 v:0.056 ent:0.503 total:0.035
+updated model(774)
+190500 190600 
+epoch 452
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.754 +- 0.431
+loss = p:-0.026 v:0.055 ent:0.501 total:0.030
+updated model(775)
+190700 190800 
+epoch 453
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.715 +- 0.451
+loss = p:-0.021 v:0.054 ent:0.497 total:0.033
+updated model(777)
+190900 191000 
+epoch 454
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.706 +- 0.455
+loss = p:-0.034 v:0.055 ent:0.498 total:0.020
+updated model(779)
+191100 191200 
+epoch 455
+win rate = 1.000 (67.0 / 67)
+average reward = 1.000 (67.0 / 67)
+generation stats = 0.710 +- 0.454
+loss = p:-0.020 v:0.055 ent:0.499 total:0.035
+updated model(781)
+191300 191400 
+epoch 456
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.736 +- 0.441
+loss = p:-0.017 v:0.055 ent:0.507 total:0.038
+updated model(783)
+191500 191600 
+epoch 457
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.732 +- 0.443
+loss = p:-0.026 v:0.055 ent:0.500 total:0.029
+updated model(785)
+191700 191800 
+epoch 458
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.769 +- 0.422
+loss = p:-0.016 v:0.055 ent:0.495 total:0.039
+updated model(787)
+191900 192000 
+epoch 459
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.833 +- 0.373
+loss = p:-0.031 v:0.054 ent:0.498 total:0.023
+updated model(789)
+192100 192200 
+epoch 460
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.705 +- 0.456
+loss = p:-0.016 v:0.055 ent:0.486 total:0.039
+updated model(791)
+192300 192400 
+epoch 461
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.778 +- 0.416
+loss = p:-0.006 v:0.055 ent:0.498 total:0.049
+updated model(792)
+192500 192600 
+epoch 462
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.741 +- 0.438
+loss = p:-0.012 v:0.055 ent:0.477 total:0.043
+updated model(793)
+192700 192800 
+epoch 463
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.653 +- 0.476
+loss = p:-0.013 v:0.055 ent:0.497 total:0.042
+updated model(794)
+192900 193000 
+epoch 464
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.739 +- 0.439
+loss = p:-0.028 v:0.055 ent:0.497 total:0.027
+updated model(795)
+193100 193200 
+epoch 465
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.738 +- 0.440
+loss = p:-0.021 v:0.056 ent:0.507 total:0.035
+updated model(796)
+193300 193400 
+epoch 466
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.770 +- 0.421
+loss = p:-0.019 v:0.055 ent:0.492 total:0.037
+updated model(798)
+193500 193600 
+epoch 467
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.688 +- 0.463
+loss = p:-0.024 v:0.055 ent:0.491 total:0.031
+updated model(800)
+193700 193800 
+epoch 468
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.748 +- 0.434
+loss = p:-0.029 v:0.055 ent:0.492 total:0.026
+updated model(802)
+193900 194000 
+epoch 469
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.770 +- 0.421
+loss = p:-0.020 v:0.055 ent:0.497 total:0.035
+updated model(804)
+194100 194200 
+epoch 470
+win rate = 1.000 (53.0 / 53)
+average reward = 1.000 (53.0 / 53)
+generation stats = 0.708 +- 0.455
+loss = p:-0.022 v:0.056 ent:0.490 total:0.034
+updated model(806)
+194300 194400 
+epoch 471
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.656 +- 0.475
+loss = p:-0.017 v:0.055 ent:0.502 total:0.038
+updated model(808)
+194500 194600 
+epoch 472
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.748 +- 0.434
+loss = p:-0.013 v:0.055 ent:0.487 total:0.042
+updated model(810)
+194700 194800 
+epoch 473
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.798 +- 0.401
+loss = p:-0.022 v:0.055 ent:0.484 total:0.033
+updated model(812)
+194900 195000 
+epoch 474
+win rate = 1.000 (51.0 / 51)
+average reward = 1.000 (51.0 / 51)
+generation stats = 0.756 +- 0.430
+loss = p:-0.013 v:0.055 ent:0.492 total:0.042
+updated model(814)
+195100 195200 
+epoch 475
+win rate = 1.000 (65.0 / 65)
+average reward = 1.000 (65.0 / 65)
+generation stats = 0.741 +- 0.438
+loss = p:-0.016 v:0.055 ent:0.494 total:0.039
+updated model(816)
+195300 195400 
+epoch 476
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.724 +- 0.447
+loss = p:-0.018 v:0.055 ent:0.500 total:0.036
+updated model(817)
+195500 195600 
+epoch 477
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.740 +- 0.438
+loss = p:-0.023 v:0.055 ent:0.492 total:0.033
+updated model(819)
+195700 195800 
+epoch 478
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.777 +- 0.416
+loss = p:-0.025 v:0.055 ent:0.490 total:0.030
+updated model(821)
+195900 196000 
+epoch 479
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.760 +- 0.427
+loss = p:-0.023 v:0.055 ent:0.490 total:0.032
+updated model(823)
+196100 196200 
+epoch 480
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.739 +- 0.439
+loss = p:-0.016 v:0.055 ent:0.486 total:0.039
+updated model(825)
+196300 196400 
+epoch 481
+win rate = 1.000 (48.0 / 48)
+average reward = 1.000 (48.0 / 48)
+generation stats = 0.697 +- 0.459
+loss = p:-0.016 v:0.055 ent:0.481 total:0.039
+updated model(827)
+196500 196600 
+epoch 482
+win rate = 1.000 (60.0 / 60)
+average reward = 1.000 (60.0 / 60)
+generation stats = 0.787 +- 0.409
+loss = p:-0.019 v:0.055 ent:0.488 total:0.036
+updated model(829)
+196700 196800 
+epoch 483
+win rate = 1.000 (49.0 / 49)
+average reward = 1.000 (49.0 / 49)
+generation stats = 0.713 +- 0.452
+loss = p:-0.032 v:0.056 ent:0.483 total:0.023
+updated model(831)
+196900 197000 
+epoch 484
+win rate = 1.000 (61.0 / 61)
+average reward = 1.000 (61.0 / 61)
+generation stats = 0.722 +- 0.448
+loss = p:-0.027 v:0.055 ent:0.493 total:0.028
+updated model(833)
+197100 197200 
+epoch 485
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.750 +- 0.433
+loss = p:-0.012 v:0.055 ent:0.490 total:0.043
+updated model(835)
+197300 197400 
+epoch 486
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.742 +- 0.438
+loss = p:-0.023 v:0.054 ent:0.482 total:0.031
+updated model(837)
+197500 197600 
+epoch 487
+win rate = 1.000 (63.0 / 63)
+average reward = 1.000 (63.0 / 63)
+generation stats = 0.661 +- 0.473
+loss = p:-0.029 v:0.056 ent:0.486 total:0.027
+updated model(839)
+197700 197800 
+epoch 488
+win rate = 1.000 (52.0 / 52)
+average reward = 1.000 (52.0 / 52)
+generation stats = 0.754 +- 0.430
+loss = p:-0.024 v:0.055 ent:0.486 total:0.031
+updated model(841)
+197900 198000 
+epoch 489
+win rate = 1.000 (59.0 / 59)
+average reward = 1.000 (59.0 / 59)
+generation stats = 0.708 +- 0.455
+loss = p:-0.021 v:0.055 ent:0.491 total:0.034
+updated model(843)
+198100 198200 
+epoch 490
+win rate = 1.000 (57.0 / 57)
+average reward = 1.000 (57.0 / 57)
+generation stats = 0.792 +- 0.406
+loss = p:-0.037 v:0.055 ent:0.469 total:0.018
+updated model(844)
+198300 198400 
+epoch 491
+win rate = 1.000 (64.0 / 64)
+average reward = 1.000 (64.0 / 64)
+generation stats = 0.643 +- 0.479
+loss = p:-0.037 v:0.055 ent:0.484 total:0.018
+updated model(846)
+198500 198600 
+epoch 492
+win rate = 1.000 (54.0 / 54)
+average reward = 1.000 (54.0 / 54)
+generation stats = 0.746 +- 0.436
+loss = p:-0.034 v:0.056 ent:0.488 total:0.022
+updated model(848)
+198700 198800 
+epoch 493
+win rate = 1.000 (58.0 / 58)
+average reward = 1.000 (58.0 / 58)
+generation stats = 0.750 +- 0.433
+loss = p:-0.018 v:0.055 ent:0.490 total:0.037
+updated model(850)
+198900 199000 
+epoch 494
+win rate = 1.000 (55.0 / 55)
+average reward = 1.000 (55.0 / 55)
+generation stats = 0.740 +- 0.439
+loss = p:-0.021 v:0.055 ent:0.487 total:0.035
+updated model(852)
+199100 199200 
+epoch 495
+win rate = 1.000 (50.0 / 50)
+average reward = 1.000 (50.0 / 50)
+generation stats = 0.732 +- 0.443
+loss = p:-0.014 v:0.055 ent:0.483 total:0.041
+updated model(854)
+199300 199400 
+epoch 496
+win rate = 1.000 (62.0 / 62)
+average reward = 1.000 (62.0 / 62)
+generation stats = 0.752 +- 0.432
+loss = p:-0.023 v:0.056 ent:0.492 total:0.033
+updated model(856)
+199500 199600 
+epoch 497
+win rate = 1.000 (47.0 / 47)
+average reward = 1.000 (47.0 / 47)
+generation stats = 0.777 +- 0.416
+loss = p:-0.009 v:0.056 ent:0.487 total:0.047
+updated model(857)
+199700 199800 
+epoch 498
+win rate = 1.000 (56.0 / 56)
+average reward = 1.000 (56.0 / 56)
+generation stats = 0.748 +- 0.434
+loss = p:-0.029 v:0.055 ent:0.463 total:0.026
+updated model(858)
+199900 200000 
+epoch 499
+win rate = 1.000 (66.0 / 66)
+average reward = 1.000 (66.0 / 66)
+generation stats = 0.769 +- 0.421
+loss = p:-0.022 v:0.056 ent:0.492 total:0.034
+updated model(859)
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+disconnected
+finished server
