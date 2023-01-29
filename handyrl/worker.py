@@ -35,6 +35,8 @@ class Worker:
         self.generator = Generator(self.env, self.args)
         self.evaluator = Evaluator(self.env, self.args)
 
+        self.count = 0
+
         random.seed(args['seed'] + wid)
 
     def __del__(self):
@@ -63,8 +65,17 @@ class Worker:
                         self.latest_model = model_id, model_pool[model_id]
         return model_pool
 
+    def uns_woker(self):
+        print("worker_uns : ")
+        self.env.uns()
+
     def run(self):
         while True:
+            #self.count += 1
+            #print("woeker_episodes: ",self.count)
+            #if self.count % 1000 == 0:
+                #print("count : ", self.count)
+                #self.uns_woker()
             args = send_recv(self.conn, ('args', None))
             if args is None:
                 break
@@ -94,7 +105,6 @@ def make_worker_args(args, n_ga, gaid, base_wid, wid, conn):
 def open_worker(args, conn, wid):
     worker = Worker(args, conn, wid)
     worker.run()
-
 
 class Gather(QueueCommunicator):
     def __init__(self, args, conn, gaid):

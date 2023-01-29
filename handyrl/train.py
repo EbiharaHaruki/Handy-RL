@@ -29,7 +29,6 @@ from .losses import compute_target
 from .connection import MultiProcessJobExecutor
 from .worker import WorkerCluster, WorkerServer
 
-
 def make_batch(episodes, args):
     """Making training batch
 
@@ -379,6 +378,7 @@ class Trainer:
 
     def run(self):
         print('waiting training')
+        # minimum_episode
         while len(self.episodes) < self.args['minimum_episodes']:
             time.sleep(1)
         if self.optimizer is not None:
@@ -429,6 +429,12 @@ class Learner:
         # thread connection
         self.trainer = Trainer(args, self.model)
 
+        # episode count
+        self.uns_bool = env_args['param']['uns_setting']['uns_bool'] # 非定常のフラグ
+        self.uns_num = env_args['param']['uns_setting']['uns_num'] # 非定常の周期
+        #print(self.uns_bool)
+        #print(self.uns_num)
+
     def model_path(self, model_id):
         return os.path.join('models', str(model_id) + '.pth')
 
@@ -447,6 +453,7 @@ class Learner:
     def feed_episodes(self, episodes):
         # analyze generated episodes
         for episode in episodes:
+            #print("learner_episode: ", self.num_returned_episodes)
             if episode is None:
                 continue
             for p in episode['args']['player']:
@@ -457,6 +464,10 @@ class Learner:
             self.num_returned_episodes += 1
             if self.num_returned_episodes % 100 == 0:
                 print(self.num_returned_episodes, end=' ', flush=True)
+            if self.uns_bool:
+                if self.num_returned_episodes % self.uns_num == 0:
+                    print("learner_uns : ")
+                    self.env.uns()
 
         # store generated episodes
         self.trainer.episodes.extend([e for e in episodes if e is not None])
@@ -469,6 +480,7 @@ class Learner:
             warnings.warn("memory usage %.1f%% with buffer size %d" % (mem_percent, len(self.trainer.episodes)))
             self.flags.add('memory_over')
 
+        # エピソードが一定以上溜まったら吐き出す
         while len(self.trainer.episodes) > maximum_episodes:
             self.trainer.episodes.popleft()
 

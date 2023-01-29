@@ -117,7 +117,7 @@ for opponent in opponents:
 
 ax.set_xlabel('episodes', size=14)
 ax.set_ylabel('Average reward', size=14)
-ax.set_title(sys.argv[2])
+#ax.set_title(sys.argv[2])
 # ax.set_ylim(0, 1)
 # ax.legend()
 

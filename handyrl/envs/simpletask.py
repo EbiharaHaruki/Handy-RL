@@ -61,7 +61,7 @@ class SimpleModel(nn.Module):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 256
+        nn_size = 512
         self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
         self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
         self.head_v = nn.Linear(nn_size, 1)
@@ -218,14 +218,34 @@ class Environment(BaseEnvironment):
             self.random_trasures()
         self.uns_bool = self.param['uns_setting']['uns_bool'] #非定常の有無
         self.uns_num = self.param['uns_setting']['uns_num'] #非定常の周期
-        self.n = 0 #実行回数
+        self.uns_count = 0
+        self.true_state = [] # 真の状態（ランダムな状態量を導入するとoutcomeの条件式がおかしくなる応急処置）
+        if self.uns_bool:
+            self.uns_make()
+        # [(7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7)]
+        # print(self.goal_depth_place)
+
+        self.jyotai_boolkari = self.param['jyotai_boolkari'] #ランダムな状態量を使用する場合の仮の変数
+        if self.jyotai_boolkari:
+            self.state_qnp=[] # ランダムな状態量のnumpy配列
+            self.state_quantity() # ランダムな状態量を生成
+            self.state_qlist = self.state_qnp.tolist() # ランダムな状態量の配列をlist型に変換したもの（状態のインデックス取得するにはリスト型の方が都合がいい）
+            self.tree_list = self.tree_np.tolist() # 通常の状態をリスト型にしたもの（理由は上記と同様, ランダムな状態量との対応付けに使用）
+            print(self.tree_np) # デバッグ用
+            print(self.state_qnp) # デバッグ用
 
     def Transition(self, action, state):
         """行動、状態を引数に次状態を返す"""
+        if self.jyotai_boolkari: # ランダムな状態量を通常の状態に変換
+            state = self.tree_np[self.state_qlist.index(state.tolist())]
         action = self.action_list_np[action]
         new_state_tmp = [state[i+1]+ action[0][i] for i in range(self.hyperplane_n)]
         new_state = (state[0]+1,) + tuple(new_state_tmp)
-        return np.array(new_state) #新しい状態を返す
+        new_state = np.array(new_state)
+        self.true_state = new_state
+        if self.jyotai_boolkari: # 通常の状態量をランダムな状態に変換
+            new_state = self.state_qnp[self.tree_list.index(new_state.tolist())]
+        return  new_state #新しい状態を返す
 
     def tree_make(self):
         for i in range(2,2+self.depth):
@@ -242,6 +262,11 @@ class Environment(BaseEnvironment):
             self.tree_s = np.insert(self.tree_s, 0, start, axis=0)
         self.tree_np = np.array(self.tree_s)
         self.action_list_np = np.array(self.action_list)
+
+    def state_quantity(self):
+        dt_now = datetime.datetime.now()
+        np.random.seed(dt_now.minute)
+        self.state_qnp = np.random.randn(len(self.tree_np),self.hyperplane_n+1)
 
     def place_list_make(self):
         count = 0
@@ -274,22 +299,49 @@ class Environment(BaseEnvironment):
         if self.start_random: #初期位置をランダムにする場合 (True)
             start = np.random.randint(len(self.action_list_np)) #初期座標ランダム選択    #start: 2*超平面次元通りある
             self.state = self.tree_np[start] #初期座標にリセット  #[0, x, y], start = 4;
+            self.true_state = self.state
+            if self.jyotai_boolkari:
+                self.state = self.state_qnp[self.tree_list.index(self.state.tolist())]
+            #print(self.state)
         else: #初期位置を固定にする場合 (False)
             self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
 
     def play(self, action, player):
+        #print("state :", self.state) # デバッグ用（現状態）
+        #print("true_state :", self.true_state) # デバッグ用（真の現状態）
         a = np.array([action], )
+        #print("action :", a) # デバッグ用（行動）
         next_s = self.Transition(a, self.state)
         self.state = next_s
+        #print("next_state :", self.state) # デバッグ用（次状態）
+        #print("next_true_state :", self.true_state) # デバッグ用（真の次状態）
         if self.pom_bool and np.array_equal(self.state, self.pom_state):
             self.pom_flag = 1
 
     def terminal(self):
-        return self.state[0] == self.depth-1
+        return self.true_state[0] == self.depth-1
+
+    def uns_make(self):
+        dt_now = datetime.datetime.now()
+        random.seed(dt_now.minute)
+        self.uns_trasures_list = np.array(random.choices(self.goal_depth_place, k = 10))
+        print("uns_list : ", self.uns_trasures_list)
+
+    def uns(self):
+        print("tresure_before : ",self.treasure)
+        self.treasure = np.array([self.uns_trasures_list[self.uns_count]])
+        self.uns_count += 1
+        print("new_tresure : ",self.treasure)
 
     def outcome(self):
         # 終端状態に到達した時に報酬を与える関数
         outcomes = [self.other_reward]
+        #print(self.n)
+        #self.n = self.n + 1
+        #if self.n % 20000 == 0:
+            #print("!!!n=",self.n)
+        #if self.jyotai_boolkari:
+            #self.state = self.tree_np[self.state_qlist.index(self.state.tolist())]
         if self.pom_bool: #True
             if self.pom_flag and (self.state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
                 outcomes = [self.set_reward]
@@ -301,15 +353,21 @@ class Environment(BaseEnvironment):
                     reward_choice = np.random.choice(self.random_reward[treasure_num], p=self.random_reward_p[treasure_num])
                     outcomes = [reward_choice]
             else:
-                if (self.state == self.treasure).all(axis=1).any(): #treasureが2次元配列じゃないと動かない #(a==b)で同じshapeか，all(axis=1)で列方向に一致しているか，any()でどれか一つにでも当てはまるか，True・Falseを返す
-                    treasure_num = np.where((self.treasure == self.state).all(axis=1))[0][0]
+                if (self.true_state == self.treasure).all(axis=1).any(): #treasureが2次元配列じゃないと動かない #(a==b)で同じshapeか，all(axis=1)で列方向に一致しているか，any()でどれか一つにでも当てはまるか，True・Falseを返す
+                    treasure_num = np.where((self.treasure == self.true_state).all(axis=1))[0][0]
                     outcomes = [self.set_reward[treasure_num]]
-        if self.uns_bool:
-            self.n = self.n + 1
-            if self.n % self.uns_num == 0:
-                #print("self.tresure_before = ",self.treasure)
-                self.treasure = np.array(random.sample(self.goal_depth_place,self.random_trasures_num))
-                #print("self.tresure_after = ",self.treasure)
+        #if self.uns_bool:
+            #if self.n % self.uns_num == 0:
+                #print("n=",self.n)
+                #print("tresure_before = ",self.treasure)
+                #dt_now = datetime.datetime.now()
+                #random.seed(dt_now.minute)
+                #self.treasure = np.array(random.sample(self.goal_depth_place,self.random_trasures_num))
+                #print("new_tresure= ",self.treasure)
+        #print("now_goal:",self.state)
+        #print("goal:",self.treasure)
+        #print("return:",outcomes)
+        #print("n =",self.n)
         return {p: outcomes[idx] for idx, p in enumerate(self.players())}
 
     def players(self):

@@ -7,8 +7,8 @@ env_args:
     env: 'simpletask'
     param:
         depth: 8 #深度(変更可能)
-        hyperplane_n: 1 #超平面次元数(変更可能)
-        treasure: [[7, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        hyperplane_n: 3 #超平面次元数(変更可能)
+        treasure: [[7, 4, 4, 4]] #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: [1] #報酬の値(変更可能)
         other_reward: 0 #treasure以外に到達した時の報酬設定
         start_random: True #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
@@ -23,27 +23,28 @@ env_args:
             random_reward: [[1], [1, 100]] #報酬の量, 各要素は報酬の位置に対応
             random_reward_p: [[1], [0.9, 0.1]] #報酬の確率 , 各要素の合計値は1になるように設定
         uns_setting:
-            uns_bool: True #非定常の導入するか否か
-            uns_num: 20000 #非定常の周期（報酬位置をどの程度の間隔で変更するか）
+            uns_bool: False #非定常の導入するか否か
+            uns_num: 1000 #非定常の周期（報酬位置をどの程度の間隔で変更するか）
+        jyotai_boolkari: False
 
 train_args:
     turn_based_training: False
     observation: False
     gamma: 0.9
-    forward_steps: 16
+    forward_steps: 1
     burn_in_steps: 0  # for RNNs
     compress_steps: 4
     entropy_regularization: 0
-    entropy_regularization_decay: 0
+    entropy_regularization_decay: 1.0
     update_episodes: 200
     batch_size: 256
     minimum_episodes: 100000
     maximum_episodes: 200000
     epochs: 500
-    num_batchers: 2
+    num_batchers: 1
     eval_rate: 0.1
     worker:
-        num_parallel: 1
+        num_parallel: 5
     lambda: 0.7
     policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'MC'
     value_target: 'TD' # 'VTRACE' 'TD' 'MC'
