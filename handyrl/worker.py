@@ -35,6 +35,7 @@ class Worker:
         self.env = make_env({**args['env'], 'id': wid})
         self.generator = Generator(self.env, self.args)
         self.evaluator = Evaluator(self.env, self.args)
+        self.num_global_episodes = 0
 
         self.count = 0
 
@@ -119,8 +120,9 @@ class Worker:
                 for p, metadata_id in args['metadata_id'].items():
                     metadatas[p] = metadata_pool[metadata_id]
                     num_episodes = metadatas[p]['num_episodes']
-                    print(f'<><><> num_episodes: {num_episodes}')
-
+                    self.num_global_episodes = num_episodes
+            args['num_global_episodes'] = self.num_global_episodes
+            
             if role == 'g':
                 episode = self.generator.execute(models, args)
                 send_recv(self.conn, ('episode', episode))

@@ -23,6 +23,7 @@ class Generator:
         hidden = {}
         for player in self.env.players():
             hidden[player] = models[player].init_hidden()
+        # print(f'<><><> num_global_episodes: {args["num_global_episodes"]}')
 
         err = self.env.reset()
         if err:
