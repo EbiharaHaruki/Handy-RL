@@ -344,6 +344,7 @@ class Trainer:
             self.trained_model.cuda()
         self.trained_model.train()
 
+        # モデルの学習
         while data_cnt == 0 or not self.update_flag:
             batch = self.batcher.batch()
             batch_size = batch['value'].size(0)
@@ -353,6 +354,7 @@ class Trainer:
                 batch = to_gpu(batch)
                 hidden = to_gpu(hidden)
 
+            # loss の計算
             losses, dcnt = compute_loss(batch, self.trained_model, hidden, self.args)
 
             self.optimizer.zero_grad()
@@ -381,6 +383,7 @@ class Trainer:
         # minimum_episode
         while len(self.episodes) < self.args['minimum_episodes']:
             time.sleep(1)
+            print(f"\n<><><> episodes: {len(self.episodes)}\n")
         if self.optimizer is not None:
             self.batcher.run()
             print('started training')
@@ -474,7 +477,9 @@ class Learner:
 
         mem_percent = psutil.virtual_memory().percent
         mem_ok = mem_percent <= 95
-        maximum_episodes = self.args['maximum_episodes'] if mem_ok else int(len(self.trainer.episodes) * 95 / mem_percent)
+        # maxmum_episode のサイズ制限がおかしい
+        # maximum_episodes = self.args['maximum_episodes'] if mem_ok else int(len(self.trainer.episodes) * 95 / mem_percent)
+        maximum_episodes = self.args['maximum_episodes']
 
         if not mem_ok and 'memory_over' not in self.flags:
             warnings.warn("memory usage %.1f%% with buffer size %d" % (mem_percent, len(self.trainer.episodes)))
@@ -482,6 +487,8 @@ class Learner:
 
         # エピソードが一定以上溜まったら吐き出す
         while len(self.trainer.episodes) > maximum_episodes:
+            # print(f'popleft episodes = {len(self.trainer.episodes)}/{maximum_episodes}')
+            # 溢れた episode の pop
             self.trainer.episodes.popleft()
 
     def feed_results(self, results):
