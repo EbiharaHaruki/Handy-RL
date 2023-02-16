@@ -219,20 +219,19 @@ class Environment(BaseEnvironment):
         self.uns_bool = self.param['uns_setting']['uns_bool'] #非定常の有無
         self.uns_num = self.param['uns_setting']['uns_num'] #非定常の周期
         self.uns_count = 0
-        self.true_state = [] # 真の状態（ランダムな状態量を導入するとoutcomeの条件式がおかしくなる応急処置）
         if self.uns_bool:
             self.uns_make()
         # [(7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7)]
         # print(self.goal_depth_place)
-
+        self.observation_noise = self.param['observation_noise']
+        self.true_state = [] # 真の状態（ランダムな状態量を導入するとoutcomeの条件式がおかしくなる応急処置）
         self.jyotai_boolkari = self.param['jyotai_boolkari'] #ランダムな状態量を使用する場合の仮の変数
-        if self.jyotai_boolkari:
+        if self.jyotai_boolkari | self.observation_noise > 0:
             self.state_qnp=[] # ランダムな状態量のnumpy配列
             self.state_quantity() # ランダムな状態量を生成
-            self.state_qlist = self.state_qnp.tolist() # ランダムな状態量の配列をlist型に変換したもの（状態のインデックス取得するにはリスト型の方が都合がいい）
             self.tree_list = self.tree_np.tolist() # 通常の状態をリスト型にしたもの（理由は上記と同様, ランダムな状態量との対応付けに使用）
-            print(self.tree_np) # デバッグ用
-            print(self.state_qnp) # デバッグ用
+            #print(self.tree_np) # デバッグ用
+            #print(self.state_qnp) # デバッグ用
 
     def Transition(self, action, state):
         """行動、状態を引数に次状態を返す"""
@@ -264,9 +263,18 @@ class Environment(BaseEnvironment):
         self.action_list_np = np.array(self.action_list)
 
     def state_quantity(self):
-        dt_now = datetime.datetime.now()
-        np.random.seed(dt_now.minute)
-        self.state_qnp = np.random.randn(len(self.tree_np),self.hyperplane_n+1)
+        dt_now = datetime.datetime.now() # 時刻取得
+        np.random.seed(dt_now.minute) # シード固定
+        if self.jyotai_boolkari:
+            self.state_qnp = np.random.randn(len(self.tree_np),self.hyperplane_n+1) # ランダムな状態量を生成
+        if self.observation_noise == 1: # ノイズ小
+            self.state_qnp = np.random.normal(0, 1, (len(self.tree_np),self.hyperplane_n+1))
+            self.state_qnp += self.tree_np
+        if self.observation_noise == 2: # ノイズ大
+            self.state_qnp = np.random.normal(0, 5, (len(self.tree_np),self.hyperplane_n+1))
+            self.state_qnp += self.tree_np
+        #print(self.state_qnp) # デバッグ用
+        self.state_qlist = self.state_qnp.tolist() # ランダムな状態量の配列をlist型に変換したもの（状態のインデックス取得するにはリスト型の方が都合がいい）
 
     def place_list_make(self):
         count = 0
@@ -305,6 +313,8 @@ class Environment(BaseEnvironment):
             #print(self.state)
         else: #初期位置を固定にする場合 (False)
             self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
+        if self.observation_noise > 0: # 観測ノイズの生成
+            self.state_quantity()
 
     def play(self, action, player):
         #print("state :", self.state) # デバッグ用（現状態）
@@ -340,8 +350,6 @@ class Environment(BaseEnvironment):
         #self.n = self.n + 1
         #if self.n % 20000 == 0:
             #print("!!!n=",self.n)
-        #if self.jyotai_boolkari:
-            #self.state = self.tree_np[self.state_qlist.index(self.state.tolist())]
         if self.pom_bool: #True
             if self.pom_flag and (self.state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
                 outcomes = [self.set_reward]
