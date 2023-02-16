@@ -30,6 +30,7 @@ class Worker:
         self.args = args
         self.conn = conn
         self.latest_model = -1, None
+        self.latest_metadata = -1, None
 
         self.env = make_env({**args['env'], 'id': wid})
         self.generator = Generator(self.env, self.args)
@@ -65,9 +66,24 @@ class Worker:
                         self.latest_model = model_id, model_pool[model_id]
         return model_pool
 
-    # meta data の収集
-    def _gather_metadata(self):
-        return None
+    def _gather_metadatas(self, metadata_ids):
+        metadata_pool = {}
+        for metadata_id in metadata_ids:
+            if metadata_id not in metadata_pool:
+                if metadata_id < 0:
+                    metadata_pool[metadata_id] = None
+                elif metadata_id == self.latest_metadata[0]:
+                    # use latest metadata
+                    metadata_pool[metadata_id] = self.latest_metadata[1]
+                else:
+                    # get metadata from server
+                    metadata = send_recv(self.conn, ('metadata', metadata_id))
+                    metadata = pickle.loads(metadata)
+                    metadata_pool[metadata_id] = metadata
+                    # update latest metadata
+                    if metadata_id > self.latest_metadata[0]:
+                        self.latest_metadata = metadata_id, metadata_pool[metadata_id]
+        return metadata_pool
 
     def uns_woker(self):
         print("worker_uns : ")
@@ -94,6 +110,17 @@ class Worker:
                 for p, model_id in args['model_id'].items():
                     models[p] = model_pool[model_id]
 
+            metadatas = {}
+            if 'metadata_id' in args:
+                metadata_ids = list(args['metadata_id'].values())
+                metadata_pool = self._gather_metadatas(metadata_ids)
+
+                # make dict of models
+                for p, metadata_id in args['metadata_id'].items():
+                    metadatas[p] = metadata_pool[metadata_id]
+                    num_episodes = metadatas[p]['num_episodes']
+                    print(f'<><><> num_episodes: {num_episodes}')
+
             if role == 'g':
                 episode = self.generator.execute(models, args)
                 send_recv(self.conn, ('episode', episode))
@@ -117,7 +144,7 @@ class Gather(QueueCommunicator):
         self.gather_id = gaid
         self.server_conn = conn
         self.args_queue = deque([])
-        self.data_map = {'model': {}}
+        self.data_map = {'model': {}, 'metadata': {}}
         self.result_send_map = {}
         self.result_send_cnt = 0
 

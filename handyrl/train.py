@@ -251,8 +251,8 @@ def compute_loss(batch, model, hidden, args):
     qvalue = outputs['qvalue']
     advantage_for_q = outputs['advantage_for_q']
     policy = outputs['policy']
-    print(f'V: {vvalue[0]}, Q: {qvalue[0]}, policy: {policy[0]}')
-    print(f'A: {advantage_for_q[0]}')
+    # print(f'V: {vvalue[0]}, Q: {qvalue[0]}, policy: {policy[0]}')
+    # print(f'A: {advantage_for_q[0]}')
     # 挙動方策の確率を log したやつ 
     log_selected_b_policies = torch.log(torch.clamp(batch['selected_prob'], 1e-16, 1)) * emasks
     # 推定方策の確率を log したやつ 
@@ -649,6 +649,9 @@ class Learner:
         next_update_episodes = prev_update_episodes + self.args['update_episodes']
 
         while self.worker.connection_count() > 0 or not self.shutdown_flag:
+            # req は worker から受けるリクエストメッセージで処理の切り替えに使う
+            # data はリクエストメッセージの付加情報
+            # send_data は worker に送り返すデータ
             try:
                 conn, (req, data) = self.worker.recv(timeout=0.3)
             except queue.Empty:
@@ -664,7 +667,7 @@ class Learner:
                     send_data = [None] * len(data)
                 else:
                     for _ in data:
-                        args = {'model_id': {}}
+                        args = {'model_id': {}, 'metadata_id': {}}
 
                         # decide role
                         if self.num_results < self.eval_rate * self.num_episodes:
@@ -680,6 +683,7 @@ class Learner:
                                     args['model_id'][p] = self.model_epoch
                                 else:
                                     args['model_id'][p] = -1
+                                args['metadata_id'][p] = self.num_episodes
                             self.num_episodes += 1
 
                         elif args['role'] == 'e':
@@ -690,6 +694,7 @@ class Learner:
                                     args['model_id'][p] = self.model_epoch
                                 else:
                                     args['model_id'][p] = -1
+                                args['metadata_id'][p] = self.num_episodes
                             self.num_results += 1
 
                         send_data.append(args)
@@ -714,7 +719,15 @@ class Learner:
                         except:
                             # return latest model if failed to load specified model
                             pass
+                    # print(f'<><><> model id:{model_id} send')
                     send_data.append(pickle.dumps(model))
+
+            elif req == 'metadata':
+                # trainer に保存して欲しい情報全般を取り出すリクエストメッセージ
+                for metadata_id in data:
+                    metadata = {'num_episodes': self.num_episodes}
+                    # print(f'<><><> metadata id {metadata_id} send: {metadata}')
+                    send_data.append(pickle.dumps(metadata))
 
             if not multi_req and len(send_data) == 1:
                 send_data = send_data[0]
