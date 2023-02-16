@@ -6,9 +6,9 @@ env_args:
     # env: 'handyrl.envs.parallel_tictactoe'  # specify by path
     env: 'simpletask'
     param:
-        depth: 8 # 深度(変更可能)
-        hyperplane_n: 1 # 超平面次元数(変更可能)
-        treasure: [[7, 4]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        depth: 4 # 深度(変更可能)
+        hyperplane_n: 2 # 超平面次元数(変更可能)
+        treasure: [[3, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: [1] # 報酬の値(変更可能)
         other_reward: 0 # treasure以外に到達した時の報酬設定
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
@@ -25,8 +25,8 @@ env_args:
         uns_setting:
             uns_bool: False # 非定常の導入するか否か
             uns_num: 1000 # 非定常の周期（報酬位置をどの程度の間隔で変更するか）
-        observation_noise: 1 # 観測時にノイズがあるか（ 0:なし, 1:ノイズ小, 2;ノイズ大）
-        jyotai_boolkari: False # ランダムな状態量の有無
+        observation_noise: 0 # 観測時にノイズがあるか（ 0:なし, 1:ノイズ小, 2;ノイズ大）
+        jyotai_boolkari: True # ランダムな状態量の有無
 
 train_args:
     turn_based_training: False
@@ -39,21 +39,21 @@ train_args:
     entropy_regularization_decay: 1.0
     update_episodes: 500
     batch_size: 256
-    minimum_episodes: 100000
-    maximum_episodes: 200000
+    minimum_episodes: 10000
+    maximum_episodes: 20000
     epochs: 500
     num_batchers: 1
     eval_rate: 0.1
     worker:
         num_parallel: 5
     lambda: 0.7
-    policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'MC'
-    value_target: 'TD' # 'VTRACE' 'TD' 'MC'
+    policy_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'MC'
+    value_target: 'TD-Q' # 'VTRACE' 'TD' 'MC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
-
+    # learning_q: False
 
 worker_args:
     server_address: '192.168.11.24'

@@ -29,6 +29,7 @@ from .losses import compute_target
 from .connection import MultiProcessJobExecutor
 from .worker import WorkerCluster, WorkerServer
 
+
 def make_batch(episodes, args):
     """Making training batch
 
@@ -192,23 +193,40 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     Returns:
         tuple: losses and statistic values and the number of training data
     """
-
     tmasks = batch['turn_mask']
     omasks = batch['observation_mask']
 
+    # loss の箱
     losses = {}
+    # data 数みたい
     dcnt = tmasks.sum().item()
 
+    # policy loss 
+    # total_advantages が既に baseline を引いた advantage になっている
     losses['p'] = (-log_selected_policies * total_advantages).mul(tmasks).sum()
+    # value loss 
     if 'value' in outputs:
+        # value の二乗和誤差
         losses['v'] = ((outputs['value'] - targets['value']) ** 2).mul(omasks).sum() / 2
+    # return loss 
     if 'return' in outputs:
+        # return の Huber Loss
         losses['r'] = F.smooth_l1_loss(outputs['return'], targets['return'], reduction='none').mul(omasks).sum()
+    # q-value loss 
+    # if 'advantage_for_q' in outputs:
+    #     # advantage_for_q の二乗和誤差
+    #     losses['a'] = ((outputs['advantage_for_q'] - targets['advantage_for_q']) ** 2).mul(omasks).sum() / 2
+    if 'qvalue' in outputs:
+        # value の二乗和誤差
+        losses['q'] = ((outputs['qvalue'] - targets['qvalue']) ** 2).mul(omasks).sum() / 2
 
+    # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
     losses['ent'] = entropy.sum()
 
-    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0)
+    # value と policy の loss の計算
+    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0)
+    # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
 
@@ -216,49 +234,125 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
 
 
 def compute_loss(batch, model, hidden, args):
+    # target 計算に必要な forward 計算を行う
     outputs = forward_prediction(model, hidden, batch, args)
+    learning_q = ('advantage_for_q' in outputs)
+    # 配列情報として成形
     if args['burn_in_steps'] > 0:
         batch = map_r(batch, lambda v: v[:, args['burn_in_steps']:] if v.size(1) > 1 else v)
         outputs = map_r(outputs, lambda v: v[:, args['burn_in_steps']:])
-
+    # action とを取り出す
     actions = batch['action']
+    # episode masks (2 人対戦ゲームなどで自分 episode だけに限定するなど？) を取り出す
     emasks = batch['episode_mask']
+    # vtrace で使う全体に対する係数（ハードコードで良いのか？）
     clip_rho_threshold, clip_c_threshold = 1.0, 1.0
-
+    vvalue = outputs['value']
+    qvalue = outputs['qvalue']
+    advantage_for_q = outputs['advantage_for_q']
+    policy = outputs['policy']
+    print(f'V: {vvalue[0]}, Q: {qvalue[0]}, policy: {policy[0]}')
+    print(f'A: {advantage_for_q[0]}')
+    # 挙動方策の確率を log したやつ 
     log_selected_b_policies = torch.log(torch.clamp(batch['selected_prob'], 1e-16, 1)) * emasks
+    # 推定方策の確率を log したやつ 
     log_selected_t_policies = F.log_softmax(outputs['policy'], dim=-1).gather(-1, actions) * emasks
+    # t_policies = F.softmax(outputs['policy'], dim=-1)
+    # selected_t_policies = t_policies.gather(-1, actions)
+    # action_num = outputs['policy'].shape[-1]
+    # selected_action_mask = F.one_hot(actions, num_classes=action_num).squeeze(dim=-2)
+    # selected_action_masked_t_policies = selected_t_policies.mul(action_vector)
+    # print(f'<><><> t_policies: {t_policies[0]}')
+    # print(f'       t_policies shape: {t_policies.shape}')
+    # print(f'<><><> actions: {actions[0]}')
+    # print(f'       actions shape: {actions.shape}')
+    # print(f'       action_num: {action_num}')
+    # print(f'<><><> selected_action_mask: {selected_action_mask[0]}')
+    # print(f'       selected_action_mask shape: {selected_action_mask.shape}')
+    # print(f'<><><> selected_t_policies: {selected_t_policies[0]}')
+    # print(f'       selected_t_policies shape: {selected_t_policies.shape}')
+    # print(f'<><><> selected_action_masked_t_policie: {selected_action_masked_t_policies[0]}')
+    # print(f'       selected_action_masked_t_policie shape: {selected_action_masked_t_policies.shape}')
 
     # thresholds of importance sampling
+    # log の引き算（上と合わせて方策確率同士の割り算を引き算に変換）
     log_rhos = log_selected_t_policies.detach() - log_selected_b_policies
+    # log を exp で確率比率に戻している（IS 確率比）
     rhos = torch.exp(log_rhos)
+    # IS 確率比を v-trace と同様に ρ で clip している（状態ごと計算の事前に）
     clipped_rhos = torch.clamp(rhos, 0, clip_rho_threshold)
+    # IS 確率比を v-trace と同様に c で clip している（状態ごと計算の事前に）
     cs = torch.clamp(rhos, 0, clip_c_threshold)
+    # gradient が流れないように forward 計算結果を計算グラフから切り離している
     outputs_nograd = {k: o.detach() for k, o in outputs.items()}
 
     if 'value' in outputs_nograd:
         values_nograd = outputs_nograd['value']
         if args['turn_based_training'] and values_nograd.size(2) == 2:  # two player zerosum game
+            # 2 人対戦ゲームで相手から見た value なので負に符号反転している
             values_nograd_opponent = -torch.stack([values_nograd[:, :, 1], values_nograd[:, :, 0]], dim=2)
+            # 2 人対戦ゲームで自分と相手の value を計算して 2 で割るなどしている
             values_nograd = (values_nograd + values_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
         outputs_nograd['value'] = values_nograd * emasks + batch['outcome'] * (1 - emasks)
+    
+    # if 'advantage_for_q' in outputs_nograd:
+    #     advantages_for_q_nograd = outputs_nograd['advantage_for_q'].gather(-1, actions)
+    #     # TODO: q-value についてどの action をとったかで mask する必要がある
+    #     # masked_advantages_for_q_nograd = advantages_for_q_nograd.mul(selected_action_mask)
+    #     if args['turn_based_training'] and advantages_for_q_nograd.size(2) == 2:  # two player zerosum game
+    #         # 2 人対戦ゲームで相手から見た value なので負に符号反転している
+    #         advantages_for_q_nograd_opponent = -torch.stack([advantages_for_q_nograd[:, :, 1], advantages_for_q_nograd[:, :, 0]], dim=2)
+    #         # 2 人対戦ゲームで自分と相手の value を計算して 2 で割るなどしている
+    #         advantages_for_q_nograd = (advantages_for_q_nograd + advantages_for_q_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
+    #     outputs_nograd['advantage_for_q'] = advantage_for_q_nograd * emasks + batch['outcome'] * (1 - emasks)
+
+    if 'qvalue' in outputs_nograd:
+        qvalues_nograd = outputs_nograd['qvalue'].gather(-1, actions)
+        # TODO: q-value についてどの action をとったかで mask する必要がある
+        # qvalues_nograd = qvalues_nograd.mul(selected_action_mask)
+        if args['turn_based_training'] and qvalues_nograd.size(2) == 2:  # two player zerosum game
+            # 2 人対戦ゲームで相手から見た value なので負に符号反転している
+            qvalues_nograd_opponent = -torch.stack([qvalues_nograd[:, :, 1], qvalues_nograd[:, :, 0]], dim=2)
+            # 2 人対戦ゲームで自分と相手の value を計算して 2 で割るなどしている
+            qvalues_nograd = (qvalues_nograd + qvalues_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
+        outputs_nograd['qvalue_nograd'] = qvalues_nograd * emasks + batch['outcome'] * (1 - emasks)
 
     # compute targets and advantage
     targets = {}
     advantages = {}
 
+    # model forward 計算の value, 生の outcome, None, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
     value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1, clipped_rhos, cs
+    # model forward 計算の return, 生の return, 生の reward, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
     return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
 
-    targets['value'], advantages['value'] = compute_target(args['value_target'], *value_args)
-    targets['return'], advantages['return'] = compute_target(args['value_target'], *return_args)
+    # アルゴリズムに応じて target value を計算する
+    results = compute_target(args['value_target'], *value_args)
+    targets['value'], advantages['value'] = results['target_values'], results['advantages']
+    if learning_q:
+        # targets['advantage_for_q'] = results['target_advantage_for_q']
+        targets['qvalue'] = results['qvalue']
+    # targets['value'], advantages['value'] = compute_target(args['value_target'], *value_args)
+    # アルゴリズムに応じて target return を計算する
+    results = compute_target(args['value_target'], *return_args)
+    targets['return'], advantages['return'] = results['target_values'], results['advantages']
+    # targets['return'], advantages['return'] = compute_target(args['value_target'], *return_args)
 
+    # policy 用の advantage 計算が異なる場合，そのアルゴリズムに応じて target value を計算する
     if args['policy_target'] != args['value_target']:
-        _, advantages['value'] = compute_target(args['policy_target'], *value_args)
-        _, advantages['return'] = compute_target(args['policy_target'], *return_args)
+        # _, advantages['value'] = compute_target(args['policy_target'], *value_args)
+        # _, advantages['return'] = compute_target(args['policy_target'], *return_args)
+        results = compute_target(args['policy_target'], *value_args)
+        advantages['value'] = results['advantages']
+        results = compute_target(args['policy_target'], *return_args)
+        advantages['return'] = results['advantages']
 
     # compute policy advantage
+    # IS 確率比を考慮して policy 更新に使う advantage の総計を計算する
     total_advantages = clipped_rhos * sum(advantages.values())
 
+    # ここまでは target value, advantage の計算を行うのがメイン
+    # 具体的な loss 計算は compose_losses で行う
     return compose_losses(outputs, log_selected_t_policies, total_advantages, targets, batch, args)
 
 
@@ -356,7 +450,6 @@ class Trainer:
 
             # loss の計算
             losses, dcnt = compute_loss(batch, self.trained_model, hidden, self.args)
-
             self.optimizer.zero_grad()
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
@@ -383,7 +476,6 @@ class Trainer:
         # minimum_episode
         while len(self.episodes) < self.args['minimum_episodes']:
             time.sleep(1)
-            print(f"\n<><><> episodes: {len(self.episodes)}\n")
         if self.optimizer is not None:
             self.batcher.run()
             print('started training')

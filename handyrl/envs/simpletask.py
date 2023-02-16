@@ -72,6 +72,28 @@ class SimpleModel(nn.Module):
         h_v = self.head_v(h)
         return {'policy': h_p, 'value': torch.tanh(h_v)}
 
+class SimplePVQModel(nn.Module):
+    def __init__(self, hyperplane_n):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
+        self.head_v = nn.Linear(nn_size, 1)
+        self.head_a = nn.Linear(nn_size, 2**hyperplane_n)
+        self.head_b = nn.Linear(nn_size, 1)
+
+    def forward(self, x, hidden=None):
+        h_l = self.fc1(x)
+        h = F.relu(h_l)
+        h_p = self.head_p(h)
+        h_v = self.head_v(h)
+        h_a = self.head_a(h)
+        h_b = self.head_b(h)
+        h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
+        return {'policy': h_p, 'value': h_v, 'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l}
+
 
 class CountBasedModel(nn.Module):
     def __init__(self, hyperplane_n):
@@ -383,7 +405,8 @@ class Environment(BaseEnvironment):
 
     def net(self):
         # 切り替え可能
-        return SimpleModel(self.hyperplane_n)
+        # return SimpleModel(self.hyperplane_n)
+        return SimplePVQModel(self.hyperplane_n)
         # return CountBasedModel(self.hyperplane_n)
         # return RNDModel(self.hyperplane_n)
 

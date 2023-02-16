@@ -13,8 +13,8 @@ from collections import deque
 import torch
 
 
-def monte_carlo(values, returns):
-    return returns, returns - values
+def monte_carlo(values, returns, qvalues):
+    return {'target_values': returns, 'advantages': returns - values}
 
 
 def temporal_difference(values, returns, rewards, lmb, gamma):
@@ -25,8 +25,23 @@ def temporal_difference(values, returns, rewards, lmb, gamma):
 
     target_values = torch.stack(tuple(target_values), dim=1)
 
-    return target_values, target_values - values
+    return {'target_values': target_values, 'advantages': target_values - values}
 
+
+def temporal_q_difference(values, returns, rewards, lmb, gamma):
+    target_values = deque([returns[:, -1]])
+    for i in range(values.size(1) - 2, -1, -1):
+        reward = rewards[:, i] if rewards is not None else 0
+        target_values.appendleft(reward + gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
+
+    target_values = torch.stack(tuple(target_values), dim=1)
+
+    return {
+        'target_values': target_values, 
+        'advantages': target_values - values, 
+        'qvalue': target_values, 
+        'target_advantages_for_q': target_values - values
+        }
 
 def upgo(values, returns, rewards, lmb, gamma):
     target_values = deque([returns[:, -1]])
@@ -37,7 +52,7 @@ def upgo(values, returns, rewards, lmb, gamma):
 
     target_values = torch.stack(tuple(target_values), dim=1)
 
-    return target_values, target_values - values
+    return {'target_values': target_values, 'advantages': target_values - values}
 
 
 def vtrace(values, returns, rewards, lmb, gamma, rhos, cs):
@@ -55,18 +70,20 @@ def vtrace(values, returns, rewards, lmb, gamma, rhos, cs):
     vs_t_plus_1 = torch.cat([vs[:, 1:], returns[:, -1:]], dim=1)
     advantages = rewards + gamma * vs_t_plus_1 - values
 
-    return vs, advantages
+    return {'target_values': vs, 'advantages': advantages}
 
 
 def compute_target(algorithm, values, returns, rewards, lmb, gamma, rhos, cs):
     if values is None:
         # In the absence of a baseline, Monte Carlo returns are used.
-        return returns, returns
+        return {'target_values': returns, 'advantages': returns}
 
     if algorithm == 'MC':
         return monte_carlo(values, returns)
     elif algorithm == 'TD':
         return temporal_difference(values, returns, rewards, lmb, gamma)
+    elif algorithm == 'TD-Q':
+        return temporal_q_difference(values, returns, rewards, lmb, gamma)
     elif algorithm == 'UPGO':
         return upgo(values, returns, rewards, lmb, gamma)
     elif algorithm == 'VTRACE':
