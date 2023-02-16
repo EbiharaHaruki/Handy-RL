@@ -9,7 +9,7 @@ import multiprocessing as mp
 
 from .environment import prepare_env, make_env
 from .connection import send_recv, accept_socket_connections, connect_socket_connection
-from .agent import RandomAgent, RuleBasedAgent, Agent, EnsembleAgent, SoftAgent
+from .agent import RandomAgent, RuleBasedAgent, Agent, RSAgent, EnsembleAgent, SoftAgent
 
 
 network_match_port = 9876
@@ -28,6 +28,13 @@ def view_transition(env):
     else:
         pass
 
+def _agent_class(args):
+    if args['type'] == 'BASE':
+        return Agent
+    elif args['type'] == 'RS':
+        return RSAgent
+    else:
+        print('No agent named %s' % args['agent'])
 
 class NetworkAgentClient:
     def __init__(self, agent, env, conn):
@@ -167,7 +174,7 @@ class Evaluator:
             if model is None:
                 agents[p] = build_agent(opponent, self.env)
             else:
-                agents[p] = Agent(model)
+                agents[p] = _agent_class(self.args['agent'])(model)
 
         outcome = exec_match(self.env, agents)
         if outcome is None:
@@ -364,12 +371,12 @@ def load_model(model_path, model=None):
     return ModelWrapper(model)
 
 
-def client_mp_child(env_args, model_path, conn):
+def client_mp_child(agent_args, env_args, model_path, conn):
     env = make_env(env_args)
     agent = build_agent(model_path, env)
     if agent is None:
         model = load_model(model_path, env.net())
-        agent = Agent(model)
+        agent = _agent_class(agent_args['agent'])(model)
     NetworkAgentClient(agent, env, conn).run()
 
 
@@ -385,7 +392,7 @@ def eval_main(args, argv):
     agent1 = build_agent(model_path, env)
     if agent1 is None:
         model = load_model(model_path, env.net())
-        agent1 = Agent(model)
+        agent1 = _agent_class(args['train_args']['agent'])(model)
     critic = None
 
     print('%d process, %d games' % (num_process, num_games))
@@ -421,10 +428,11 @@ def eval_client_main(args, argv):
         try:
             host = argv[1] if len(argv) >= 2 else 'localhost'
             conn = connect_socket_connection(host, network_match_port)
+            agent_args = args['train_args']['agent']
             env_args = conn.recv()
         except ConnectionResetError:
             break
 
         model_path = argv[0] if len(argv) >= 1 else 'models/latest.pth'
-        mp.Process(target=client_mp_child, args=(env_args, model_path, conn)).start()
+        mp.Process(target=client_mp_child, args=(agent_args, env_args, model_path, conn)).start()
         conn.close()

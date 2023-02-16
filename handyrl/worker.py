@@ -65,6 +65,10 @@ class Worker:
                         self.latest_model = model_id, model_pool[model_id]
         return model_pool
 
+    # meta data の収集
+    def _gather_metadata(self):
+        return None
+
     def uns_woker(self):
         print("worker_uns : ")
         self.env.uns()

@@ -88,6 +88,9 @@ class Agent:
                 print_outputs(env, None, v)
         return v
 
+class RSAgent(Agent):
+    def __init__(self, model, temperature=0.0, observation=True, grobal_aleph = None, region_memory = None):
+        super().__init__(model, temperature, observation)
 
 class EnsembleAgent(Agent):
     def reset(self, env, show=False):
