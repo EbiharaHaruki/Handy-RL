@@ -9,6 +9,7 @@ import pickle
 
 import numpy as np
 
+from .agent import agent_class
 from .util import softmax
 
 
@@ -20,65 +21,106 @@ class Generator:
     def generate(self, models, args):
         # episode generation
         moments = []
-        hidden = {}
-        for player in self.env.players():
-            hidden[player] = models[player].init_hidden()
+        # hidden = {}
+        agents = {}
+        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'reward', 'return']
+        metadata_keys = []
         # print(f'<><><> num_global_episodes: {args["num_global_episodes"]}')
 
-        err = self.env.reset()
-        if err:
+        if self.env.reset():
             return None
+        for player in self.env.players():
+            # hidden[player] = models[player].init_hidden() # Reccurent model のための隠れ状態
+            agents[player] = agent_class(self.args['agent'])(models[player], role='g')
+            metadata_keys += agents[player].reset(self.env) ## init_hidden() も行われる
+        metadata_keys = list(set(metadata_keys))
 
         while not self.env.terminal():
-            moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'reward', 'return']
+            # 'observation': 観測（状態系列）
+            # 'selected_prob': 挙動方策（IS 用）
+            # 'action_mask': action mask
+            # 'action': action
+            # 'value': value 推定値
+            # 'reward': 報酬
+            # 'return': 割引率付き収益
             moment = {key: {p: None for p in self.env.players()} for key in moment_keys}
+            metadata = {key: {p: None for p in self.env.players()} for key in metadata_keys}
 
+            # 誰のターンか決める
             turn_players = self.env.turns()
+            # player ではない observers の lsit
             observers = self.env.observers()
+            # player ごとのターン経過
             for player in self.env.players():
                 if player not in turn_players + observers:
                     continue
                 if player not in turn_players and player in args['player'] and not self.args['observation']:
                     continue
 
-                obs = self.env.observation(player)
-                model = models[player]
-                outputs = model.inference(obs, hidden[player])
-                hidden[player] = outputs.get('hidden', None)
-                v = outputs.get('value', None)
-
-                moment['observation'][player] = obs
-                moment['value'][player] = v
-
+                # player model wrapper
+                # model = models[player]
+                #begin# Agent.action()
+                action_log = {'moment': moment, 'metadata': metadata}
                 if player in turn_players:
-                    p_ = outputs['policy']
-                    legal_actions = self.env.legal_actions(player)
-                    action_mask = np.ones_like(p_) * 1e32
-                    action_mask[legal_actions] = 0
-                    p = softmax(p_ - action_mask)
-                    action = random.choices(legal_actions, weights=p[legal_actions])[0]
+                    moment['action'][player] = agents[player].action(self.env, player, action_log=action_log)
+                elif player in observers:
+                    agents[player].observe(self.env, player, action_log=action_log)
+                # print(f'<><><> action: {action}')
+                # # 観測取得
+                # obs = self.env.observation(player)
+                # #begin# Agent.plan()
+                # # Reccurent 情報 (hidden) と共に評価
+                # outputs = model.inference(obs, hidden[player])
+                # # 内部状態保存
+                # hidden[player] = outputs.get('hidden', None)
+                # #end# Agent.plan()
+                # v = outputs.get('value', None)
+                # #end# Agent.action()
 
-                    moment['selected_prob'][player] = p[action]
-                    moment['action_mask'][player] = action_mask
-                    moment['action'][player] = action
+                # # 学習用に保存
+                # moment['observation'][player] = obs
+                # moment['value'][player] = v
 
-            err = self.env.step(moment['action'])
-            if err:
+                # # exec_match でやっていること
+                # if player in turn_players:
+                #     #begin# Agent.action
+                #     p_ = outputs['policy']
+                #     legal_actions = self.env.legal_actions(player)
+                #     action_mask = np.ones_like(p_) * 1e32
+                #     action_mask[legal_actions] = 0
+                #     # softmax をここで既に掛けている
+                #     p = softmax(p_ - action_mask)
+                #     # 温度パラメータ temperature がない
+                #     action = random.choices(legal_actions, weights=p[legal_actions])[0]
+                #     #end# Agent.action
+                #     # 学習用に保存
+                #     moment['selected_prob'][player] = p[action]
+                #     moment['action_mask'][player] = action_mask
+                #     moment['action'][player] = action
+
+            # exec_match でやっていること
+            if self.env.step(moment['action']):
                 return None
 
+            # exec_match ではやっていないこと
             reward = self.env.reward()
             for player in self.env.players():
+                # 学習用に保存
                 moment['reward'][player] = reward.get(player, None)
 
+            # 学習用に保存
             moment['turn'] = turn_players
             moments.append(moment)
 
         if len(moments) < 1:
             return None
 
+        # exec_match ではやっていないこと
         for player in self.env.players():
             ret = 0
+            # 各 step に対する割引率付きの target return を step 全体で計算
             for i, m in reversed(list(enumerate(moments))):
+                # (m['reward'][player] or 0) は reward が None の対策
                 ret = (m['reward'][player] or 0) + self.args['gamma'] * ret
                 moments[i]['return'][player] = ret
 

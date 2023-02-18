@@ -9,8 +9,7 @@ import multiprocessing as mp
 
 from .environment import prepare_env, make_env
 from .connection import send_recv, accept_socket_connections, connect_socket_connection
-from .agent import RandomAgent, RuleBasedAgent, Agent, RSAgent, EnsembleAgent, SoftAgent
-
+from .agent import agent_class, RandomAgent, RuleBasedAgent
 
 network_match_port = 9876
 
@@ -28,13 +27,13 @@ def view_transition(env):
     else:
         pass
 
-def _agent_class(args):
-    if args['type'] == 'BASE':
-        return Agent
-    elif args['type'] == 'RS':
-        return RSAgent
-    else:
-        print('No agent named %s' % args['agent'])
+# def _agent_class(args):
+#     if args['type'] == 'BASE':
+#         return Agent
+#     elif args['type'] == 'RS':
+#         return RSAgent
+#     else:
+#         print('No agent named %s' % args['agent'])
 
 class NetworkAgentClient:
     def __init__(self, agent, env, conn):
@@ -168,13 +167,12 @@ class Evaluator:
             opponent = self.default_opponent
         else:
             opponent = random.choice(opponents)
-
         agents = {}
         for p, model in models.items():
             if model is None:
                 agents[p] = build_agent(opponent, self.env)
             else:
-                agents[p] = _agent_class(self.args['agent'])(model)
+                agents[p] = agent_class(self.args['agent'])(model)
 
         outcome = exec_match(self.env, agents)
         if outcome is None:
@@ -376,7 +374,7 @@ def client_mp_child(agent_args, env_args, model_path, conn):
     agent = build_agent(model_path, env)
     if agent is None:
         model = load_model(model_path, env.net())
-        agent = _agent_class(agent_args['agent'])(model)
+        agent = agent_class(agent_args['agent'])(model)
     NetworkAgentClient(agent, env, conn).run()
 
 
@@ -392,7 +390,7 @@ def eval_main(args, argv):
     agent1 = build_agent(model_path, env)
     if agent1 is None:
         model = load_model(model_path, env.net())
-        agent1 = _agent_class(args['train_args']['agent'])(model)
+        agent1 = agent_class(args['train_args']['agent'])(model)
     critic = None
 
     print('%d process, %d games' % (num_process, num_games))
