@@ -79,10 +79,11 @@ class SimplePVQModel(nn.Module):
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
         self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
-        self.head_v = nn.Linear(nn_size, 1)
-        self.head_a = nn.Linear(nn_size, 2**hyperplane_n)
-        self.head_b = nn.Linear(nn_size, 1)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.head_v = nn.Linear(nn_size, 1) # value
+        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_b = nn.Linear(nn_size, 1) # ベースライン
+        self.head_c = nn.Linear(nn_size, 2**hyperplane_n) # 信頼度(confidence rate)
 
     def forward(self, x, hidden=None):
         h_l = self.fc1(x)
@@ -92,7 +93,10 @@ class SimplePVQModel(nn.Module):
         h_a = self.head_a(h)
         h_b = self.head_b(h)
         h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
-        return {'policy': h_p, 'value': h_v, 'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l}
+        h_c = self.head_c(h)
+        return {
+            'policy': h_p, 'value': h_v, 
+            'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l, 'latent': h_l, 'confidence': h_c}
 
 
 class CountBasedModel(nn.Module):

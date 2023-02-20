@@ -4,6 +4,7 @@
 # agent classes
 
 import random
+import faiss
 
 import numpy as np
 

@@ -6,6 +6,7 @@
 import random
 import bz2
 import pickle
+import faiss
 
 import numpy as np
 
@@ -124,7 +125,7 @@ class Generator:
                 ret = (m['reward'][player] or 0) + self.args['gamma'] * ret
                 moments[i]['return'][player] = ret
 
-        # 膨大な episode の詳細情報(moments)は bz2 で圧縮されて送る
+        # episode の詳細情報(moments)は bz2 で圧縮されて送る
         episode = {
             'args': args, 'steps': len(moments),
             'outcome': self.env.outcome(),
