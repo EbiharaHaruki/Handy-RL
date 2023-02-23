@@ -14,11 +14,7 @@ import multiprocessing.connection as connection
 def send_recv(conn, sdata):
     conn.send(sdata)
     rdata = conn.recv()
-    # if sdata[0] is not 'args' and sdata[0] is not 'episode' and sdata[0] is not 'result' and sdata[0] is not 'model':
-    #     print(f'<><><> stada: ({sdata[0]}, {type(sdata[1])}), rdata type: {type(rdata)}')
-    # print(f'<><><> stada: ({sdata[0]}, {type(sdata[1])}), rdata type: {type(rdata)}')
     return rdata
-
 
 class PickledConnection:
     def __init__(self, conn):

@@ -38,6 +38,7 @@ class Worker:
         self.num_global_episodes = 0
 
         self.count = 0
+        self.metadata_id = 0
 
         random.seed(args['seed'] + wid)
 
@@ -46,29 +47,42 @@ class Worker:
 
     def _gather_models(self, model_ids):
         model_pool = {}
+        # 新たに得られた model id のリストに対して roop
+        st = time.time()
         for model_id in model_ids:
+            # model pool に入っているかで対応
             if model_id not in model_pool:
                 if model_id < 0:
+                    # モデル id が 0 未満 = model を持たない player 
                     model_pool[model_id] = None
                 elif model_id == self.latest_model[0]:
+                    # 初期は self.latest_model[0] = -1 が入っている
+                    # 初期は self.latest_model[1] = None が入っている
                     # use latest model
                     model_pool[model_id] = self.latest_model[1]
                 else:
                     # get model from server
+                    # print(f'<><><> bfore in worker.py: {(time.time() - st)*1000:.8f}')
                     model = pickle.loads(send_recv(self.conn, ('model', model_id)))
+                    # print(f'<><><> send_recv in worker.py: {(time.time() - st)*1000:.8f}')
+                    # model 追加を初めてやる時
                     if model_id == 0:
                         # use random model
                         self.env.reset()
                         obs = self.env.observation(self.env.players()[0])
+                        # 学習が始まるまではランダム model
                         model = RandomModel(model, obs)
+                    # モデルを格納する
                     model_pool[model_id] = ModelWrapper(model)
                     # update latest model
                     if model_id > self.latest_model[0]:
+                        # モデルが存在する時 0 より大きい時に最終モデルを保存しておく
                         self.latest_model = model_id, model_pool[model_id]
         return model_pool
 
     def _gather_metadatas(self, metadata_ids):
         metadata_pool = {}
+        st = time.time()
         for metadata_id in metadata_ids:
             if metadata_id not in metadata_pool:
                 if metadata_id < 0:
@@ -78,7 +92,9 @@ class Worker:
                     metadata_pool[metadata_id] = self.latest_metadata[1]
                 else:
                     # get metadata from server
+                    print(f'<><><> bfore in worker.py: {(time.time() - st)*1000:.8f}')
                     metadata = send_recv(self.conn, ('metadata', metadata_id))
+                    print(f'<><><> send_recv in worker.py: {(time.time() - st)*1000:.8f}')
                     metadata = pickle.loads(metadata)
                     metadata_pool[metadata_id] = metadata
                     # update latest metadata
@@ -111,24 +127,26 @@ class Worker:
                 for p, model_id in args['model_id'].items():
                     models[p] = model_pool[model_id]
 
-            metadatas = {}
+            metadataset = {}
             if 'metadata_id' in args:
                 metadata_ids = list(args['metadata_id'].values())
+                # st = time.time()
                 metadata_pool = self._gather_metadatas(metadata_ids)
-
                 # make dict of models
                 for p, metadata_id in args['metadata_id'].items():
-                    metadatas[p] = metadata_pool[metadata_id]
-                    num_episodes = metadatas[p]['num_episodes']
-                    self.num_global_episodes = num_episodes
-            args['num_global_episodes'] = self.num_global_episodes
+                    metadataset[p] = metadata_pool[metadata_id]
+                    self.num_global_episodes = metadataset[p]['num_episodes']
+                # print(f'<><><> recv matadata time in worker.py: {(time.time() - st)*1000:.8f}')
+                args['num_global_episodes'] = self.num_global_episodes
             
             if role == 'g':
-                episode = self.generator.execute(models, args)
+                episode, return_metadata = self.generator.execute(models, metadataset, args)
                 send_recv(self.conn, ('episode', episode))
+                send_recv(self.conn, ('return_metadata', return_metadata))
             elif role == 'e':
-                result = self.evaluator.execute(models, args)
+                result, return_metadata = self.evaluator.execute(models, metadataset, args)
                 send_recv(self.conn, ('result', result))
+                # send_recv(self.conn, ('metadata', return_metadata))
 
 
 def make_worker_args(args, n_ga, gaid, base_wid, wid, conn):
@@ -146,7 +164,8 @@ class Gather(QueueCommunicator):
         self.gather_id = gaid
         self.server_conn = conn
         self.args_queue = deque([])
-        self.data_map = {'model': {}, 'metadata': {}}
+        self.metadata = {'id': -1, 'data': None}
+        self.data_map = {'model': {}} # , 'metadata': {}}
         self.result_send_map = {}
         self.result_send_cnt = 0
 
@@ -182,9 +201,19 @@ class Gather(QueueCommunicator):
                     # get multiple arguments from server and store them
                     self.server_conn.send((command, [None] * self.buffer_length))
                     self.args_queue += self.server_conn.recv()
-
                 next_args = self.args_queue.popleft()
                 self.send(conn, next_args)
+
+            elif command == 'metadata':
+                # answer data request as soon as possible
+                data_id = args
+                print(f'<><><> metadata id in Guther.run: {data_id}')
+                if data_id != self.metadata['id']:
+                    print(f'<><><> metadata in Guther.run: NEW')
+                    self.server_conn.send((command, args))
+                    self.metadata['id'] = data_id
+                    self.metadata['data'] = self.server_conn.recv()
+                self.send(conn, self.metadata['data'])
 
             elif command in self.data_map:
                 # answer data request as soon as possible

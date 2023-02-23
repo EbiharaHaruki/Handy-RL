@@ -27,13 +27,6 @@ def view_transition(env):
     else:
         pass
 
-# def _agent_class(args):
-#     if args['type'] == 'BASE':
-#         return Agent
-#     elif args['type'] == 'RS':
-#         return RSAgent
-#     else:
-#         print('No agent named %s' % args['agent'])
 
 class NetworkAgentClient:
     def __init__(self, agent, env, conn):
@@ -161,7 +154,7 @@ class Evaluator:
         self.args = args
         self.default_opponent = 'random'
 
-    def execute(self, models, args):
+    def execute(self, models, metadataset, args):
         opponents = self.args.get('eval', {}).get('opponent', [])
         if len(opponents) == 0:
             opponent = self.default_opponent
@@ -172,13 +165,13 @@ class Evaluator:
             if model is None:
                 agents[p] = build_agent(opponent, self.env)
             else:
-                agents[p] = agent_class(self.args['agent'])(model)
+                agents[p] = agent_class(self.args['agent'])(model, metadataset)
 
         outcome = exec_match(self.env, agents)
         if outcome is None:
             print('None episode in evaluation!')
             return None
-        return {'args': args, 'result': outcome, 'opponent': opponent}
+        return {'args': args, 'result': outcome, 'opponent': opponent}, {}
 
 
 def wp_func(results):

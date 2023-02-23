@@ -13,7 +13,7 @@ import pickle
 import warnings
 import queue
 from collections import deque
-import faiss
+# import faiss
 
 import numpy as np
 import torch
@@ -29,6 +29,7 @@ from .model import to_torch, to_gpu, ModelWrapper
 from .losses import compute_target
 from .connection import MultiProcessJobExecutor
 from .worker import WorkerCluster, WorkerServer
+from .metadata import KNN, feed_knn
 
 
 def make_batch(episodes, args):
@@ -224,8 +225,6 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     if 'confidence_rate' in outputs:
     # 信頼度の cross_entropy loss
         losses['c'] = F.cross_entropy(outputs['confidence_rate'], targets['confidence_rate'], reduction='none').mul(omasks).sum()
-        # print(f'<><><> loss confidence_rate: {losses["c"]}')
-        # print(f'<><><> loss confidence_rate shape: {losses["c"].shape}')
 
     # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
@@ -503,7 +502,6 @@ class Trainer:
             self.update_queue.put((model, self.steps))
         print('finished training')
 
-
 class Learner:
     def __init__(self, args, net=None, remote=False):
         train_args = args['train_args']
@@ -547,6 +545,12 @@ class Learner:
         self.uns_num = env_args['param']['uns_setting']['uns_num'] # 非定常の周期
         #print(self.uns_bool)
         #print(self.uns_num)
+
+        # KNN
+        if 'knn' in self.args['metadata']['name']:
+            self.knn = KNN(args)
+        if 'grobal_aleph' in self.args['metadata']['name']:
+            self.grobal_aleph = args['metadata']['grobal_aleph']
 
     def model_path(self, model_id):
         return os.path.join('models', str(model_id) + '.pth')
@@ -600,6 +604,8 @@ class Learner:
             # print(f'popleft episodes = {len(self.trainer.episodes)}/{maximum_episodes}')
             # 溢れた episode の pop
             self.trainer.episodes.popleft()
+        # print(f'<><><> self.trainer.episodes:{self.trainer.episodes.__sizeof__()}')
+
 
     def feed_results(self, results):
         # store evaluation results
@@ -679,6 +685,8 @@ class Learner:
             if not multi_req:
                 data = [data]
             send_data = []
+            # if req == 'metadata':
+            #     print(f'<> req: {req} in train.py')
 
             if req == 'args':
                 if self.shutdown_flag:
@@ -699,9 +707,11 @@ class Learner:
                             for p in self.env.players():
                                 if p in args['player']:
                                     args['model_id'][p] = self.model_epoch
+                                    args['metadata_id'][p] = self.model_epoch
+                                    # args['metadata_id'][p] = self.num_episodes
                                 else:
                                     args['model_id'][p] = -1
-                                args['metadata_id'][p] = self.num_episodes
+                                    args['metadata_id'][p] = -1
                             self.num_episodes += 1
 
                         elif args['role'] == 'e':
@@ -710,9 +720,11 @@ class Learner:
                             for p in self.env.players():
                                 if p in args['player']:
                                     args['model_id'][p] = self.model_epoch
+                                    args['metadata_id'][p] = self.model_epoch
+                                    # args['metadata_id'][p] = self.num_episodes
                                 else:
                                     args['model_id'][p] = -1
-                                args['metadata_id'][p] = self.num_episodes
+                                    args['metadata_id'][p] = -1
                             self.num_results += 1
 
                         send_data.append(args)
@@ -727,6 +739,12 @@ class Learner:
                 self.feed_results(data)
                 send_data = [None] * len(data)
 
+            elif req == 'return_metadata':
+                # report evaluation results
+                if 'knn' in self.args['metadata']['name']:
+                    feed_knn(self.knn, self.args, data)
+                send_data = [None] * len(data)
+
             elif req == 'model':
                 for model_id in data:
                     model = self.model
@@ -737,15 +755,22 @@ class Learner:
                         except:
                             # return latest model if failed to load specified model
                             pass
-                    # print(f'<><><> model id:{model_id} send')
                     send_data.append(pickle.dumps(model))
 
             elif req == 'metadata':
                 # trainer に保存して欲しい情報全般を取り出すリクエストメッセージ
                 for metadata_id in data:
                     metadata = {'num_episodes': self.num_episodes}
-                    # print(f'<><><> metadata id {metadata_id} send: {metadata}')
-                    send_data.append(pickle.dumps(metadata))
+                    if metadata_id >= 0:
+                        # st = time.time()
+                        if 'knn' in self.args['metadata']['name']:
+                            metadata['knn'] = self.knn
+                        if 'grobal_aleph' in self.args['metadata']['name']:
+                            metadata['grobal_aleph'] = self.grobal_aleph
+                        # print(f'<><><> send matadata time in train.py: {(time.time() - st)*1000:.8f}')
+                    print(f'<><><> metadataset.keys(): {metadata.keys()}')
+                # send_data.append(metadata)
+                send_data.append(pickle.dumps(metadata))
 
             if not multi_req and len(send_data) == 1:
                 send_data = send_data[0]

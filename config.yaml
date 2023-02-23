@@ -56,6 +56,12 @@ train_args:
     restart_epoch: 0
     agent: 
         type: 'RS' # 'BASE', 'RS'
+    metadata:
+        name: ['knn', 'grobal_aleph']
+        knn:
+            size: 10000
+            k: 64
+        grobal_aleph: 1.0
 
 worker_args:
     server_address: '192.168.11.24'

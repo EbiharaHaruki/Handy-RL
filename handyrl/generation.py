@@ -6,35 +6,33 @@
 import random
 import bz2
 import pickle
-import faiss
 
 import numpy as np
 
 from .agent import agent_class
 from .util import softmax
-
+from .metadata import KNN, feed_knn
 
 class Generator:
     def __init__(self, env, args):
         self.env = env
         self.args = args
-
-    def generate(self, models, args):
+    
+    def generate(self, models, metadataset, args):
         # episode generation
         moments = []
+        return_metadata = []
         # hidden = {}
         agents = {}
         moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'reward', 'return']
         metadata_keys = []
-        # print(f'<><><> num_global_episodes: {args["num_global_episodes"]}')
 
         if self.env.reset():
             return None
         for player in self.env.players():
             # hidden[player] = models[player].init_hidden() # Reccurent model のための隠れ状態
-            agents[player] = agent_class(self.args['agent'])(models[player], role='g')
+            agents[player] = agent_class(self.args['agent'])(models[player], metadataset[player], role='g')
             metadata_keys += agents[player].reset(self.env) ## init_hidden() も行われる
-        metadata_keys = list(set(metadata_keys))
 
         while not self.env.terminal():
             # 'observation': 観測（状態系列）
@@ -112,6 +110,8 @@ class Generator:
             # 学習用に保存
             moment['turn'] = turn_players
             moments.append(moment)
+            metadata['turn'] = turn_players
+            return_metadata.append(metadata)
 
         if len(moments) < 1:
             return None
@@ -134,11 +134,22 @@ class Generator:
                 for i in range(0, len(moments), self.args['compress_steps'])
             ]
         }
+        return_metadataset = {
+            'args': args, 'steps': len(return_metadata),
+            'metadata': return_metadata
+        }
+        for p in metadataset:
+            if 'knn' in metadataset[p]:
+                # 共有しているので player 0 のみ
+                # print(f'<><><> feed_knn in generetor.py')
+                feed_knn(metadataset[p]['knn'], self.args, [return_metadataset])
+                # print(f'<><><> knn.num in generetor.py: {metadataset[p]["knn"].num}')
+                break
 
-        return episode
+        return episode, return_metadataset
 
-    def execute(self, models, args):
-        episode = self.generate(models, args)
+    def execute(self, models, metadataset, args):
+        episode, return_metadata = self.generate(models, metadataset, args)
         if episode is None:
             print('None episode in generation!')
-        return episode
+        return episode, return_metadata
