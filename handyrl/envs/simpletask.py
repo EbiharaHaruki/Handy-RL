@@ -92,11 +92,11 @@ class SimplePVQModel(nn.Module):
         h_v = self.head_v(h)
         h_a = self.head_a(h)
         h_b = self.head_b(h)
-        h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
+        h_q = h_v + h_a - h_a.sum(-1).unsqueeze(-1)
         h_c = self.head_c(h)
         return {
             'policy': h_p, 'value': h_v, 
-            'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l, 'latent': h_l, 'confidence': h_c}
+            'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l, 'confidence': h_c}
 
 
 class CountBasedModel(nn.Module):

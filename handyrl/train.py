@@ -768,7 +768,6 @@ class Learner:
                         if 'grobal_aleph' in self.args['metadata']['name']:
                             metadata['grobal_aleph'] = self.grobal_aleph
                         # print(f'<><><> send matadata time in train.py: {(time.time() - st)*1000:.8f}')
-                    print(f'<><><> metadataset.keys(): {metadata.keys()}')
                 # send_data.append(metadata)
                 send_data.append(pickle.dumps(metadata))
 

@@ -3,6 +3,7 @@
 
 # agent classes
 
+import sys
 import random
 import faiss
 
@@ -123,12 +124,10 @@ class Agent:
 class RSAgent(Agent):
     def __init__(self, model, metadataset, role='e', temperature=None, observation=True):
         super().__init__(model, metadataset, role, temperature, observation)
-        # print(f'<><><> metadataset.keys(): {metadataset.keys()}')
-        # if 0 in metadataset:
-            # print(f'<><><> metadataset[0].keys(): {metadataset[0].keys()}')
-        # self.knn = metadataset['knn']
-        self.grobal_aleph = None
         self.metadata_keys = ['latent', 'action']
+        # TODO なぜか偶に metadata の key が player になってる問題解決
+        self.grobal_aleph = metadataset.get('grobal_aleph', 1.0)
+        self.rw = metadataset.get('regional_weight', 0.0)
 
     def reset(self, env, show=False):
         self.hidden = self.model.init_hidden()
@@ -136,16 +135,43 @@ class RSAgent(Agent):
 
     def action(self, env, player, show=False, action_log=None):
         # learning = (action_log is not None)
+        aleph = self.grobal_aleph
         obs = env.observation(player)
         outputs = self.plan(obs) # reccurent model 対応
         actions = env.legal_actions(player)
         v = outputs.get('value', None)
-        p = outputs['policy']
-        # print(f'<><><> policy in agent: {p}')
+        p_nn = outputs['policy']
+        q = outputs.get('qvalue', None)
+        c_nn = outputs.get('confidence', None)
         latent = outputs['latent']
-        # print(f'<><><> latent in agent: {latent}')
         if 'knn' in self.metadataset:
-            self.metadataset['knn'].regional_nn(latent)
+            c_reg = self.metadataset['knn'].regional_nn(latent)
+        else:
+            c_reg = None
+        c = c_nn if c_reg is None else self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
+
+        # rs = c * (q - aleph)
+        if np.amax(q) >= aleph:
+            fix_aleph = np.amax(q) + sys.float_info.epsilon
+            delta = fix_aleph - q
+            if np.amin(delta) < 0:
+                delta -= np.amin(delta)  # 丸め誤差が発生した場合の処理
+            if np.any(delta == 0.0):
+                delta += sys.float_info.epsilon
+        else:
+            delta = aleph - q
+        z = 1.0 / np.sum(1.0 / delta)
+        rho = z / delta
+        rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
+        if np.min(rsrs) < 0:
+            rsrs -= np.min(rsrs)
+        if np.any(rsrs == 0.0):
+            rsrs += sys.float_info.epsilon
+        p = rsrs
+        # print(f'<><><> p_nn: {p_nn}')
+        # print(f'<><><> p_rsrs: {p}')
+        # print(f'<><><> action_mask: {np.ones_like(p)}')
+        # print(f'<><><> p_rsrs: {p/p.sum()}')
         action_mask = np.ones_like(p) * 1e32
         action_mask[actions] = 0
         p = p - action_mask
@@ -168,6 +194,7 @@ class RSAgent(Agent):
         if self.generating:
             action_log['moment']['observation'][player] = obs
             action_log['moment']['value'][player] = v
+            # TODO 満足していると 0.0 が入っちゃう問題
             action_log['moment']['selected_prob'][player] = selected_prob
             action_log['moment']['action_mask'][player] = action_mask
             action_log['metadata']['latent'][player] = latent

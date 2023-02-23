@@ -141,9 +141,7 @@ class Generator:
         for p in metadataset:
             if 'knn' in metadataset[p]:
                 # 共有しているので player 0 のみ
-                # print(f'<><><> feed_knn in generetor.py')
                 feed_knn(metadataset[p]['knn'], self.args, [return_metadataset])
-                # print(f'<><><> knn.num in generetor.py: {metadataset[p]["knn"].num}')
                 break
 
         return episode, return_metadataset

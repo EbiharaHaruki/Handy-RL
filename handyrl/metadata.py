@@ -98,7 +98,7 @@ class KNN:
             # print(f'<><><> idx.shape: {idx}')
             # print(f'<><><> self.values[idx[0], :].shape: {self.values[idx[0], :].shape}')
             # print(f'<><><> dist_inv.shape: {dist_inv.shape}')
-            # print(f'<><><> regional_vector: {regional_vector.sum()}')
-            # return (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
-            regional_vector = (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
-            return regional_vector
+            return (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
+            # regional_confidence = (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
+            # print(f'<><><> regional_confidence: {regional_confidence}')
+            # return regional_confidence
