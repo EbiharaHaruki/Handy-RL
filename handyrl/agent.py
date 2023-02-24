@@ -142,7 +142,7 @@ class RSAgent(Agent):
         v = outputs.get('value', None)
         p_nn = outputs['policy']
         q = outputs.get('qvalue', None)
-        c_nn = outputs.get('confidence', None)
+        c_nn = softmax(outputs.get('confidence', None).squeeze())
         latent = outputs['latent']
         if 'knn' in self.metadataset:
             c_reg = self.metadataset['knn'].regional_nn(latent)
@@ -150,6 +150,8 @@ class RSAgent(Agent):
             c_reg = None
         c = c_nn if c_reg is None else self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
 
+        # print(f'<><><> c_nn: {c_nn}')
+        # print(f'<><><> c_reg: {c_reg}')
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
             fix_aleph = np.amax(q) + sys.float_info.epsilon

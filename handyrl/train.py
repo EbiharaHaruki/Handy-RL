@@ -177,7 +177,7 @@ def forward_prediction(model, hidden, batch, args):
         outputs = {k: torch.stack(o, dim=1) for k, o in outputs.items() if o[0] is not None}
 
     for k, o in outputs.items():
-        if k == 'policy':
+        if k == 'policy' or k == 'confidence_rate':
             o = o.mul(batch['turn_mask'])
             if o.size(2) > 1 and batch_shape[2] == 1:  # turn-alternating batch
                 o = o.sum(2, keepdim=True)  # gather turn player's policies
@@ -229,6 +229,12 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
     losses['ent'] = entropy.sum()
+
+    # 各種監視変数を追加
+    entropy_confidence = dist.Categorical(logits=outputs['confidence_rate']).entropy().mul(tmasks.sum(-1))
+    losses['ent_c_nn'] = entropy_confidence.sum()
+    losses['ent_c_reg'] = np.array(0.0)
+    losses['ent_c'] = np.array(0.0)
 
     # value と policy の loss の計算
     base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('c', 0)
@@ -328,13 +334,11 @@ def compute_loss(batch, model, hidden, args):
 
     if 'confidence' in outputs:
         # 信頼度の学習
-        action_num = outputs_nograd['policy'].shape[-1]
+        # action_num = outputs_nograd['policy'].shape[-1]
         # targets_confidence_rate = F.one_hot(actions, num_classes=action_num).to(torch.float64).squeeze()
         targets['confidence_rate'] = (actions * emasks).squeeze(dim=-2).to(torch.long).squeeze()
         # outputs_confidence_rate = (F.softmax(outputs['confidence'], dim=-1) * emasks).squeeze()
         outputs['confidence_rate'] = (outputs['confidence'] * emasks).squeeze()
-        # print(f'<><><> tarcets confidence_rate: {targets_confidence_rate[0]}')
-        # print(f'<><><> outputs confidence_rate: {outputs_confidence_rate[0]}')
 
     # model forward 計算の value, 生の outcome, None, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
     value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1, clipped_rhos, cs

@@ -1,7 +1,4 @@
-# Copyright (c) 2020 DeNA Co., Ltd.
-# Licensed under The MIT License [see LICENSE for details]
-
-# agent classes
+# metadata classes
 
 import os
 # TODO: OpenMP runtime error をちゃんと解決する（現在は暫定対応） 

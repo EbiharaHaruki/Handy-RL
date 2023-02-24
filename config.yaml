@@ -61,8 +61,8 @@ train_args:
         knn:
             size: 10000
             k: 64
-        grobal_aleph: 0.7
-        regional_weight: 0.9
+        grobal_aleph: 100.0
+        regional_weight: 0.5
 
 worker_args:
     server_address: '192.168.11.24'
