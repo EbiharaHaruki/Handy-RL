@@ -25,7 +25,7 @@ env_args:
         uns_setting:
             uns_bool: False # 非定常の導入するか否か
             uns_num: 1000 # 非定常の周期（報酬位置をどの程度の間隔で変更するか）
-        observation_noise: 2 # 観測時にノイズがあるか（ 0:なし, 1:ノイズ小, 2;ノイズ大）
+        observation_noise: 0 # 観測時にノイズがあるか（ 0:なし, 1:ノイズ小, 2;ノイズ大）
         jyotai_boolkari: False # ランダムな状態量の有無
 
 train_args:
