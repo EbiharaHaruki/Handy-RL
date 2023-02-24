@@ -3,7 +3,7 @@
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成
-time=30  #timeoutまでの時間
+time=130  #timeoutまでの時間
 
 N=$1 #標準入力から実験回数を取得
 ex_base="timeout $time python3 -u main.py --worker" #学習
