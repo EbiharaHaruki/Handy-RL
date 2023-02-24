@@ -167,7 +167,7 @@ class RSAgent(Agent):
             rsrs -= np.min(rsrs)
         if np.any(rsrs == 0.0):
             rsrs += sys.float_info.epsilon
-        p = rsrs
+        p = np.log(rsrs)
         # print(f'<><><> p_nn: {p_nn}')
         # print(f'<><><> p_rsrs: {p}')
         # print(f'<><><> action_mask: {np.ones_like(p)}')

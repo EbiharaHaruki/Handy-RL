@@ -92,7 +92,7 @@ class SimplePVQModel(nn.Module):
         h_v = self.head_v(h)
         h_a = self.head_a(h)
         h_b = self.head_b(h)
-        h_q = h_v + h_a - h_a.sum(-1).unsqueeze(-1)
+        h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
         h_c = self.head_c(h)
         return {
             'policy': h_p, 'value': h_v, 
