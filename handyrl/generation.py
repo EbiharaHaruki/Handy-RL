@@ -17,7 +17,19 @@ class Generator:
     def __init__(self, env, args):
         self.env = env
         self.args = args
-    
+        if 'global_aleph' in args['metadata']['name']:
+            self.global_v = {}
+            self.global_n = {}
+            self.global_returns = {}
+            self.lastidx = {}
+            self.num = {}
+            self.size = args['metadata']['global_return_size']
+            for player in self.env.players():
+                self.global_v[player] = 0.0
+                self.global_returns[player] = np.zeros(self.size, dtype=float)
+                self.lastidx[player] = 0
+                self.num[player] = 0
+
     def generate(self, models, metadataset, args):
         # episode generation
         moments = []
@@ -33,6 +45,8 @@ class Generator:
             # hidden[player] = models[player].init_hidden() # Reccurent model のための隠れ状態
             agents[player] = agent_class(self.args['agent'])(models[player], metadataset[player], role='g')
             metadata_keys += agents[player].reset(self.env) ## init_hidden() も行われる
+            if hasattr(self, 'global_v'):
+                metadataset[player]['global_v'] = self.global_v[player]
 
         while not self.env.terminal():
             # 'observation': 観測（状態系列）
@@ -60,6 +74,8 @@ class Generator:
                 # model = models[player]
                 #begin# Agent.action()
                 action_log = {'moment': moment, 'metadata': metadata}
+                if hasattr(self, 'global_v'):
+                    action_log['global_v'] = self.global_v
                 if player in turn_players:
                     moment['action'][player] = agents[player].action(self.env, player, action_log=action_log)
                 elif player in observers:
@@ -116,19 +132,34 @@ class Generator:
         if len(moments) < 1:
             return None
 
+        outcome = self.env.outcome()
+
         # exec_match ではやっていないこと
         for player in self.env.players():
-            ret = 0
+            ret = 0.0
+            g_ret = 0.0
             # 各 step に対する割引率付きの target return を step 全体で計算
             for i, m in reversed(list(enumerate(moments))):
                 # (m['reward'][player] or 0) は reward が None の対策
                 ret = (m['reward'][player] or 0) + self.args['gamma'] * ret
+                g_ret = (m['reward'][player] or 0) + 1.0 * ret
                 moments[i]['return'][player] = ret
+            g_ret += outcome[player]
+            if hasattr(self, 'global_returns'):
+                l = self.lastidx[player]
+                self.global_returns[player][l] = g_ret
+                self.lastidx[player] = (self.lastidx[player] + 1) if l >= (self.size - 1) else 0
+                if self.num[player] == self.size:
+                    self.num[player] += 1
+                    self.global_v[player] = self.global_returns[player][0:self.num[player]].mean()
+                else:
+                    # self.global_v[player] = self.global_returns[player].mean()
+                    self.global_v[player] = np.amax(self.global_returns[player])
 
         # episode の詳細情報(moments)は bz2 で圧縮されて送る
         episode = {
             'args': args, 'steps': len(moments),
-            'outcome': self.env.outcome(),
+            'outcome': outcome,
             'moment': [
                 bz2.compress(pickle.dumps(moments[i:i+self.args['compress_steps']]))
                 for i in range(0, len(moments), self.args['compress_steps'])

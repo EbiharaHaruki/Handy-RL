@@ -72,7 +72,7 @@ class SimpleModel(nn.Module):
         h_v = self.head_v(h)
         return {'policy': h_p, 'value': torch.tanh(h_v)}
 
-class SimplePVQModel(nn.Module):
+class PVQCModel(nn.Module):
     def __init__(self, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
@@ -407,12 +407,15 @@ class Environment(BaseEnvironment):
     def players(self):
         return [0]
 
-    def net(self):
+    def net(self, agent_type):
         # 切り替え可能
-        # return SimpleModel(self.hyperplane_n)
-        return SimplePVQModel(self.hyperplane_n)
-        # return CountBasedModel(self.hyperplane_n)
-        # return RNDModel(self.hyperplane_n)
+        print(f'<><><> agent_type: {agent_type}')
+        if agent_type == 'RS':
+            return PVQCModel(self.hyperplane_n)
+        else:
+            return SimpleModel(self.hyperplane_n)
+            # return CountBasedModel(self.hyperplane_n)
+            # return RNDModel(self.hyperplane_n)
 
     def observation(self, player=None):
         return self.state.astype(np.float32)

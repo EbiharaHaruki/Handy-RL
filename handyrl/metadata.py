@@ -33,6 +33,9 @@ class KNN:
         self.nn_index = None
         self.lastidx = 0
         self.num = 0
+
+        self.zeta = 0.008
+        self.epsilon = 0.0001
     
     def _init_memory(self, lattents, values):
         _keys = np.zeros((self.args['size'], lattents.shape[1]), dtype=float)
@@ -68,13 +71,6 @@ class KNN:
         else:
             self.num += l # 格納数を更新
         self.lastidx = li
-            # print(f'<><><> self.keys.__sizeof__():{self.keys.__sizeof__()}')
-        # print(f'<><><> self.num: {self.num}')
-        # print(f'<><><> self.keys shape: {self.keys.shape}')
-        # print(f'<><><> lattents shape: {lattents.shape}')
-        # print(f'<><><> values shape: {values.shape}')
-        # print(f'<><><> lattents: {lattents[0]}')
-        # print(f'<><><> values: {values[0]}')
 
     def update_nn_index(self):
         _keys = self.keys[0:self.num, :]
@@ -88,14 +84,35 @@ class KNN:
         # if (self.nn_index is None):
             return None
         else:
-            dist, idx = self.nn_index.search(query[np.newaxis, :], self.args['k'])
+            if len(query.shape) == 1:
+                query = query[np.newaxis, :]
+            dist, idx = self.nn_index.search(query, self.args['k'])
             # 距離の逆数を計算
-            dist_inv = 1.0/(dist+1.0)
+            # dist_inv = 1.0/(dist+1.0)
+
+            # 平方ユークリッド距離(ユークリッドの2乗)を計算しd_kに格納
+            d_k = dist # .squeeze() # ** 2
+            # d_kを使ってユークリッド距離の移動平均d^2_mを計算
+            d_m = d_k.mean(axis = 0)
+            # カーネル値の分母の分数を計算(d_kの正則化)
+            # d_n = d_k / d_m_ave # 0 除算の代わりに 0 を置き換える
+            d_n = np.divide(d_k, d_m, out=np.zeros_like(d_k), where=d_m != 0.0) - self.zeta
+            # d_n があまりに小さい場合 0 に更新
+            d_n[d_n < 0.0] = 0.0
+            # 入力と近傍値のカーネル値（類似度）k_v を計算
+            k_v = self.epsilon / (d_n + self.epsilon)
+            # 類似度K_vから総和が1となる重み生成。疑似試行回数 n の総和を1にしたいため
+            weight = (k_v / k_v.sum(axis = 1)).squeeze()
+            # weight = k_v.squeeze()
+            # 類似度から算出した重みと action vector で加重平均を行い疑似試行割合を計算
+            # regional_confidence = np.empty((idx.shape[0], self.values.shape[1]))
+            # [self.store(regional_confidence, j, np.average(self.values[idx[j,:], :], weights=weight[j,:], axis=0)) for j in range(idx.shape[0])]
+            regional_confidence = np.average(self.values[idx.squeeze(), :], weights=weight, axis=0)
+
             # 近似 vector の計算 
-            # print(f'<><><> idx.shape: {idx}')
-            # print(f'<><><> self.values[idx[0], :].shape: {self.values[idx[0], :].shape}')
-            # print(f'<><><> dist_inv.shape: {dist_inv.shape}')
-            return (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
+            # return (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
             # regional_confidence = (dist_inv @ self.values[idx[0], :])/dist_inv.sum()
-            # print(f'<><><> regional_confidence: {regional_confidence}')
-            # return regional_confidence
+            return regional_confidence
+
+    def store(self, npa, j, v):
+        npa[j] = v

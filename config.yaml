@@ -57,12 +57,14 @@ train_args:
     agent: 
         type: 'RS' # 'BASE', 'RS'
     metadata:
-        name: ['knn', 'grobal_aleph', 'regional_weight']
+        # name: []
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
         knn:
             size: 10000
             k: 64
-        grobal_aleph: 100.0
         regional_weight: 0.5
+        global_aleph: 1.0
+        global_return_size: 100
 
 worker_args:
     server_address: '192.168.11.24'

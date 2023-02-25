@@ -126,7 +126,7 @@ class RSAgent(Agent):
         super().__init__(model, metadataset, role, temperature, observation)
         self.metadata_keys = ['latent', 'action']
         # TODO なぜか偶に metadata の key が player になってる問題解決
-        self.grobal_aleph = metadataset.get('grobal_aleph', 1.0)
+        self.global_aleph = metadataset.get('global_aleph', 1.0)
         self.rw = metadataset.get('regional_weight', 0.0)
 
     def reset(self, env, show=False):
@@ -135,13 +135,16 @@ class RSAgent(Agent):
 
     def action(self, env, player, show=False, action_log=None):
         # learning = (action_log is not None)
-        aleph = self.grobal_aleph
+        global_aleph = self.global_aleph
+        global_v = action_log['global_v'][player] if action_log is not None else -1000.0
+        global_delta = np.amax([global_aleph - global_v, 0.0])
         obs = env.observation(player)
         outputs = self.plan(obs) # reccurent model 対応
         actions = env.legal_actions(player)
         v = outputs.get('value', None)
         p_nn = outputs['policy']
         q = outputs.get('qvalue', None)
+        aleph = global_delta + np.amax(q) if q is not None else 0.0
         c_nn = softmax(outputs.get('confidence', None).squeeze())
         latent = outputs['latent']
         if 'knn' in self.metadataset:
@@ -177,6 +180,15 @@ class RSAgent(Agent):
         action_mask = np.ones_like(p) * 1e32
         action_mask[actions] = 0
         p = p - action_mask
+        p_srs = softmax(p)
+        entropy_srs = -(p_srs * np.ma.log(p_srs)/np.ma.log(len(p))).sum()
+        # print(f'<><><> entropy_srs: {entropy_srs}')
+        # print(f'<><><> global_aleph: {global_aleph}')
+        # print(f'<><><> global_v: {global_v}')
+        # print(f'<><><> global_delta: {global_delta}')
+        # print(f'<><><> aleph: {aleph}')
+        # print(f'<><><> Q-value: {q}')
+        # print(f'<><><> delta: {delta}')
 
         if self.generating or self.temperature != 0.0:
             policy = softmax(p) if self.temperature is None else softmax(p / self.temperature)

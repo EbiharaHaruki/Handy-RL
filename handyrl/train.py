@@ -24,7 +24,7 @@ import torch.optim as optim
 import psutil
 
 from .environment import prepare_env, make_env
-from .util import map_r, bimap_r, trimap_r, rotate
+from .util import map_r, bimap_r, trimap_r, rotate, softmax
 from .model import to_torch, to_gpu, ModelWrapper
 from .losses import compute_target
 from .connection import MultiProcessJobExecutor
@@ -177,7 +177,7 @@ def forward_prediction(model, hidden, batch, args):
         outputs = {k: torch.stack(o, dim=1) for k, o in outputs.items() if o[0] is not None}
 
     for k, o in outputs.items():
-        if k == 'policy' or k == 'confidence_rate':
+        if k == 'policy' or k == 'confidence':
             o = o.mul(batch['turn_mask'])
             if o.size(2) > 1 and batch_shape[2] == 1:  # turn-alternating batch
                 o = o.sum(2, keepdim=True)  # gather turn player's policies
@@ -189,7 +189,7 @@ def forward_prediction(model, hidden, batch, args):
     return outputs
 
 
-def compose_losses(outputs, log_selected_policies, total_advantages, targets, batch, args):
+def compose_losses(outputs, log_selected_policies, total_advantages, targets, batch, metadataset, args):
     """Caluculate loss value
 
     Returns:
@@ -222,19 +222,21 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         # value の二乗和誤差
         losses['q'] = ((outputs['selected_qvalue'] - targets['selected_qvalue']) ** 2).mul(omasks).sum() / 2
 
-    if 'confidence_rate' in outputs:
+    if 'confidence' in outputs:
     # 信頼度の cross_entropy loss
-        losses['c'] = F.cross_entropy(outputs['confidence_rate'], targets['confidence_rate'], reduction='none').mul(omasks).sum()
+        losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
+        entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
+        # 信頼度割合に関する各種監視変数を追加
+        losses['ent_c_nn'] = entropy_c_nn.sum()
+        if 'knn' in metadataset:
+            p_c_reg = metadataset['knn'].regional_nn(targets['latent'][0,:].squeeze())
+            # p_c_reg = metadataset['knn'].regional_nn(targets['latent'].squeeze())
+            entropy_c_reg = -(p_c_reg * np.ma.log(p_c_reg)).sum()
+            losses['ent_c_reg'] = entropy_c_reg
 
     # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
     losses['ent'] = entropy.sum()
-
-    # 各種監視変数を追加
-    entropy_confidence = dist.Categorical(logits=outputs['confidence_rate']).entropy().mul(tmasks.sum(-1))
-    losses['ent_c_nn'] = entropy_confidence.sum()
-    losses['ent_c_reg'] = np.array(0.0)
-    losses['ent_c'] = np.array(0.0)
 
     # value と policy の loss の計算
     base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('c', 0)
@@ -245,7 +247,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     return losses, dcnt
 
 
-def compute_loss(batch, model, hidden, args):
+def compute_loss(batch, model, metadataset, hidden, args):
     # target 計算に必要な forward 計算を行う
     outputs = forward_prediction(model, hidden, batch, args)
     # learning_q = ('qvalues' in outputs)
@@ -336,9 +338,15 @@ def compute_loss(batch, model, hidden, args):
         # 信頼度の学習
         # action_num = outputs_nograd['policy'].shape[-1]
         # targets_confidence_rate = F.one_hot(actions, num_classes=action_num).to(torch.float64).squeeze()
-        targets['confidence_rate'] = (actions * emasks).squeeze(dim=-2).to(torch.long).squeeze()
+        # targets['confidence_rate'] = (actions * emasks).squeeze(dim=-2).to(torch.long).squeeze()
+        targets['confidence'] = (actions * emasks).to(torch.long)
         # outputs_confidence_rate = (F.softmax(outputs['confidence'], dim=-1) * emasks).squeeze()
-        outputs['confidence_rate'] = (outputs['confidence'] * emasks).squeeze()
+        # outputs['confidence'] = (outputs['confidence'] * emasks).squeeze()
+        # outputs['confidence'] = outputs['confidence'].squeeze()
+
+    if 'latent' in outputs_nograd:
+        # 学習はしないが latent を抜き出しておく
+        targets['latent'] = (outputs_nograd['latent'] * emasks)
 
     # model forward 計算の value, 生の outcome, None, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
     value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1, clipped_rhos, cs
@@ -373,7 +381,7 @@ def compute_loss(batch, model, hidden, args):
 
     # ここまでは target value, advantage の計算を行うのがメイン
     # 具体的な loss 計算は compose_losses で行う
-    return compose_losses(outputs, log_selected_t_policies, total_advantages, targets, batch, args)
+    return compose_losses(outputs, log_selected_t_policies, total_advantages, targets, batch, metadataset, args)
 
 
 class Batcher:
@@ -424,11 +432,12 @@ class Batcher:
 
 
 class Trainer:
-    def __init__(self, args, model):
+    def __init__(self, args, model, metadataset):
         self.episodes = deque()
         self.args = args
         self.gpu = torch.cuda.device_count()
         self.model = model
+        self.metadataset = metadataset
         self.default_lr = 3e-8
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
@@ -470,7 +479,7 @@ class Trainer:
                 hidden = to_gpu(hidden)
 
             # loss の計算
-            losses, dcnt = compute_loss(batch, self.trained_model, hidden, self.args)
+            losses, dcnt = compute_loss(batch, self.trained_model, self.metadataset, hidden, self.args)
             self.optimizer.zero_grad()
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
@@ -506,6 +515,7 @@ class Trainer:
             self.update_queue.put((model, self.steps))
         print('finished training')
 
+
 class Learner:
     def __init__(self, args, net=None, remote=False):
         train_args = args['train_args']
@@ -524,7 +534,7 @@ class Learner:
 
         # trained datum
         self.model_epoch = self.args['restart_epoch']
-        self.model = net if net is not None else self.env.net()
+        self.model = net if net is not None else self.env.net(args['agent']['type'])
         if self.model_epoch > 0:
             self.model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
 
@@ -538,23 +548,26 @@ class Learner:
         self.results_per_opponent = {}
         self.num_results = 0
 
+        # KNN
+        self.metadataset = {}
+        if 'knn' in args['metadata']['name']:
+            self.metadataset['knn'] = KNN(args)
+        if 'global_aleph' in args['metadata']['name']:
+            self.metadataset['global_aleph'] = args['metadata']['global_aleph']
+        if 'regional_weight' in args['metadata']['name']:
+            self.metadataset['regional_weight'] = args['metadata']['regional_weight']
+
         # multiprocess or remote connection
         self.worker = WorkerServer(args) if remote else WorkerCluster(args)
 
         # thread connection
-        self.trainer = Trainer(args, self.model)
+        self.trainer = Trainer(args, self.model, self.metadataset)
 
         # episode count
         self.uns_bool = env_args['param']['uns_setting']['uns_bool'] # 非定常のフラグ
         self.uns_num = env_args['param']['uns_setting']['uns_num'] # 非定常の周期
         #print(self.uns_bool)
         #print(self.uns_num)
-
-        # KNN
-        if 'knn' in self.args['metadata']['name']:
-            self.knn = KNN(args)
-        if 'grobal_aleph' in self.args['metadata']['name']:
-            self.grobal_aleph = args['metadata']['grobal_aleph']
 
     def model_path(self, model_id):
         return os.path.join('models', str(model_id) + '.pth')
@@ -608,8 +621,6 @@ class Learner:
             # print(f'popleft episodes = {len(self.trainer.episodes)}/{maximum_episodes}')
             # 溢れた episode の pop
             self.trainer.episodes.popleft()
-        # print(f'<><><> self.trainer.episodes:{self.trainer.episodes.__sizeof__()}')
-
 
     def feed_results(self, results):
         # store evaluation results
@@ -746,7 +757,8 @@ class Learner:
             elif req == 'return_metadata':
                 # report evaluation results
                 if 'knn' in self.args['metadata']['name']:
-                    feed_knn(self.knn, self.args, data)
+                    # feed_knn(self.knn, self.args, data)
+                    feed_knn(self.metadataset['knn'], self.args, data)
                 send_data = [None] * len(data)
 
             elif req == 'model':
@@ -763,17 +775,8 @@ class Learner:
 
             elif req == 'metadata':
                 # trainer に保存して欲しい情報全般を取り出すリクエストメッセージ
-                for metadata_id in data:
-                    metadata = {'num_episodes': self.num_episodes}
-                    if metadata_id >= 0:
-                        # st = time.time()
-                        if 'knn' in self.args['metadata']['name']:
-                            metadata['knn'] = self.knn
-                        if 'grobal_aleph' in self.args['metadata']['name']:
-                            metadata['grobal_aleph'] = self.grobal_aleph
-                        # print(f'<><><> send matadata time in train.py: {(time.time() - st)*1000:.8f}')
-                # send_data.append(metadata)
-                send_data.append(pickle.dumps(metadata))
+                self.metadataset['num_episodes'] = self.num_episodes
+                send_data.append(pickle.dumps(self.metadataset))
 
             if not multi_req and len(send_data) == 1:
                 send_data = send_data[0]
