@@ -6,6 +6,7 @@
 import random
 import bz2
 import pickle
+import copy
 
 import numpy as np
 
@@ -36,7 +37,7 @@ class Generator:
         return_metadata = []
         # hidden = {}
         agents = {}
-        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'reward', 'return']
+        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'reward', 'return', 'terminal']
         metadata_keys = []
 
         if self.env.reset():
@@ -121,7 +122,10 @@ class Generator:
             reward = self.env.reward()
             for player in self.env.players():
                 # 学習用に保存
-                moment['reward'][player] = reward.get(player, None)
+                # moment['reward'][player] = reward.get(player, None)
+                # outcome を reward と同等に扱うため存在しないなら None ではなく 0.0 にする
+                moment['reward'][player] = reward.get(player, 0)
+                moment['terminal'][player] = 0 # 1 if self.env.terminal() else 0
 
             # 学習用に保存
             moment['turn'] = turn_players
@@ -129,22 +133,34 @@ class Generator:
             metadata['turn'] = turn_players
             return_metadata.append(metadata)
 
+        len_episode = len(moments)
         if len(moments) < 1:
             return None
+        
+        # forward_steps で終端まで見なかったり MC 法を使わない場合には終端の buck up 用のダミー状態を入力
+        # Q 学習等のためには終端の後にもう一つ state などの情報を格納する必要がある
+        # post terminal state(summy)
+        if not self.args['return_buckup']:
+            last_moment = copy.deepcopy(moments[len_episode-1])
+            last_moment['reward'][player] = 0.0 # reward を 0 に
+            last_moment['terminal'][player] = 1 # dummy
+            moments.append(last_moment)
 
         outcome = self.env.outcome()
 
         # exec_match ではやっていないこと
         for player in self.env.players():
-            ret = 0.0
+            # outcome を reward と同等に扱うため代入
+            moments[len_episode-1]['reward'][player] = outcome[player]
+            ret = 0.0  # 終端 return から入れる
             g_ret = 0.0
             # 各 step に対する割引率付きの target return を step 全体で計算
             for i, m in reversed(list(enumerate(moments))):
                 # (m['reward'][player] or 0) は reward が None の対策
                 ret = (m['reward'][player] or 0) + self.args['gamma'] * ret
-                g_ret = (m['reward'][player] or 0) + 1.0 * ret
+                g_ret = (m['reward'][player] or 0) + 1.0 * g_ret
                 moments[i]['return'][player] = ret
-            g_ret += outcome[player]
+                # print(f'<><><> i: {i}, ret: {ret}, ')
             if hasattr(self, 'global_returns'):
                 l = self.lastidx[player]
                 self.global_returns[player][l] = g_ret

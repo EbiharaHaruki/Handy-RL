@@ -84,6 +84,7 @@ def make_batch(episodes, args):
         rew = np.array([[replace_none(m['reward'][player], [0]) for player in players] for m in moments], dtype=np.float32).reshape(len(moments), len(players), -1)
         ret = np.array([[replace_none(m['return'][player], [0]) for player in players] for m in moments], dtype=np.float32).reshape(len(moments), len(players), -1)
         oc = np.array([ep['outcome'][player] for player in players], dtype=np.float32).reshape(1, len(players), -1)
+        ter = np.array([[replace_none(m['terminal'][player], [0]) for player in players] for m in moments], dtype=np.float32).reshape(len(moments), len(players), -1)
 
         emask = np.ones((len(moments), 1, 1), dtype=np.float32)  # episode mask
         tmask = np.array([[[m['selected_prob'][player] is not None] for player in players] for m in moments], dtype=np.float32)
@@ -102,6 +103,7 @@ def make_batch(episodes, args):
             act = np.pad(act, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             rew = np.pad(rew, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             ret = np.pad(ret, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            ter = np.pad(ter, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=1)
             emask = np.pad(emask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             tmask = np.pad(tmask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             omask = np.pad(omask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
@@ -109,10 +111,10 @@ def make_batch(episodes, args):
             progress = np.pad(progress, [(pad_len_b, pad_len_a), (0, 0)], 'constant', constant_values=1)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, emask, tmask, omask, amask, progress))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, emask, tmask, omask, amask, progress = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress = [to_torch(np.array(val)) for val in zip(*datum)]
 
     return {
         'observation': obs,
@@ -120,6 +122,7 @@ def make_batch(episodes, args):
         'value': v,
         'action': act, 'outcome': oc,
         'reward': rew, 'return': ret,
+        'terminal': ter,
         'episode_mask': emask,
         'turn_mask': tmask, 'observation_mask': omask,
         'action_mask': amask,
@@ -189,13 +192,18 @@ def forward_prediction(model, hidden, batch, args):
     return outputs
 
 
+def lastcut_for_buckup(step_masks, teaminals):
+    # teaminals を引いて post terminal state(dummy) について伝搬しなくする
+    return step_masks.mul(1.0 - teaminals)
+
+
 def compose_losses(outputs, log_selected_policies, total_advantages, targets, batch, metadataset, args):
     """Caluculate loss value
 
     Returns:
         tuple: losses and statistic values and the number of training data
     """
-    tmasks = batch['turn_mask']
+    tmasks = batch['turn_mask'] if args['return_buckup'] else lastcut_for_buckup(batch['turn_mask'], batch['terminal'])
     omasks = batch['observation_mask']
 
     # loss の箱
@@ -210,9 +218,11 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     if 'value' in outputs:
         # value の二乗和誤差
         losses['v'] = ((outputs['value'] - targets['value']) ** 2).mul(omasks).sum() / 2
+        # print(f'<><><> outputs[value][0]: {outputs["value"][0]}, targets[value][0]: {targets["value"][0]}, ')
+        # print(f'<><><> outputs[value].shape: {outputs["value"].shape}, targets[value].shape: {targets["value"].shape}')
     # return loss 
     if 'return' in outputs:
-        # return の Huber Loss
+        # return の Huber Loss（outputs に return が含まれない限り計算されない）
         losses['r'] = F.smooth_l1_loss(outputs['return'], targets['return'], reduction='none').mul(omasks).sum()
     # q-value loss 
     # if 'advantage_for_q' in outputs:
@@ -251,7 +261,7 @@ def compute_loss(batch, model, metadataset, hidden, args):
     # target 計算に必要な forward 計算を行う
     outputs = forward_prediction(model, hidden, batch, args)
     # learning_q = ('qvalues' in outputs)
-    # 配列情報として成形
+    # burn_in_steps 分ずらす
     if args['burn_in_steps'] > 0:
         batch = map_r(batch, lambda v: v[:, args['burn_in_steps']:] if v.size(1) > 1 else v)
         outputs = map_r(outputs, lambda v: v[:, args['burn_in_steps']:])
@@ -348,21 +358,25 @@ def compute_loss(batch, model, metadataset, hidden, args):
         # 学習はしないが latent を抜き出しておく
         targets['latent'] = (outputs_nograd['latent'] * emasks)
 
-    # model forward 計算の value, 生の outcome, None, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
-    value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1, clipped_rhos, cs
-    # model forward 計算の return, 生の return, 生の reward, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
-    return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
+    # model forward 計算の value, 生の outcome, None, 終端フラグ, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
+    # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
+    # 割引率付き Return からの学習を定義
+    # model forward 計算の value, 割引率付き return, reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
+    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs
+    # model forward 計算の return, 生の return, 生の reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
+    # return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
 
     # アルゴリズムに応じて target value を計算する
     results = compute_target(args['value_target'], *value_args)
     targets['value'], advantages['value'] = results['target_values'], results['advantages']
     if 'qvalue' in outputs_nograd:
-        # targets['advantage_for_q'] = results['target_advantage_for_q']
+        targets['advantage_for_q'] = results['target_advantage_for_q']
         targets['selected_qvalue'] = results['qvalue']
     # targets['value'], advantages['value'] = compute_target(args['value_target'], *value_args)
     # アルゴリズムに応じて target return を計算する
-    results = compute_target(args['value_target'], *return_args)
-    targets['return'], advantages['return'] = results['target_values'], results['advantages']
+    # results = compute_target(args['value_target'], *return_args)
+    # targets['return'], advantages['return'] = results['target_values'], results['advantages']
+    # print(f'<><><><><><> batch[return][0]: {batch["return"][0]}, targets[return][0]: {targets["return"][0]}, advantages[return]: {advantages["return"][0]}')
     # targets['return'], advantages['return'] = compute_target(args['value_target'], *return_args)
 
     # policy 用の advantage 計算が異なる場合，そのアルゴリズムに応じて target value を計算する
@@ -371,13 +385,16 @@ def compute_loss(batch, model, metadataset, hidden, args):
         # _, advantages['return'] = compute_target(args['policy_target'], *return_args)
         results = compute_target(args['policy_target'], *value_args)
         advantages['value'] = results['advantages']
-        results = compute_target(args['policy_target'], *return_args)
-        advantages['return'] = results['advantages']
-
+        # results = compute_target(args['policy_target'], *return_args)
+        # advantages['return'] = results['advantages']
 
     # compute policy advantage
     # IS 確率比を考慮して policy 更新に使う advantage の総計を計算する
+    # value の advantages と return の advantages を足している
+    # value は現在ほぼ outcome の直接学習
+    # return は outputs に return がないと利用できていない
     total_advantages = clipped_rhos * sum(advantages.values())
+    # print(f'<><><> total_advantages.shape: {total_advantages.shape}')
 
     # ここまでは target value, advantage の計算を行うのがメイン
     # 具体的な loss 計算は compose_losses で行う

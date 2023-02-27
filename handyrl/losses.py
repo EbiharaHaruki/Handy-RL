@@ -13,25 +13,53 @@ from collections import deque
 import torch
 
 
-def monte_carlo(values, returns, qvalues):
+def monte_carlo(values, returns):
     return {'target_values': returns, 'advantages': returns - values}
 
 
-def temporal_difference(values, returns, rewards, lmb, gamma):
+def temporal_difference(values, returns, rewards, teaminals, lmb, gamma):
     target_values = deque([returns[:, -1]])
     for i in range(values.size(1) - 2, -1, -1):
         reward = rewards[:, i] if rewards is not None else 0
-        target_values.appendleft(reward + gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
+        not_teaminals = 1.0-teaminals[:, i+1] if teaminals is not None else 1
+        target_values.appendleft(reward + not_teaminals * gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
 
     target_values = torch.stack(tuple(target_values), dim=1)
 
     return {'target_values': target_values, 'advantages': target_values - values}
 
 
-def temporal_q_difference(values, returns, rewards, lmb, gamma):
+def temporal_difference_q(values, returns, rewards, teaminals, lmb, gamma):
+    # 終端 return から
+    # multi-step reward は別の場所で計算
     target_values = deque([returns[:, -1]])
     for i in range(values.size(1) - 2, -1, -1):
+        # 計算効率の面からも target_values を後ろから計算していく
         reward = rewards[:, i] if rewards is not None else 0
+        not_teaminals = 1.0-teaminals[:, i+1] if teaminals is not None else 1
+        # TD(0), λ = 0 なら 1 step buckup のみをする
+        # TD(0), λ = 0 なら割引率を累乗された return のみを使う 
+        # target_values[0] は appendleft されていくので常に一つ後の状態の価値になる
+        target_values.appendleft(reward + not_teaminals * gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
+
+    target_values = torch.stack(tuple(target_values), dim=1)
+
+    return {
+        'target_values': target_values, 
+        'advantages': target_values - values, 
+        'qvalue': target_values, 
+        'target_advantages_for_q': target_values - values
+        }
+
+def hardmax_td_q(values, returns, rewards, teaminals, lmb, gamma):
+    # 終端 return から
+    # multi-step reward は別の場所で計算
+    target_values = deque([returns[:, -1]])
+    for i in range(values.size(1) - 2, -1, -1):
+        # 計算効率の面からも target_values を後ろから計算していく
+        reward = rewards[:, i] if rewards is not None else 0
+        not_teaminals = 1.0-teaminals[:, i+1] if teaminals is not None else 1
+        # TD(0), λ = 0 なら 1 step buckup のみをする
         target_values.appendleft(reward + gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
 
     target_values = torch.stack(tuple(target_values), dim=1)
@@ -43,11 +71,13 @@ def temporal_q_difference(values, returns, rewards, lmb, gamma):
         'target_advantages_for_q': target_values - values
         }
 
-def upgo(values, returns, rewards, lmb, gamma):
+
+def upgo(values, returns, rewards, teaminals, lmb, gamma):
     target_values = deque([returns[:, -1]])
     for i in range(values.size(1) - 2, -1, -1):
         value = values[:, i + 1]
         reward = rewards[:, i] if rewards is not None else 0
+        # 1 step buckup と TD(λ) buckup から高い方を使う
         target_values.appendleft(reward + gamma * torch.max(value, (1 - lmb) * value + lmb * target_values[0]))
 
     target_values = torch.stack(tuple(target_values), dim=1)
@@ -55,7 +85,7 @@ def upgo(values, returns, rewards, lmb, gamma):
     return {'target_values': target_values, 'advantages': target_values - values}
 
 
-def vtrace(values, returns, rewards, lmb, gamma, rhos, cs):
+def vtrace(values, returns, rewards, teaminals, lmb, gamma, rhos, cs):
     rewards = rewards if rewards is not None else 0
     values_t_plus_1 = torch.cat([values[:, 1:], returns[:, -1:]], dim=1)
     deltas = rhos * (rewards + gamma * values_t_plus_1 - values)
@@ -73,7 +103,7 @@ def vtrace(values, returns, rewards, lmb, gamma, rhos, cs):
     return {'target_values': vs, 'advantages': advantages}
 
 
-def compute_target(algorithm, values, returns, rewards, lmb, gamma, rhos, cs):
+def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, rhos, cs, qavlues=None):
     if values is None:
         # In the absence of a baseline, Monte Carlo returns are used.
         return {'target_values': returns, 'advantages': returns}
@@ -81,12 +111,12 @@ def compute_target(algorithm, values, returns, rewards, lmb, gamma, rhos, cs):
     if algorithm == 'MC':
         return monte_carlo(values, returns)
     elif algorithm == 'TD':
-        return temporal_difference(values, returns, rewards, lmb, gamma)
+        return temporal_difference(values, returns, rewards, teaminals, lmb, gamma)
     elif algorithm == 'TD-Q':
-        return temporal_q_difference(values, returns, rewards, lmb, gamma)
+        return temporal_difference_q(values, returns, rewards, teaminals, lmb, gamma)
     elif algorithm == 'UPGO':
-        return upgo(values, returns, rewards, lmb, gamma)
+        return upgo(values, returns, rewards, teaminals, lmb, gamma)
     elif algorithm == 'VTRACE':
-        return vtrace(values, returns, rewards, lmb, gamma, rhos, cs)
+        return vtrace(values, returns, rewards, teaminals, lmb, gamma, rhos, cs)
     else:
         print('No algorithm named %s' % algorithm)
