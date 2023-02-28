@@ -55,11 +55,12 @@ def print_outputs(env, prob, v):
 
 
 class Agent:
-    def __init__(self, model, metadataset, role='e', temperature=None, observation=True):
+    def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args=None):
         # model might be a neural net, or some planning algorithm such as game tree search
         self.model = model
         self.metadataset = metadataset
         self.hidden = None
+        self.role = role
         self.generating = (role == 'g')
         if (temperature is None) and (not self.generating): 
             # eval 中かつ 温度 param が入力されていない時
@@ -124,9 +125,47 @@ class Agent:
         return v
 
 
+def greedy_from_value(actions, value, dummy, generating=True):
+    ap_list = sorted([(a, value[a]) for a in actions], key=lambda x: -x[1])
+    action = ap_list[0][0]
+    selected_prob = 1.0
+    return action, selected_prob
+
+def e_greedy_from_value(actions, value, epsilon, generating=True):
+    e = epsilon[0] if generating else 0.0
+    if e > np.random.rand():
+        action = random.choices(np.arange(len(actions)))[0]
+        selected_prob = e/len(actions)
+    else:
+        ap_list = sorted([(a, value[a]) for a in actions], key=lambda x: -x[1])
+        action = ap_list[0][0]
+        selected_prob = 1.0 - e + e/len(actions)
+    return action, selected_prob
+
+def softmax_from_value(actions, value, temperature, generating=True):
+    t = temperature[0]
+    if generating or t != 0.0:
+        policy = softmax(value) if t is None else softmax(value / t)
+        action = random.choices(np.arange(len(actions)), weights=policy)[0]
+        selected_prob = policy[action]
+    else:
+        ap_list = sorted([(a, value[a]) for a in actions], key=lambda x: -x[1])
+        action = ap_list[0][0]
+        selected_prob = 1.0
+    return action, selected_prob
+
 class QAgent(Agent):
-    def __init__(self, model, metadataset, role='e', temperature=None, observation=True):
-        super().__init__(model, metadataset, role, temperature, observation)
+    def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args={'meta_policy': None}):
+        super().__init__(model, metadataset, role, temperature, observation, args)
+        if args['meta_policy'] == 'e-greedy':
+            self.meta_policy = e_greedy_from_value
+        elif args['meta_policy'] == 'softmax':
+            self.meta_policy = softmax_from_value
+        else:
+            self.meta_policy = greedy_from_value
+        self.param = args.get('param', None)
+        if self.param is None and not self.generating:
+            self.param = [0.0]
 
     def action(self, env, player, show=False, action_log=None):
         # learning = (action_log is not None)
@@ -143,9 +182,11 @@ class QAgent(Agent):
         action_mask[actions] = 0
         q = q - action_mask
 
-        ap_list = sorted([(a, q[a]) for a in actions], key=lambda x: -x[1])
-        action = ap_list[0][0]
-        selected_prob = 1.0
+        # ap_list = sorted([(a, q[a]) for a in actions], key=lambda x: -x[1])
+        # action = ap_list[0][0]
+        # selected_prob = 1.0
+        action, selected_prob = self.meta_policy(actions, q, self.param, self.generating)
+
         if show:
             print_outputs(env, softmax(p), v)
 
@@ -161,8 +202,8 @@ class QAgent(Agent):
 
 
 class RSRSAgent(Agent):
-    def __init__(self, model, metadataset, role='e', temperature=None, observation=True):
-        super().__init__(model, metadataset, role, temperature, observation)
+    def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args=None):
+        super().__init__(model, metadataset, role, temperature, observation, args)
         self.metadata_keys = ['latent', 'action']
         # TODO なぜか偶に metadata の key が player になってる問題解決
         self.global_aleph = metadataset.get('global_aleph', 1.0)
@@ -175,8 +216,14 @@ class RSRSAgent(Agent):
     def action(self, env, player, show=False, action_log=None):
         # learning = (action_log is not None)
         global_aleph = self.global_aleph
-        global_v = action_log['global_v'][player] if action_log is not None else -1000.0
-        global_delta = np.amax([global_aleph - global_v, 0.0])
+        if action_log is not None:
+            global_v = action_log['global_v'][player]
+            global_delta = np.amax([global_aleph - global_v, 0.0])
+        else:
+            global_v = None
+            global_delta = 0.0
+        # if self.role == 'g':
+            # print(f'<><><> global_delta: {global_delta}, global_v: {global_v}, role: {self.role}')
         obs = env.observation(player)
         outputs = self.plan(obs) # reccurent model 対応
         actions = env.legal_actions(player)

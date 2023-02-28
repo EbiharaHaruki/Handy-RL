@@ -44,7 +44,7 @@ class Generator:
             return None
         for player in self.env.players():
             # hidden[player] = models[player].init_hidden() # Reccurent model のための隠れ状態
-            agents[player] = agent_class(self.args['agent'])(models[player], metadataset[player], role='g')
+            agents[player] = agent_class(self.args['agent'])(models[player], metadataset[player], role='g', args=self.args['agent'])
             metadata_keys += agents[player].reset(self.env) ## init_hidden() も行われる
             if hasattr(self, 'global_v'):
                 metadataset[player]['global_v'] = self.global_v[player]
@@ -166,7 +166,8 @@ class Generator:
                 self.lastidx[player] = (self.lastidx[player] + 1) if l >= (self.size - 1) else 0
                 if self.num[player] == self.size:
                     self.num[player] += 1
-                    self.global_v[player] = self.global_returns[player][0:self.num[player]].mean()
+                    # self.global_v[player] = self.global_returns[player][0:self.num[player]].mean()
+                    self.global_v[player] = np.max(self.global_returns[player][0:self.num[player]])
                 else:
                     # self.global_v[player] = self.global_returns[player].mean()
                     self.global_v[player] = np.amax(self.global_returns[player])

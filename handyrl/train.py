@@ -261,7 +261,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     return losses, dcnt
 
 
-def compute_loss(batch, model, metadataset, hidden, args):
+def compute_loss(batch, model, target_model, metadataset, hidden, args):
     # target 計算に必要な forward 計算を行う
     outputs = forward_prediction(model, hidden, batch, args)
     # learning_q = ('qvalues' in outputs)
@@ -450,7 +450,7 @@ class Batcher:
 
 
 class Trainer:
-    def __init__(self, args, model, metadataset):
+    def __init__(self, args, model, target_model, metadataset):
         self.episodes = deque()
         self.args = args
         self.gpu = torch.cuda.device_count()
@@ -470,6 +470,21 @@ class Trainer:
         self.trained_model = self.wrapped_model
         if self.gpu > 1:
             self.trained_model = nn.DataParallel(self.wrapped_model)
+        
+        if target_model is not None:
+            self.t_model = target_model
+            self.wrapped_t_model = ModelWrapper(self.t_model)
+            self.target_model = self.wrapped_t_model
+            if self.gpu > 1:
+                self.t_model = nn.DataParallel(self.wrapped_t_model)
+            self.target_update = self.args['target_model'].get('update', None)
+            self.target_param = self.args['target_model'].get('param', None)
+        else:
+            self.target_model = None
+            self.wrapped_t_model = None
+            self.target_model = None
+            self.target_update = None
+            self.target_param = None
 
     def update(self):
         self.update_flag = True
@@ -497,11 +512,20 @@ class Trainer:
                 hidden = to_gpu(hidden)
 
             # loss の計算
-            losses, dcnt = compute_loss(batch, self.trained_model, self.metadataset, hidden, self.args)
+            losses, dcnt = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
             self.optimizer.zero_grad()
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
             self.optimizer.step()
+
+            if self.target_update == 'soft':
+                tau = self.target_param
+                with torch.no_grad():
+                    for target_param, trained_param in zip(self.t_model.parameters(), self.model.parameters()):
+                        target_param.data.copy_(tau * trained_param.data + (1.0- tau) * target_param.data)
+            elif self.target_update == 'hard':
+                with torch.no_grad():
+                    target_param.data.copy_(trained_param.data)
 
             batch_cnt += 1
             data_cnt += dcnt
@@ -555,6 +579,7 @@ class Learner:
         self.model = net if net is not None else self.env.net(args['agent']['type'])
         if self.model_epoch > 0:
             self.model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
+        # used target_model
         if args['target_model'].get('use', False):
             self.target_model = net if net is not None else self.env.net(args['agent']['type'])
             if self.model_epoch > 0:
@@ -585,7 +610,7 @@ class Learner:
         self.worker = WorkerServer(args) if remote else WorkerCluster(args)
 
         # thread connection
-        self.trainer = Trainer(args, self.model, self.metadataset)
+        self.trainer = Trainer(args, self.model, self.target_model, self.metadataset)
 
         # episode count
         self.uns_bool = env_args['param']['uns_setting']['uns_bool'] # 非定常のフラグ
