@@ -37,7 +37,7 @@ class Generator:
         return_metadata = []
         # hidden = {}
         agents = {}
-        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'reward', 'return', 'terminal']
+        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'qvalue', 'reward', 'return', 'terminal']
         metadata_keys = []
 
         if self.env.reset():
@@ -160,7 +160,6 @@ class Generator:
                 ret = (m['reward'][player] or 0) + self.args['gamma'] * ret
                 g_ret = (m['reward'][player] or 0) + 1.0 * g_ret
                 moments[i]['return'][player] = ret
-                # print(f'<><><> i: {i}, ret: {ret}, ')
             if hasattr(self, 'global_returns'):
                 l = self.lastidx[player]
                 self.global_returns[player][l] = g_ret

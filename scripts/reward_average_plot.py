@@ -98,6 +98,7 @@ mean =  mean / a #平均を取る
 averaged_reward_lists = {"=" : mean} #dict型に変換
 print("log_average = ",averaged_reward_lists) #指定した個数のファイルの平均勝率を表示
 
+np.savetxt(path + sys.argv[2] + '.csv', averaged_reward_lists['='], delimiter=',', fmt='%.5f')
 
 opponents_ = list(averaged_reward_lists.keys())
 opponents = sorted(opponents_, key=lambda o: averaged_reward_lists[o][-1], reverse=True)

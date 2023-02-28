@@ -26,7 +26,7 @@ import psutil
 from .environment import prepare_env, make_env
 from .util import map_r, bimap_r, trimap_r, rotate, softmax
 from .model import to_torch, to_gpu, ModelWrapper
-from .losses import compute_target
+from .losses import compute_target, compute_rnd
 from .connection import MultiProcessJobExecutor
 from .worker import WorkerCluster, WorkerServer
 from .metadata import KNN, feed_knn
@@ -232,6 +232,10 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         # value の二乗和誤差
         losses['q'] = ((outputs['selected_qvalue'] - targets['selected_qvalue']) ** 2).mul(omasks).sum() / 2
 
+    # rnd embed state loss
+    if 'loss_rnd' in outputs:
+        losses['rnd'] = outputs['loss_rnd'].mul(tmasks).sum()
+
     if 'confidence' in outputs:
     # 信頼度の cross_entropy loss
         losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
@@ -249,7 +253,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     losses['ent'] = entropy.sum()
 
     # value と policy の loss の計算
-    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('c', 0)
+    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0) + losses.get('c', 0)
     # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
@@ -275,8 +279,6 @@ def compute_loss(batch, model, metadataset, hidden, args):
     # qvalue = outputs['qvalue']
     # advantage_for_q = outputs['advantage_for_q']
     # policy = outputs['policy']
-    # print(f'V: {vvalue[0]}, Q: {qvalue[0]}, policy: {policy[0]}')
-    # print(f'A: {advantage_for_q[0]}')
     # 挙動方策の確率を log したやつ 
     log_selected_b_policies = torch.log(torch.clamp(batch['selected_prob'], 1e-16, 1)) * emasks
     # 推定方策の確率を log したやつ 
@@ -286,17 +288,7 @@ def compute_loss(batch, model, metadataset, hidden, args):
     # action_num = outputs['policy'].shape[-1]
     # action_vectors = F.one_hot(actions, num_classes=action_num).squeeze(dim=-2)
     # selected_action_masked_t_policies = selected_t_policies.mul(action_vectors)
-    # print(f'<><><> t_policies: {t_policies[0]}')
-    # print(f'       t_policies shape: {t_policies.shape}')
-    # print(f'<><><> actions: {actions[0]}')
-    # print(f'       actions shape: {actions.shape}')
-    # print(f'       action_num: {action_num}')
-    # print(f'<><><> action_vectors: {action_vectors[0]}')
-    # print(f'       action_vectors shape: {action_vectors.shape}')
-    # print(f'<><><> selected_t_policies: {selected_t_policies[0]}')
-    # print(f'       selected_t_policies shape: {selected_t_policies.shape}')
-    # print(f'<><><> selected_action_masked_t_policie: {selected_action_masked_t_policies[0]}')
-    # print(f'       selected_action_masked_t_policie shape: {selected_action_masked_t_policies.shape}')
+
 
     # thresholds of importance sampling
     # log の引き算（上と合わせて方策確率同士の割り算を引き算に変換）
@@ -329,8 +321,11 @@ def compute_loss(batch, model, metadataset, hidden, args):
     #         advantages_for_q_nograd = (advantages_for_q_nograd + advantages_for_q_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
     #     outputs_nograd['advantage_for_q'] = advantage_for_q_nograd * emasks + batch['outcome'] * (1 - emasks)
 
+    # compute targets and advantage
+    targets = {}
+    advantages = {}
+
     if 'qvalue' in outputs_nograd:
-        # qvalues_nograd = outputs_nograd['qvalue'].gather(-1, actions)
         # # qvalues_nograd = qvalues_nograd.mul(selected_action_mask)
         # if args['turn_based_training'] and qvalues_nograd.size(2) == 2:  # two player zerosum game
         #     # 2 人対戦ゲームで相手から見た value なので負に符号反転している
@@ -339,10 +334,18 @@ def compute_loss(batch, model, metadataset, hidden, args):
         #     qvalues_nograd = (qvalues_nograd + qvalues_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
         # outputs_nograd['qvalue'] = qvalues_nograd * emasks + batch['outcome'] * (1 - emasks)
         outputs['selected_qvalue'] = outputs['qvalue'].gather(-1, actions) * emasks
+        targets['qvalue'] = outputs_nograd['qvalue'] * emasks
 
-    # compute targets and advantage
-    targets = {}
-    advantages = {}
+    if 'embed_state' in outputs_nograd:
+        targets['embed_state'] = outputs_nograd['embed_state_fix'].detach() * emasks
+        outputs['loss_rnd'] = compute_rnd(outputs['embed_state'], targets['embed_state'])
+        # print(f'<><><> outputs[loss_rnd].shape: {outputs["loss_rnd"].shape}')
+        intrinsic_reward = outputs['loss_rnd'].detach().sum(-1, keepdim=True)
+        # print(f'<><><> intrinsic_reward.shape: {intrinsic_reward.shape}')
+        if 'bonus' in batch:
+            outputs['bonus'] = outputs['bonus'] + intrinsic_reward
+        else:
+            outputs['bonus'] = intrinsic_reward
 
     if 'confidence' in outputs:
         # 信頼度の学習
@@ -362,7 +365,7 @@ def compute_loss(batch, model, metadataset, hidden, args):
     # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
     # 割引率付き Return からの学習を定義
     # model forward 計算の value, 割引率付き return, reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
-    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs
+    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs, targets.get('qvalue', None), outputs.get('bonus', None)
     # model forward 計算の return, 生の return, 生の reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
     # return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
 
@@ -376,7 +379,6 @@ def compute_loss(batch, model, metadataset, hidden, args):
     # アルゴリズムに応じて target return を計算する
     # results = compute_target(args['value_target'], *return_args)
     # targets['return'], advantages['return'] = results['target_values'], results['advantages']
-    # print(f'<><><><><><> batch[return][0]: {batch["return"][0]}, targets[return][0]: {targets["return"][0]}, advantages[return]: {advantages["return"][0]}')
     # targets['return'], advantages['return'] = compute_target(args['value_target'], *return_args)
 
     # policy 用の advantage 計算が異なる場合，そのアルゴリズムに応じて target value を計算する
@@ -394,7 +396,6 @@ def compute_loss(batch, model, metadataset, hidden, args):
     # value は現在ほぼ outcome の直接学習
     # return は outputs に return がないと利用できていない
     total_advantages = clipped_rhos * sum(advantages.values())
-    # print(f'<><><> total_advantages.shape: {total_advantages.shape}')
 
     # ここまでは target value, advantage の計算を行うのがメイン
     # 具体的な loss 計算は compose_losses で行う
@@ -554,6 +555,12 @@ class Learner:
         self.model = net if net is not None else self.env.net(args['agent']['type'])
         if self.model_epoch > 0:
             self.model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
+        if args['target_model'].get('use', False):
+            self.target_model = net if net is not None else self.env.net(args['agent']['type'])
+            if self.model_epoch > 0:
+                self.target_model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
+        else: 
+            self.target_model = None
 
         # generated datum
         self.generation_results = {}

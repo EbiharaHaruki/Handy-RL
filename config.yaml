@@ -32,15 +32,15 @@ env_args:
 train_args:
     turn_based_training: False
     observation: False
-    return_buckup: False
+    return_buckup: False # QL or AC or SAC => True, PG => False
     gamma: 0.9
-    forward_steps: 8
+    forward_steps: 1 # QL => 2
     burn_in_steps: 0  # for RNNs
     compress_steps: 4
     entropy_regularization: 0
     entropy_regularization_decay: 1.0
     target_model: 
-        num: 0 # 0, 1, Twin Delayed: 2
+        use: False
         update: 'soft' # 'soft', 'hard'
         update_param: 0.001
     update_episodes: 500
@@ -52,23 +52,25 @@ train_args:
     eval_rate: 0.1
     worker:
         num_parallel: 5
-    lambda: 0.7
-    policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'MC'
-    value_target: 'TD' # 'VTRACE' 'TD' 'MC'
+    lambda: 1.0
+    policy_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    value_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
     agent: 
-        type: 'BASE' # 'BASE', 'RS'
+        type: 'RSRS' # 'BASE' 'QL' 'RSRS' 'RND' 'QL-RND' 'RSRS-RND'
+        # meta_algorithm: 'e-greedy'
+        # param: 0.1
     metadata:
         name: []
-        # name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
         knn:
             size: 10000
             k: 64
         regional_weight: 0.5
-        global_aleph: 1.0
+        global_aleph: 100.0
         global_return_size: 100
 
 worker_args:

@@ -88,9 +88,9 @@ class Worker:
                     metadata_pool[metadata_id] = self.latest_metadata[1]
                 else:
                     # get metadata from server
-                    st = time.time()
+                    # st = time.time()
                     metadata = send_recv(self.conn, ('metadata', metadata_id))
-                    print(f'<><><> send_recv time in worker.py: {(time.time() - st)*1000:.8f}')
+                    # print(f'<><><> send_recv time in worker.py: {(time.time() - st)*1000:.8f}')
                     metadata = pickle.loads(metadata)
                     metadata_pool[metadata_id] = metadata
                     # update latest metadata

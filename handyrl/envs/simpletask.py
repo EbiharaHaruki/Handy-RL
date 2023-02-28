@@ -70,8 +70,37 @@ class SimpleModel(nn.Module):
         h = F.relu(self.fc1(x))
         h_p = self.head_p(h)
         h_v = self.head_v(h)
-        return {'policy': h_p, 'value': torch.tanh(h_v)}
+        # return {'policy': h_p, 'value': torch.tanh(h_v)}
+        return {'policy': h_p, 'value': h_v}
 
+
+# Q-Learning
+class PVQModel(nn.Module):
+    def __init__(self, hyperplane_n):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.head_v = nn.Linear(nn_size, 1) # value
+        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_b = nn.Linear(nn_size, 1) # ベースライン
+
+    def forward(self, x, hidden=None):
+        h_l = self.fc1(x)
+        h = F.relu(h_l)
+        h_p = self.head_p(h)
+        h_v = self.head_v(h)
+        h_a = self.head_a(h)
+        h_b = self.head_b(h)
+        h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
+        return {
+            'policy': h_p, 'value': h_v, 
+            'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l}
+
+
+# RSRS 
 class PVQCModel(nn.Module):
     def __init__(self, hyperplane_n):
         super().__init__()
@@ -97,6 +126,117 @@ class PVQCModel(nn.Module):
         return {
             'policy': h_p, 'value': h_v, 
             'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l, 'confidence': h_c}
+
+
+# PG + RND
+class SimpleRNDModel(nn.Module):
+    def __init__(self, hyperplane_n):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
+        self.head_v = nn.Linear(nn_size, 1)
+        # RND 用
+        rnd_size = 16
+        ## 学習
+        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_rnd = nn.Linear(nn_size, rnd_size)
+        ## 固定
+        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
+
+    def forward(self, x, hidden=None):
+        h = F.relu(self.fc1(x))
+        h_p = self.head_p(h)
+        h_v = self.head_v(h)
+        h_rnd = F.relu(self.fc_rnd(x))
+        h_rnd = self.head_rnd(h_rnd)
+        h_rnd_fix = F.relu(self.fc_rnd_fix(x))
+        h_rnd_fix = self.head_rnd_fix(h_rnd_fix)
+        # return {'policy': h_p, 'value': torch.tanh(h_v), 'embed_state': h_rnd, 'embed_state_fix': h_fix}
+        return {'policy': h_p, 'value': h_v, 'embed_state': h_rnd, 'embed_state_fix': h_rnd_fix}
+
+
+# Q-Learning + RND
+class PVQRNDModel(nn.Module):
+    def __init__(self, hyperplane_n):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.head_v = nn.Linear(nn_size, 1) # value
+        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_b = nn.Linear(nn_size, 1) # ベースライン
+        # RND 用
+        rnd_size = 16
+        ## 学習
+        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_rnd = nn.Linear(nn_size, rnd_size)
+        ## 固定
+        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
+
+    def forward(self, x, hidden=None):
+        h_l = self.fc1(x)
+        h = F.relu(h_l)
+        h_p = self.head_p(h)
+        h_v = self.head_v(h)
+        h_a = self.head_a(h)
+        h_b = self.head_b(h)
+        h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
+        h_rnd = F.relu(self.fc_rnd(x))
+        h_rnd = self.head_rnd(h_rnd)
+        h_rnd_fix = F.relu(self.fc_rnd_fix(x))
+        h_rnd_fix = self.head_rnd_fix(h_rnd_fix)
+        return {
+            'policy': h_p, 'value': h_v, 
+            'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l,
+            'embed_state': h_rnd, 'embed_state_fix': h_rnd_fix}
+
+
+# RSRS + RND
+class PVQCRNDModel(nn.Module):
+    def __init__(self, hyperplane_n):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.head_v = nn.Linear(nn_size, 1) # value
+        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_b = nn.Linear(nn_size, 1) # ベースライン
+        self.head_c = nn.Linear(nn_size, 2**hyperplane_n) # 信頼度(confidence rate)
+        # RND 用
+        rnd_size = 16
+        ## 学習
+        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_rnd = nn.Linear(nn_size, rnd_size)
+        ## 固定
+        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
+
+    def forward(self, x, hidden=None):
+        h_l = self.fc1(x)
+        h = F.relu(h_l)
+        h_p = self.head_p(h)
+        h_v = self.head_v(h)
+        h_a = self.head_a(h)
+        h_b = self.head_b(h)
+        h_q = h_b + h_a - h_a.sum(-1).unsqueeze(-1)
+        h_c = self.head_c(h)
+        h_rnd = F.relu(self.fc_rnd(x))
+        h_rnd = self.head_rnd(h_rnd)
+        h_rnd_fix = F.relu(self.fc_rnd_fix(x))
+        h_rnd_fix = self.head_rnd_fix(h_rnd_fix)
+        return {
+            'policy': h_p, 'value': h_v, 
+            'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l, 'confidence': h_c,
+            'embed_state': h_rnd, 'embed_state_fix': h_rnd_fix}
 
 
 class CountBasedModel(nn.Module):
@@ -409,9 +549,18 @@ class Environment(BaseEnvironment):
 
     def net(self, agent_type):
         # 切り替え可能
-        print(f'<><><> agent_type: {agent_type}')
-        if agent_type == 'RS':
+        if agent_type == 'BASE':
+            return SimpleModel(self.hyperplane_n)
+        elif agent_type == 'RND':
+            return SimpleRNDModel(self.hyperplane_n)
+        elif agent_type == 'QL':
+            return PVQModel(self.hyperplane_n)
+        elif agent_type == 'QL-RND':
+            return PVQRNDModel(self.hyperplane_n)
+        elif agent_type == 'RSRS':
             return PVQCModel(self.hyperplane_n)
+        elif agent_type == 'RSRS-RND':
+            return PVQCRNDModel(self.hyperplane_n)
         else:
             return SimpleModel(self.hyperplane_n)
             # return CountBasedModel(self.hyperplane_n)

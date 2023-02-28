@@ -12,10 +12,12 @@ import numpy as np
 from .util import softmax
 
 def agent_class(args):
-    if args['type'] == 'BASE':
+    if args['type'] == 'BASE' or args['type'] == 'RND':
         return Agent
-    elif args['type'] == 'RS':
-        return RSAgent
+    elif args['type'] == 'QL' or args['type'] == 'QL-RND':
+        return QAgent
+    elif args['type'] == 'RSRS' or args['type'] == 'RSRS-RND':
+        return RSRSAgent
     else:
         print('No agent named %s' % args['agent'])
 
@@ -121,7 +123,44 @@ class Agent:
                 action_log['moment']['value'][player] = v
         return v
 
-class RSAgent(Agent):
+
+class QAgent(Agent):
+    def __init__(self, model, metadataset, role='e', temperature=None, observation=True):
+        super().__init__(model, metadataset, role, temperature, observation)
+
+    def action(self, env, player, show=False, action_log=None):
+        # learning = (action_log is not None)
+        obs = env.observation(player)
+        outputs = self.plan(obs) # reccurent model 対応
+        actions = env.legal_actions(player)
+        v = outputs.get('value', None)
+        p = outputs['policy']
+        try:
+            q = outputs['qvalue']
+        except KeyError:
+            sys.exit("SystemExit: Q value is None")
+        action_mask = np.ones_like(p) * 1e32
+        action_mask[actions] = 0
+        q = q - action_mask
+
+        ap_list = sorted([(a, q[a]) for a in actions], key=lambda x: -x[1])
+        action = ap_list[0][0]
+        selected_prob = 1.0
+        if show:
+            print_outputs(env, softmax(p), v)
+
+        # action log は action 決定過程の情報
+        if self.generating:
+            action_log['moment']['observation'][player] = obs
+            action_log['moment']['value'][player] = v
+            action_log['moment']['qvalue'][player] = q
+            action_log['moment']['selected_prob'][player] = selected_prob
+            action_log['moment']['action_mask'][player] = action_mask
+
+        return action
+
+
+class RSRSAgent(Agent):
     def __init__(self, model, metadataset, role='e', temperature=None, observation=True):
         super().__init__(model, metadataset, role, temperature, observation)
         self.metadata_keys = ['latent', 'action']
@@ -153,8 +192,6 @@ class RSAgent(Agent):
             c_reg = None
         c = c_nn if c_reg is None else self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
 
-        # print(f'<><><> c_nn: {c_nn}')
-        # print(f'<><><> c_reg: {c_reg}')
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
             fix_aleph = np.amax(q) + sys.float_info.epsilon
@@ -173,22 +210,11 @@ class RSAgent(Agent):
         if np.any(rsrs == 0.0):
             rsrs += sys.float_info.epsilon
         p = np.log(rsrs)
-        # print(f'<><><> p_nn: {p_nn}')
-        # print(f'<><><> p_rsrs: {p}')
-        # print(f'<><><> action_mask: {np.ones_like(p)}')
-        # print(f'<><><> p_rsrs: {p/p.sum()}')
         action_mask = np.ones_like(p) * 1e32
         action_mask[actions] = 0
         p = p - action_mask
         p_srs = softmax(p)
         entropy_srs = -(p_srs * np.ma.log(p_srs)/np.ma.log(len(p))).sum()
-        # print(f'<><><> entropy_srs: {entropy_srs}')
-        # print(f'<><><> global_aleph: {global_aleph}')
-        # print(f'<><><> global_v: {global_v}')
-        # print(f'<><><> global_delta: {global_delta}')
-        # print(f'<><><> aleph: {aleph}')
-        # print(f'<><><> Q-value: {q}')
-        # print(f'<><><> delta: {delta}')
 
         if self.generating or self.temperature != 0.0:
             policy = softmax(p) if self.temperature is None else softmax(p / self.temperature)
