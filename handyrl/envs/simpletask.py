@@ -553,9 +553,9 @@ class Environment(BaseEnvironment):
             return SimpleModel(self.hyperplane_n)
         elif agent_type == 'RND':
             return SimpleRNDModel(self.hyperplane_n)
-        elif agent_type == 'QL':
+        elif agent_type == 'QL' or agent_type == 'SAC':
             return PVQModel(self.hyperplane_n)
-        elif agent_type == 'QL-RND':
+        elif agent_type == 'QL-RND' or agent_type == 'SAC-RND':
             return PVQRNDModel(self.hyperplane_n)
         elif agent_type == 'RSRS':
             return PVQCModel(self.hyperplane_n)

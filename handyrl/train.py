@@ -238,12 +238,18 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
 
     if 'confidence' in outputs:
     # 信頼度の cross_entropy loss
-        losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
+        b_size = outputs["confidence"].shape[0]
+        s_size = outputs["confidence"].shape[1]
+        a_size = outputs["confidence"].shape[-1]
+        o_c = torch.reshape(outputs["confidence"], (b_size * s_size, a_size))
+        t_c = torch.reshape(targets["confidence"], (b_size * s_size, 1)).squeeze_()
+        # losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
+        losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, s_size, 1, 1)).mul(omasks).sum()
         entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:
-            p_c_reg = metadataset['knn'].regional_nn(targets['latent'][0,:].squeeze())
+            p_c_reg = metadataset['knn'].regional_nn(targets['latent'][0,0,:].squeeze())
             # p_c_reg = metadataset['knn'].regional_nn(targets['latent'].squeeze())
             entropy_c_reg = -(p_c_reg * np.ma.log(p_c_reg)).sum()
             losses['ent_c_reg'] = entropy_c_reg
@@ -645,7 +651,7 @@ class Learner:
                 n, r, r2 = self.generation_results.get(model_id, (0, 0, 0))
                 self.generation_results[model_id] = n + 1, r + outcome, r2 + outcome ** 2
             self.num_returned_episodes += 1
-            if self.num_returned_episodes % 100 == 0:
+            if self.num_returned_episodes % 50 == 0:
                 print(self.num_returned_episodes, end=' ', flush=True)
             if self.uns_bool:
                 if self.num_returned_episodes % self.uns_num == 0:
