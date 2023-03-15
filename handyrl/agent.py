@@ -18,6 +18,8 @@ def agent_class(args):
         return QAgent
     elif args['type'] == 'RSRS' or args['type'] == 'RSRS-RND':
         return RSRSAgent
+    # elif args['type'] == 'SRS' or args['type'] == 'SRS-RND':
+    #     return SRSAgent
     else:
         print('No agent named %s' % args['agent'])
 
@@ -235,9 +237,9 @@ class RSRSAgent(Agent):
         latent = outputs['latent']
         if 'knn' in self.metadataset:
             c_reg = self.metadataset['knn'].regional_nn(latent)
+            c = self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
         else:
-            c_reg = None
-        c = c_nn if c_reg is None else self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
+            c = c_nn 
 
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
@@ -286,8 +288,10 @@ class RSRSAgent(Agent):
             action_log['moment']['action_mask'][player] = action_mask
             action_log['metadata']['latent'][player] = latent
             action_log['metadata']['action'][player] = one_hot_action
+            # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action
+
 
 
 class EnsembleAgent(Agent):

@@ -6,9 +6,9 @@ env_args:
     # env: 'handyrl.envs.parallel_tictactoe'  # specify by path
     env: 'simpletask'
     param:
-        depth: 6 # 深度(変更可能)
-        hyperplane_n: 3 # 超平面次元数(変更可能)
-        treasure: [[5, 2, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        depth: 32 # 深度(変更可能)
+        hyperplane_n: 1 # 超平面次元数(変更可能)
+        treasure: [[31, 12]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: [1] # 報酬の値(変更可能)
         other_reward: 0 # treasure以外に到達した時の報酬設定
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
@@ -40,14 +40,15 @@ train_args:
     entropy_regularization: 0.001
     entropy_regularization_decay: 1.0
     target_model: 
-        use: False # It is not essential in distributed reinforcement learning.
-        # update: 'soft' # 'soft', 'hard'
-        # update_param: 0.001
-    update_episodes: 500
+        use: True # It is not essential in distributed reinforcement learning.
+        update: 'soft' # 'soft', 'hard'
+        update_param: 0.01
+    update_episodes: 100
     batch_size: 256
     minimum_episodes: 10000
     maximum_episodes: 20000
-    epochs: 1000
+    epochs: 5000
+    saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
     worker:
@@ -66,14 +67,15 @@ train_args:
     metadata:
         # name: []
         # name: ['rnd_weight'] # Unimplemented
-        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
-        knn:
-            size: 5000
-            k: 32
-        regional_weight: 0.5
+        name: ['global_aleph', 'global_return_size'] # knn disuse
+        # name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        # knn:
+        #     size: 5000
+        #     k: 32
+        # regional_weight: 0.5
         global_aleph: 1.0
         global_return_size: 100
-        # rnd_weight: 2.0 # Unimplemented
+        # rnd_weight: 2.0 # TOGO: Unimplemented
 
 worker_args:
     server_address: '192.168.11.24'
