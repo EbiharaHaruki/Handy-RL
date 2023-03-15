@@ -516,8 +516,10 @@ class Trainer:
                     for target_param, trained_param in zip(self.t_model.parameters(), self.model.parameters()):
                         target_param.data.copy_(tau * trained_param.data + (1.0- tau) * target_param.data)
             elif self.target_update == 'hard':
-                with torch.no_grad():
-                    target_param.data.copy_(trained_param.data)
+                interval_episodes = self.target_param
+                if self.steps % interval_episodes == 0:
+                    with torch.no_grad():
+                        target_param.data.copy_(trained_param.data)
 
             batch_cnt += 1
             data_cnt += dcnt
@@ -623,7 +625,7 @@ class Learner:
         self.model_epoch += 1
         self.model = model
         os.makedirs('models', exist_ok=True)
-        if self.model_epoch % self.saving_interval_epochs == 0:
+        if self.model_epoch % self.saving_interval_epochs == 0 or self.saving_interval_epochs <= 0:
             torch.save(model.state_dict(), self.model_path(self.model_epoch))
             torch.save(model.state_dict(), self.latest_model_path())
 

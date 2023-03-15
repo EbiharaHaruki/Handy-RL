@@ -40,7 +40,7 @@ train_args:
     entropy_regularization: 0.001
     entropy_regularization_decay: 1.0
     target_model: 
-        use: True # It is not essential in distributed reinforcement learning.
+        use: True 
         update: 'soft' # 'soft', 'hard'
         update_param: 0.01
     update_episodes: 100

@@ -6,3 +6,6 @@ psutil
 onnxruntime
 matplotlib
 seaborn
+gym
+faiss-cpu
+# faiss-gpu
