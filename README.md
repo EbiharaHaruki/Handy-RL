@@ -97,6 +97,7 @@ python main.py --eval models/1.pth 100 4
 - Value は終端までの方策を利用して学習する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+
 以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: False
@@ -118,6 +119,7 @@ python main.py --eval models/1.pth 100 4
     - Q 値を使って如何なる方策を作るかは指定する必要がある
 - Max oparator を用いて Q 値更新をする Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+
 以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
@@ -142,6 +144,7 @@ python main.py --eval models/1.pth 100 4
 - 学習には軌跡の次状態を利用する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+
 以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
@@ -164,6 +167,7 @@ python main.py --eval models/1.pth 100 4
 - 終端までの方策を利用して学習する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+
 以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: False
@@ -196,6 +200,7 @@ python main.py --eval models/1.pth 100 4
 - Value には状態価値関数 V 値も行動価値関数 Q 値も用いる
 - Max oparator を用いて Q 値更新をする Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+
 以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
@@ -229,6 +234,7 @@ python main.py --eval models/1.pth 100 4
 - 学習には軌跡の次状態を利用する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+
 以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
