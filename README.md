@@ -85,7 +85,10 @@ python main.py --eval models/1.pth 100 4
 . bash_scripts/experiment_reward.sh 10
 ```
 
-## アルゴリズムの指定方法のコツ
+## アルゴリズムの指定方法
+使いたいアルゴリズムに応じて `config.yaml` の該当箇所を変更の所定の箇所を変更する．
+
+応用性が高いゆえに変更箇所が多いので以下にパターンを記載する．
 
 ### Policy-Gradieng 系アルゴリズム
 以下の特徴を持つアルゴリズムを指定する場合
@@ -94,6 +97,7 @@ python main.py --eval models/1.pth 100 4
 - Value は終端までの方策を利用して学習する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: False
     forward_steps: 1 以上
@@ -114,6 +118,7 @@ python main.py --eval models/1.pth 100 4
     - Q 値を使って如何なる方策を作るかは指定する必要がある
 - Max oparator を用いて Q 値更新をする Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
     forward_steps: 2 # 現在は Q(λ) に対応していないが next state を見る都合上 1 では使えない
@@ -137,6 +142,7 @@ python main.py --eval models/1.pth 100 4
 - 学習には軌跡の次状態を利用する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
     forward_steps: 2 以上 # 未検証だが TD(λ) に対応しており next state を見る都合上 1 では使えない
@@ -158,6 +164,7 @@ python main.py --eval models/1.pth 100 4
 - 終端までの方策を利用して学習する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: False
     forward_steps: 1 以上
@@ -189,6 +196,7 @@ python main.py --eval models/1.pth 100 4
 - Value には状態価値関数 V 値も行動価値関数 Q 値も用いる
 - Max oparator を用いて Q 値更新をする Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
     forward_steps: 2 # 現在は Q(λ) に対応していないが next state を見る都合上 1 では使えない
@@ -221,6 +229,7 @@ python main.py --eval models/1.pth 100 4
 - 学習には軌跡の次状態を利用する
 - IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
 - RND (Random Network Distillation) も併用可能
+以下の `config.yaml` の該当箇所を変更
 ```
     return_buckup: True
     forward_steps: 2 以上 # 未検証だが TD(λ) に対応しており next state を見る都合上 1 では使えない
