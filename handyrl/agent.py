@@ -224,8 +224,6 @@ class RSRSAgent(Agent):
         else:
             global_v = None
             global_delta = 0.0
-        # if self.role == 'g':
-            # print(f'<><><> global_delta: {global_delta}, global_v: {global_v}, role: {self.role}')
         obs = env.observation(player)
         outputs = self.plan(obs) # reccurent model 対応
         actions = env.legal_actions(player)

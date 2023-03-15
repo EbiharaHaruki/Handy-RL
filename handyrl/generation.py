@@ -81,7 +81,6 @@ class Generator:
                     moment['action'][player] = agents[player].action(self.env, player, action_log=action_log)
                 elif player in observers:
                     agents[player].observe(self.env, player, action_log=action_log)
-                # print(f'<><><> action: {action}')
                 # # 観測取得
                 # obs = self.env.observation(player)
                 # #begin# Agent.plan()

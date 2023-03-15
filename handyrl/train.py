@@ -220,8 +220,6 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     if 'value' in outputs:
         # value の二乗和誤差
         losses['v'] = ((outputs['value'] - targets['value']) ** 2).mul(omasks).sum() / 2
-        # print(f'<><><> outputs[value][0]: {outputs["value"][0]}, targets[value][0]: {targets["value"][0]}, ')
-        # print(f'<><><> outputs[value].shape: {outputs["value"].shape}, targets[value].shape: {targets["value"].shape}')
     # return loss 
     if 'return' in outputs:
         # return の Huber Loss（outputs に return が含まれない限り計算されない）
@@ -663,7 +661,6 @@ class Learner:
 
         # エピソードが一定以上溜まったら吐き出す
         while len(self.trainer.episodes) > maximum_episodes:
-            # print(f'popleft episodes = {len(self.trainer.episodes)}/{maximum_episodes}')
             # 溢れた episode の pop
             self.trainer.episodes.popleft()
 
@@ -745,8 +742,6 @@ class Learner:
             if not multi_req:
                 data = [data]
             send_data = []
-            # if req == 'metadata':
-            #     print(f'<> req: {req} in train.py')
 
             if req == 'args':
                 if self.shutdown_flag:
