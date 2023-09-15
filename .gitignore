@@ -1,3 +1,4 @@
 *.pyc
 *.pth
-!trainlog/.gitignore
+trainlog/*
+!trainlog/.gitkeep
