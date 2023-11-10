@@ -61,7 +61,7 @@ class SimpleModel(nn.Module):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 512
+        nn_size = 4096
         self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
         self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
         self.head_v = nn.Linear(nn_size, 1)
@@ -100,13 +100,13 @@ class PVQModel(nn.Module):
             'advantage_for_q': h_a, 'qvalue': h_q, 'latent': h_l}
 
 
-# RSRS 
+# RSRS
 class PVQCModel(nn.Module):
     def __init__(self, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 512
+        nn_size = 1024
         self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
         self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
         self.head_v = nn.Linear(nn_size, 1) # value

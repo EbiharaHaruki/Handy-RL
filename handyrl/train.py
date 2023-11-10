@@ -611,6 +611,10 @@ class Learner:
         #print(self.uns_bool)
         #print(self.uns_num)
 
+        # time count
+        self.time_start = 0
+        self.time_end = 0
+
     def model_path(self, model_id):
         return os.path.join('models', str(model_id) + '.pth')
 
@@ -724,6 +728,7 @@ class Learner:
     def server(self):
         # central conductor server
         # returns as list if getting multiple requests as list
+        self.time_start = time.perf_counter()
         print('started server')
         prev_update_episodes = self.args['minimum_episodes']
         # no update call before storing minimum number of episodes + 1 epoch
@@ -829,6 +834,8 @@ class Learner:
                 if self.args['epochs'] >= 0 and self.model_epoch >= self.args['epochs']:
                     self.shutdown_flag = True
         print('finished server')
+        self.time_end = time.perf_counter()
+        print('time :',self.time_end - self.time_start)
 
     def run(self):
         # open training thread
