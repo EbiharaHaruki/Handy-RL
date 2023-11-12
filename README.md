@@ -85,6 +85,185 @@ python main.py --eval models/1.pth 100 4
 . bash_scripts/experiment_reward.sh 10
 ```
 
+## アルゴリズムの指定方法
+使いたいアルゴリズムに応じて `config.yaml` の該当箇所を変更の所定の箇所を変更する．
+
+応用性が高いゆえに変更箇所が多いので以下にパターンを記載する．
+
+### Policy-Gradieng 系アルゴリズム
+以下の特徴を持つアルゴリズムを指定する場合
+- Policy の確率分布に基づき行動する
+- Value には状態価値関数 V 値のみを持つ
+- Value は終端までの方策を利用して学習する
+- IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+```
+    return_buckup: False
+    forward_steps: 1 以上
+    target_model: 
+        use: False #（True にしても良いがあまり意味がない）
+    policy_target: 'UPGO', 'VTRACE','TD', or 'MC'
+    value_target: 'UPGO', 'VTRACE','TD', or 'MC'
+    agent: 
+        type: 'BASE' or `RND` # RND を利用する場合は後者
+        # meta_policy: 記載しない 
+    metadata:
+        name: [] # 使わない
+```
+
+### Q-lerning 系アルゴリズム
+以下の特徴を持つアルゴリズムを指定する場合
+- 行動価値関数 Q 値に基づき行動する
+    - Q 値を使って如何なる方策を作るかは指定する必要がある
+- Max oparator を用いて Q 値更新をする Off-policy 強化学習
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+```
+    return_buckup: True
+    forward_steps: 2 # 現在は Q(λ) に対応していないが next state を見る都合上 1 では使えない
+    target_model: 
+        use: True # 十分 update_episodes が大きければ False でも学習可能
+    policy_target: 'TD-Q-HARDMAX'
+    value_target: 'TD-Q-HARDMAX'
+    agent: 
+        type: 'QL' or 'QL-RND' # RND を利用する場合は後者
+        meta_policy: 'e-greedy' or 'softmax'
+        param: [0.1] # 'e-greedy' ならランダム選択確率，'softmax' なら温度パラメータの数値（list にしているのは今後アルゴリズムが増えた場合を見据えて）
+    metadata:
+        name: [] # 使わない
+```
+- システム的なバグを回避するために policy も学習しているが使用はしていない（はず）
+
+### Actor-Critic 系アルゴリズム（未検証）
+以下の特徴を持つアルゴリズムを指定する場合
+- Policy の確率分布に基づき行動する
+- Value には状態価値関数 V 値，のみを用いる
+- 学習には軌跡の次状態を利用する
+- IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+```
+    return_buckup: True
+    forward_steps: 2 以上 # 未検証だが TD(λ) に対応しており next state を見る都合上 1 では使えない
+    target_model: 
+        use: True # 十分 update_episodes が大きければ False でも学習可能
+    policy_target: 'UPGO', 'VTRACE','TD', or 'MC'
+    value_target: 'UPGO', 'VTRACE','TD', or 'MC'
+    agent: 
+        type: 'BASE' or `RND` # RND を利用する場合は後者
+        # meta_policy: 記載しない 
+    metadata:
+        name: []
+```
+
+### RS^2 - PG (Policy-Gradieng) 系アルゴリズム
+以下の特徴を持つアルゴリズムを指定する場合
+- RS^2 から導出される挙動 Policy の確率分布に基づき行動する
+- Value には状態価値関数 V 値も行動価値関数 Q 値も用いる
+- 終端までの方策を利用して学習する
+- IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+```
+    return_buckup: False
+    forward_steps: 1 以上
+    target_model: 
+        use: False #（True にしても良いがあまり意味がない）
+    policy_target: 'TD-Q'
+    value_target: 'TD-Q'
+    agent: 
+        type: 'RSRS' or `RSRS-RND` # RND を利用する場合は後者
+        # meta_policy: 記載しない 
+    metadata:
+        # name: ['global_aleph', 'global_return_size'] # K 近傍法を使わない場合
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        knn:
+            size: 5000 # K 近傍法の memory size
+            k: 32 # K 近傍法の近傍としてとる数 K
+        regional_weight: 0.5 # knn を使わない場合記載しない（しても動く）
+        global_aleph: 1.0 # Global Aspration Level
+        global_return_size: 100 # Global Return の保存数
+```
+- metadata は model 更新（update_episodes の間隔）と同じタイミングで Learner から Generator に転送される
+- ただし model と異なり list として Generator に保存されず上書き更新される
+- Global Value の更新法は現在ハードコードされている
+- Policy は IS のためにしか使用していない
+
+## RS^2 - QL (Q-learning) 系アルゴリズム
+以下の特徴を持つアルゴリズムを指定する場合
+- RS^2 から導出される挙動 Policy の確率分布に基づき行動する
+- Value には状態価値関数 V 値も行動価値関数 Q 値も用いる
+- Max oparator を用いて Q 値更新をする Off-policy 強化学習
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+```
+    return_buckup: True
+    forward_steps: 2 # 現在は Q(λ) に対応していないが next state を見る都合上 1 では使えない
+    target_model: 
+        use: True # 十分 update_episodes が大きければ False でも学習可能
+    policy_target: 'TD-Q-HARDMAX'
+    value_target: 'TD-Q-HARDMAX'
+    agent: 
+        type: 'RSRS' or `RSRS-RND` # RND を利用する場合は後者
+        # meta_policy: 記載しない 
+    metadata:
+        # name: ['global_aleph', 'global_return_size'] # K 近傍法を使わない場合
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        knn:
+            size: 5000 # K 近傍法の memory size
+            k: 32 # K 近傍法の近傍としてとる数 K
+        regional_weight: 0.5 # knn を使わない場合記載しない（しても動く）
+        global_aleph: 1.0 # Global Aspration Level
+        global_return_size: 100 # Global Return の保存数
+```
+- metadata は model 更新（update_episodes の間隔）と同じタイミングで Learner から Generator に転送される
+- ただし model と異なり list として Generator に保存されず上書き更新される
+- Global Value の更新法は現在ハードコードされている
+- システム的なバグを回避するために policy も学習しているが使用はしていない（はず）
+
+## RS^2 - AC (Actor-Critic) 系アルゴリズム（未検証）
+以下の特徴を持つアルゴリズムを指定する場合
+- RS^2 から導出される挙動 Policy の確率分布に基づき行動する
+- Value には状態価値関数 V 値も行動価値関数 Q 値も用いる
+- 学習には軌跡の次状態を利用する
+- IS (importance sampling) が適用されるので必然的に Off-policy 強化学習
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+```
+    return_buckup: True
+    forward_steps: 2 以上 # 未検証だが TD(λ) に対応しており next state を見る都合上 1 では使えない
+    target_model: 
+        use: True # 十分 update_episodes が大きければ False でも学習可能
+    policy_target: 'UPGO', 'VTRACE','TD', or 'MC'
+    value_target: 'UPGO', 'VTRACE','TD', or 'MC'
+    agent: 
+        type: 'RSRS' or `RSRS-RND` # RND を利用する場合は後者
+        # meta_policy: 記載しない 
+    metadata:
+        # name: ['global_aleph', 'global_return_size'] # K 近傍法を使わない場合
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        knn:
+            size: 5000 # K 近傍法の memory size
+            k: 32 # K 近傍法の近傍としてとる数 K
+        regional_weight: 0.5 # knn を使わない場合記載しない（しても動く）
+        global_aleph: 1.0 # Global Aspration Level
+        global_return_size: 100 # Global Return の保存数
+```
+- metadata は model 更新（update_episodes の間隔）と同じタイミングで Learner から Generator に転送される
+- ただし model と異なり list として Generator に保存されず上書き更新される
+- Global Value の更新法は現在ハードコードされている
+- Policy は IS のためにしか使用していない
+
+
+
+
 <!-- ## ドキュメント
 
 * [**Config Parameters**](docs/parameters.md) shows a list of parameters of `config.yaml`.

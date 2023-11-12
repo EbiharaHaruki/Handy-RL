@@ -10,12 +10,11 @@ import queue
 import multiprocessing as mp
 import multiprocessing.connection as connection
 
-
+# Connection に送って(send)取り出す(recv)関数
 def send_recv(conn, sdata):
     conn.send(sdata)
     rdata = conn.recv()
     return rdata
-
 
 class PickledConnection:
     def __init__(self, conn):

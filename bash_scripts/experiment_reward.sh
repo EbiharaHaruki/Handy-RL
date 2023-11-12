@@ -5,6 +5,8 @@ DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成
 
 N=$1 #標準入力から実験回数を取得
+eval "cp config.yaml trainlog/$DATE/config.yaml"
+
 ex_base="python3 -u main.py --train | tee trainlog/$DATE/train_log_xxx.txt" #ログを取りながら学習させる
 #current_conda=$CONDA_DEFAULT_ENV
 

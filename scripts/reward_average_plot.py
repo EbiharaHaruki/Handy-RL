@@ -5,6 +5,8 @@ from re import A
 import sys
 import numpy as np
 import glob
+import csv
+import pprint
 
 n = 15
 
@@ -98,7 +100,6 @@ mean =  mean / a #平均を取る
 averaged_reward_lists = {"=" : mean} #dict型に変換
 print("log_average = ",averaged_reward_lists) #指定した個数のファイルの平均勝率を表示
 
-
 opponents_ = list(averaged_reward_lists.keys())
 opponents = sorted(opponents_, key=lambda o: averaged_reward_lists[o][-1], reverse=True)
 
@@ -112,8 +113,17 @@ for opponent in opponents:
     reward_list = averaged_reward_lists[opponent]
     start = start_epoch[opponent]
     # ax.plot(clipped_epoch_list[start:], wp_list[start:], label=opponent)
+    print(f'len(x): {len(clipped_game_list[start:])}')
+    print(f'len(y): {len(reward_list[start:])}')
     ax.plot(clipped_game_list[start:], reward_list[start:], label=opponent)
     last_win_rate[opponent] = reward_list[-1]
+
+    if opponent == '=':
+        np.savetxt(path + 'retruns.csv', [reward_list[start:]], delimiter=',', fmt='%.5f')
+        np.savetxt(path + 'episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
+    else:
+        np.savetxt(path + 'retruns_' + opponent + '.csv', reward_list[start:], delimiter='', fmt='%.5f')
+        np.savetxt(path + 'episodes_' + opponent + '.csv', clipped_game_list[start:], delimiter='', fmt='%d')
 
 ax.set_xlabel('episodes', size=14)
 ax.set_ylabel('Average reward', size=14)

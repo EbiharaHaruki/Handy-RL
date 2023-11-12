@@ -13,6 +13,7 @@ import pickle
 import warnings
 import queue
 from collections import deque
+# import faiss
 
 import numpy as np
 import torch
@@ -23,11 +24,13 @@ import torch.optim as optim
 import psutil
 
 from .environment import prepare_env, make_env
-from .util import map_r, bimap_r, trimap_r, rotate
+from .util import map_r, bimap_r, trimap_r, rotate, softmax
 from .model import to_torch, to_gpu, ModelWrapper
-from .losses import compute_target
+from .losses import compute_target, compute_rnd
 from .connection import MultiProcessJobExecutor
 from .worker import WorkerCluster, WorkerServer
+from .metadata import KNN, feed_knn
+
 
 def make_batch(episodes, args):
     """Making training batch
@@ -81,6 +84,7 @@ def make_batch(episodes, args):
         rew = np.array([[replace_none(m['reward'][player], [0]) for player in players] for m in moments], dtype=np.float32).reshape(len(moments), len(players), -1)
         ret = np.array([[replace_none(m['return'][player], [0]) for player in players] for m in moments], dtype=np.float32).reshape(len(moments), len(players), -1)
         oc = np.array([ep['outcome'][player] for player in players], dtype=np.float32).reshape(1, len(players), -1)
+        ter = np.array([[replace_none(m['terminal'][player], [0]) for player in players] for m in moments], dtype=np.float32).reshape(len(moments), len(players), -1)
 
         emask = np.ones((len(moments), 1, 1), dtype=np.float32)  # episode mask
         tmask = np.array([[[m['selected_prob'][player] is not None] for player in players] for m in moments], dtype=np.float32)
@@ -99,6 +103,7 @@ def make_batch(episodes, args):
             act = np.pad(act, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             rew = np.pad(rew, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             ret = np.pad(ret, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            ter = np.pad(ter, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=1)
             emask = np.pad(emask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             tmask = np.pad(tmask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             omask = np.pad(omask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
@@ -106,10 +111,10 @@ def make_batch(episodes, args):
             progress = np.pad(progress, [(pad_len_b, pad_len_a), (0, 0)], 'constant', constant_values=1)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, emask, tmask, omask, amask, progress))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, emask, tmask, omask, amask, progress = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress = [to_torch(np.array(val)) for val in zip(*datum)]
 
     return {
         'observation': obs,
@@ -117,6 +122,7 @@ def make_batch(episodes, args):
         'value': v,
         'action': act, 'outcome': oc,
         'reward': rew, 'return': ret,
+        'terminal': ter,
         'episode_mask': emask,
         'turn_mask': tmask, 'observation_mask': omask,
         'action_mask': amask,
@@ -174,7 +180,7 @@ def forward_prediction(model, hidden, batch, args):
         outputs = {k: torch.stack(o, dim=1) for k, o in outputs.items() if o[0] is not None}
 
     for k, o in outputs.items():
-        if k == 'policy':
+        if k == 'policy' or k == 'confidence':
             o = o.mul(batch['turn_mask'])
             if o.size(2) > 1 and batch_shape[2] == 1:  # turn-alternating batch
                 o = o.sum(2, keepdim=True)  # gather turn player's policies
@@ -186,80 +192,203 @@ def forward_prediction(model, hidden, batch, args):
     return outputs
 
 
-def compose_losses(outputs, log_selected_policies, total_advantages, targets, batch, args):
+def lastcut_for_buckup(step_masks, teaminals):
+    # teaminals を引いて post terminal state(dummy) について伝搬しなくする
+    return step_masks.mul(1.0 - teaminals)
+
+
+def compose_losses(outputs, log_selected_policies, total_advantages, targets, batch, metadataset, args):
     """Caluculate loss value
 
     Returns:
         tuple: losses and statistic values and the number of training data
     """
-
-    tmasks = batch['turn_mask']
+    # return_buckup が True だと　teaminals を引いて post terminal state(dummy) について伝搬しなくする
+    # losses の計算で終端 Return を target_values (deque) を最初（最後）に入れているのを mask で無効化
+    tmasks = batch['turn_mask'] if args['return_buckup'] else lastcut_for_buckup(batch['turn_mask'], batch['terminal'])
     omasks = batch['observation_mask']
 
+    # loss の箱
     losses = {}
+    # data 数みたい
     dcnt = tmasks.sum().item()
 
+    # policy loss 
+    # total_advantages が既に baseline を引いた advantage になっている
     losses['p'] = (-log_selected_policies * total_advantages).mul(tmasks).sum()
+    # value loss 
     if 'value' in outputs:
+        # value の二乗和誤差
         losses['v'] = ((outputs['value'] - targets['value']) ** 2).mul(omasks).sum() / 2
+    # return loss 
     if 'return' in outputs:
+        # return の Huber Loss（outputs に return が含まれない限り計算されない）
         losses['r'] = F.smooth_l1_loss(outputs['return'], targets['return'], reduction='none').mul(omasks).sum()
+    # q-value loss 
+    # if 'advantage_for_q' in outputs:
+    #     # advantage_for_q の二乗和誤差
+    #     losses['a'] = ((outputs['advantage_for_q'] - targets['advantage_for_q']) ** 2).mul(omasks).sum() / 2
+    if 'selected_qvalue' in outputs:
+        # value の二乗和誤差
+        losses['q'] = ((outputs['selected_qvalue'] - targets['selected_qvalue']) ** 2).mul(omasks).sum() / 2
 
+    # rnd embed state loss
+    if 'loss_rnd' in outputs:
+        losses['rnd'] = outputs['loss_rnd'].mul(tmasks).sum()
+
+    if 'confidence' in outputs:
+    # 信頼度の cross_entropy loss
+        b_size = outputs["confidence"].shape[0]
+        s_size = outputs["confidence"].shape[1]
+        a_size = outputs["confidence"].shape[-1]
+        o_c = torch.reshape(outputs["confidence"], (b_size * s_size, a_size))
+        t_c = torch.reshape(targets["confidence"], (b_size * s_size, 1)).squeeze_()
+        # losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
+        losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, s_size, 1, 1)).mul(omasks).sum()
+        entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
+        # 信頼度割合に関する各種監視変数を追加
+        losses['ent_c_nn'] = entropy_c_nn.sum()
+        if 'knn' in metadataset:
+            p_c_reg = metadataset['knn'].regional_nn(targets['latent'][0,0,:].squeeze())
+            # p_c_reg = metadataset['knn'].regional_nn(targets['latent'].squeeze())
+            entropy_c_reg = -(p_c_reg * np.ma.log(p_c_reg)).sum()
+            losses['ent_c_reg'] = entropy_c_reg
+
+    # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
     losses['ent'] = entropy.sum()
 
-    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0)
+    # value と policy の loss の計算
+    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0) + losses.get('c', 0)
+    # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
 
     return losses, dcnt
 
 
-def compute_loss(batch, model, hidden, args):
+def compute_loss(batch, model, target_model, metadataset, hidden, args):
+    # target 計算に必要な forward 計算を行う
     outputs = forward_prediction(model, hidden, batch, args)
+    # target-net の forward 計算を行う
+    use_target_model = target_model is not None
+    # TODO: hidden も target_model 用に用意
+    if use_target_model:
+        target_outputs = forward_prediction(target_model, hidden, batch, args)
+    else:
+        target_outputs = {}
+
+    # learning_q = ('qvalues' in outputs)
+    # burn_in_steps 分ずらす
     if args['burn_in_steps'] > 0:
         batch = map_r(batch, lambda v: v[:, args['burn_in_steps']:] if v.size(1) > 1 else v)
         outputs = map_r(outputs, lambda v: v[:, args['burn_in_steps']:])
-
+    # action とを取り出す
     actions = batch['action']
+    # episode masks (2 人対戦ゲームなどで自分 episode だけに限定するなど？) を取り出す
     emasks = batch['episode_mask']
+    # vtrace で使う全体に対する係数（ハードコードで良いのか？）
     clip_rho_threshold, clip_c_threshold = 1.0, 1.0
-
+    # 挙動方策の確率を log したやつ 
     log_selected_b_policies = torch.log(torch.clamp(batch['selected_prob'], 1e-16, 1)) * emasks
+    # 推定方策の確率を log したやつ 
     log_selected_t_policies = F.log_softmax(outputs['policy'], dim=-1).gather(-1, actions) * emasks
 
     # thresholds of importance sampling
+    # log の引き算（上と合わせて方策確率同士の割り算を引き算に変換）
     log_rhos = log_selected_t_policies.detach() - log_selected_b_policies
+    # log を exp で確率比率に戻している（IS 確率比）
     rhos = torch.exp(log_rhos)
+    # IS 確率比を v-trace と同様に ρ で clip している（状態ごと計算の事前に）
     clipped_rhos = torch.clamp(rhos, 0, clip_rho_threshold)
+    # IS 確率比を v-trace と同様に c で clip している（状態ごと計算の事前に）
     cs = torch.clamp(rhos, 0, clip_c_threshold)
+    # gradient が流れないように forward 計算結果を計算グラフから切り離している
     outputs_nograd = {k: o.detach() for k, o in outputs.items()}
-
-    if 'value' in outputs_nograd:
-        values_nograd = outputs_nograd['value']
-        if args['turn_based_training'] and values_nograd.size(2) == 2:  # two player zerosum game
-            values_nograd_opponent = -torch.stack([values_nograd[:, :, 1], values_nograd[:, :, 0]], dim=2)
-            values_nograd = (values_nograd + values_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
-        outputs_nograd['value'] = values_nograd * emasks + batch['outcome'] * (1 - emasks)
+    target_outputs_nograd = {k: o.detach() for k, o in target_outputs.items()}
 
     # compute targets and advantage
     targets = {}
     advantages = {}
 
-    value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1, clipped_rhos, cs
-    return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
+    # if (('value' in outputs_nograd) and (use_target_model is not None)) or (('value' in target_outputs_nograd) and (use_target_model is None)):
+    #     values_nograd = target_outputs_nograd['value'] if use_target_model else outputs_nograd['value']
+    #     if args['turn_based_training'] and values_nograd.size(2) == 2:  # two player zerosum game
+    #         # 2 人対戦ゲームで相手から見た value なので負に符号反転している
+    #         values_nograd_opponent = -torch.stack([values_nograd[:, :, 1], values_nograd[:, :, 0]], dim=2)
+    #         # 2 人対戦ゲームで自分と相手の value を計算して 2 で割るなどしている
+    #         values_nograd = (values_nograd + values_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
+    #     outputs_nograd['value'] = values_nograd * emasks + batch['outcome'] * (1 - emasks)
 
-    targets['value'], advantages['value'] = compute_target(args['value_target'], *value_args)
-    targets['return'], advantages['return'] = compute_target(args['value_target'], *return_args)
+    if 'value' in outputs_nograd:
+        values_nograd = outputs_nograd['value']
+        if args['turn_based_training'] and values_nograd.size(2) == 2:  # two player zerosum game
+            # 2 人対戦ゲームで相手から見た value なので負に符号反転している
+            values_nograd_opponent = -torch.stack([values_nograd[:, :, 1], values_nograd[:, :, 0]], dim=2)
+            # 2 人対戦ゲームで自分と相手の value を計算して 2 で割るなどしている
+            values_nograd = (values_nograd + values_nograd_opponent) / (batch['observation_mask'].sum(dim=2, keepdim=True) + 1e-8)
+        outputs_nograd['value'] = values_nograd * emasks + batch['outcome'] * (1 - emasks)
+    
+    if 'qvalue' in outputs_nograd:
+        # TODO: 対戦ゲームに未対応
+        outputs['selected_qvalue'] = outputs['qvalue'].gather(-1, actions) * emasks
+        if use_target_model:
+            targets['qvalue'] = target_outputs_nograd['qvalue'] * emasks
+        else:
+            targets['qvalue'] = outputs_nograd['qvalue'] * emasks
 
+
+    if 'embed_state' in outputs_nograd:
+        targets['embed_state'] = outputs_nograd['embed_state_fix'].detach() * emasks
+        outputs['loss_rnd'] = compute_rnd(outputs['embed_state'], targets['embed_state'])
+        intrinsic_reward = outputs['loss_rnd'].detach().sum(-1, keepdim=True)
+        if 'bonus' in batch:
+            outputs['bonus'] = outputs['bonus'] + intrinsic_reward
+        else:
+            outputs['bonus'] = intrinsic_reward
+
+    if 'confidence' in outputs:
+        # 信頼度の学習
+        targets['confidence'] = (actions * emasks).to(torch.long)
+
+    if 'latent' in outputs_nograd:
+        # 学習はしないが latent を抜き出しておく
+        targets['latent'] = (outputs_nograd['latent'] * emasks)
+
+    # model forward 計算の value, 生の outcome, None, 終端フラグ, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
+    # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
+    # 割引率付き Return からの学習を定義（outcome と reward, return を統合したのでこれのみ）
+    # model forward 計算の value, 割引率付き return, reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c, bonus
+    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs, targets.get('qvalue', None), outputs.get('bonus', None)
+    # model forward 計算の return, 生の return, 生の reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
+    # return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
+
+    # アルゴリズムに応じて target value を計算する
+    results = compute_target(args['value_target'], *value_args)
+    targets['value'], advantages['value'] = results['target_values'], results['advantages']
+    if 'qvalue' in outputs_nograd:
+        targets['advantage_for_q'] = results['target_advantage_for_q']
+        targets['selected_qvalue'] = results['qvalue']
+
+    # policy 用の advantage 計算が異なる場合，そのアルゴリズムに応じて target value を計算する
     if args['policy_target'] != args['value_target']:
-        _, advantages['value'] = compute_target(args['policy_target'], *value_args)
-        _, advantages['return'] = compute_target(args['policy_target'], *return_args)
+        # _, advantages['value'] = compute_target(args['policy_target'], *value_args)
+        # _, advantages['return'] = compute_target(args['policy_target'], *return_args)
+        results = compute_target(args['policy_target'], *value_args)
+        advantages['value'] = results['advantages']
+        # results = compute_target(args['policy_target'], *return_args)
+        # advantages['return'] = results['advantages']
 
     # compute policy advantage
+    # IS 確率比を考慮して policy 更新に使う advantage の総計を計算する
+    # value の advantages と return の advantages を足している
+    # value は現在ほぼ outcome の直接学習
+    # return は outputs に return がないと利用できていない
     total_advantages = clipped_rhos * sum(advantages.values())
 
-    return compose_losses(outputs, log_selected_t_policies, total_advantages, targets, batch, args)
+    # ここまでは target value, advantage の計算を行うのがメイン
+    # 具体的な loss 計算は compose_losses で行う
+    return compose_losses(outputs, log_selected_t_policies, total_advantages, targets, batch, metadataset, args)
 
 
 class Batcher:
@@ -270,6 +399,7 @@ class Batcher:
 
     def _selector(self):
         while True:
+            # batch_size 分 episode を切り出すジェネレータ
             yield [self.select_episode() for _ in range(self.args['batch_size'])]
 
     def _worker(self, conn, bid):
@@ -309,11 +439,12 @@ class Batcher:
 
 
 class Trainer:
-    def __init__(self, args, model):
+    def __init__(self, args, model, target_model, metadataset):
         self.episodes = deque()
         self.args = args
         self.gpu = torch.cuda.device_count()
         self.model = model
+        self.metadataset = metadataset
         self.default_lr = 3e-8
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
@@ -323,11 +454,26 @@ class Trainer:
         self.batcher = Batcher(self.args, self.episodes)
         self.update_flag = False
         self.update_queue = queue.Queue(maxsize=1)
-
+        # TODO: Twin Delayed の実装方法を検討
         self.wrapped_model = ModelWrapper(self.model)
         self.trained_model = self.wrapped_model
         if self.gpu > 1:
             self.trained_model = nn.DataParallel(self.wrapped_model)
+        
+        if target_model is not None:
+            self.t_model = target_model
+            self.wrapped_t_model = ModelWrapper(self.t_model)
+            self.target_model = self.wrapped_t_model
+            if self.gpu > 1:
+                self.target_model = nn.DataParallel(self.wrapped_t_model)
+            self.target_update = self.args['target_model'].get('update', None)
+            self.target_param = self.args['target_model'].get('update_param', None)
+        else:
+            self.target_model = None
+            self.wrapped_t_model = None
+            self.target_model = None
+            self.target_update = None
+            self.target_param = None
 
     def update(self):
         self.update_flag = True
@@ -344,6 +490,7 @@ class Trainer:
             self.trained_model.cuda()
         self.trained_model.train()
 
+        # モデルの学習
         while data_cnt == 0 or not self.update_flag:
             batch = self.batcher.batch()
             batch_size = batch['value'].size(0)
@@ -353,12 +500,24 @@ class Trainer:
                 batch = to_gpu(batch)
                 hidden = to_gpu(hidden)
 
-            losses, dcnt = compute_loss(batch, self.trained_model, hidden, self.args)
-
+            # loss の計算
+            losses, dcnt = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
             self.optimizer.zero_grad()
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
             self.optimizer.step()
+
+            # target net の更新
+            if self.target_update == 'soft':
+                tau = self.target_param
+                with torch.no_grad():
+                    for target_param, trained_param in zip(self.t_model.parameters(), self.model.parameters()):
+                        target_param.data.copy_(tau * trained_param.data + (1.0- tau) * target_param.data)
+            elif self.target_update == 'hard':
+                interval_episodes = self.target_param
+                if self.steps % interval_episodes == 0:
+                    with torch.no_grad():
+                        target_param.data.copy_(trained_param.data)
 
             batch_cnt += 1
             data_cnt += dcnt
@@ -406,12 +565,20 @@ class Learner:
         self.eval_rate = max(args['eval_rate'], eval_modify_rate)
         self.shutdown_flag = False
         self.flags = set()
+        self.saving_interval_epochs = args['saving_interval_epochs']
 
         # trained datum
         self.model_epoch = self.args['restart_epoch']
-        self.model = net if net is not None else self.env.net()
+        self.model = net if net is not None else self.env.net(args['agent']['type'])
         if self.model_epoch > 0:
             self.model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
+        # used target_model
+        if args['target_model'].get('use', False):
+            self.target_model = net if net is not None else self.env.net(args['agent']['type'])
+            if self.model_epoch > 0:
+                self.target_model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
+        else: 
+            self.target_model = None
 
         # generated datum
         self.generation_results = {}
@@ -423,17 +590,30 @@ class Learner:
         self.results_per_opponent = {}
         self.num_results = 0
 
+        # KNN
+        self.metadataset = {}
+        if 'knn' in args['metadata']['name']:
+            self.metadataset['knn'] = KNN(args)
+        if 'global_aleph' in args['metadata']['name']:
+            self.metadataset['global_aleph'] = args['metadata']['global_aleph']
+        if 'regional_weight' in args['metadata']['name']:
+            self.metadataset['regional_weight'] = args['metadata']['regional_weight']
+
         # multiprocess or remote connection
         self.worker = WorkerServer(args) if remote else WorkerCluster(args)
 
         # thread connection
-        self.trainer = Trainer(args, self.model)
+        self.trainer = Trainer(args, self.model, self.target_model, self.metadataset)
 
         # episode count
         self.uns_bool = env_args['param']['uns_setting']['uns_bool'] # 非定常のフラグ
         self.uns_num = env_args['param']['uns_setting']['uns_num'] # 非定常の周期
         #print(self.uns_bool)
         #print(self.uns_num)
+
+        # time count
+        self.time_start = 0
+        self.time_end = 0
 
     def model_path(self, model_id):
         return os.path.join('models', str(model_id) + '.pth')
@@ -447,8 +627,9 @@ class Learner:
         self.model_epoch += 1
         self.model = model
         os.makedirs('models', exist_ok=True)
-        torch.save(model.state_dict(), self.model_path(self.model_epoch))
-        torch.save(model.state_dict(), self.latest_model_path())
+        if self.model_epoch % self.saving_interval_epochs == 0 or self.saving_interval_epochs <= 0:
+            torch.save(model.state_dict(), self.model_path(self.model_epoch))
+            torch.save(model.state_dict(), self.latest_model_path())
 
     def feed_episodes(self, episodes):
         # analyze generated episodes
@@ -462,7 +643,7 @@ class Learner:
                 n, r, r2 = self.generation_results.get(model_id, (0, 0, 0))
                 self.generation_results[model_id] = n + 1, r + outcome, r2 + outcome ** 2
             self.num_returned_episodes += 1
-            if self.num_returned_episodes % 100 == 0:
+            if self.num_returned_episodes % 50 == 0:
                 print(self.num_returned_episodes, end=' ', flush=True)
             if self.uns_bool:
                 if self.num_returned_episodes % self.uns_num == 0:
@@ -474,7 +655,9 @@ class Learner:
 
         mem_percent = psutil.virtual_memory().percent
         mem_ok = mem_percent <= 95
-        maximum_episodes = self.args['maximum_episodes'] if mem_ok else int(len(self.trainer.episodes) * 95 / mem_percent)
+        # maxmum_episode のサイズ制限がおかしい
+        # maximum_episodes = self.args['maximum_episodes'] if mem_ok else int(len(self.trainer.episodes) * 95 / mem_percent)
+        maximum_episodes = self.args['maximum_episodes']
 
         if not mem_ok and 'memory_over' not in self.flags:
             warnings.warn("memory usage %.1f%% with buffer size %d" % (mem_percent, len(self.trainer.episodes)))
@@ -482,6 +665,7 @@ class Learner:
 
         # エピソードが一定以上溜まったら吐き出す
         while len(self.trainer.episodes) > maximum_episodes:
+            # 溢れた episode の pop
             self.trainer.episodes.popleft()
 
     def feed_results(self, results):
@@ -544,12 +728,16 @@ class Learner:
     def server(self):
         # central conductor server
         # returns as list if getting multiple requests as list
+        self.time_start = time.perf_counter()
         print('started server')
         prev_update_episodes = self.args['minimum_episodes']
         # no update call before storing minimum number of episodes + 1 epoch
         next_update_episodes = prev_update_episodes + self.args['update_episodes']
 
         while self.worker.connection_count() > 0 or not self.shutdown_flag:
+            # req は worker から受けるリクエストメッセージで処理の切り替えに使う
+            # data はリクエストメッセージの付加情報
+            # send_data は worker に送り返すデータ
             try:
                 conn, (req, data) = self.worker.recv(timeout=0.3)
             except queue.Empty:
@@ -565,7 +753,7 @@ class Learner:
                     send_data = [None] * len(data)
                 else:
                     for _ in data:
-                        args = {'model_id': {}}
+                        args = {'model_id': {}, 'metadata_id': {}}
 
                         # decide role
                         if self.num_results < self.eval_rate * self.num_episodes:
@@ -579,8 +767,11 @@ class Learner:
                             for p in self.env.players():
                                 if p in args['player']:
                                     args['model_id'][p] = self.model_epoch
+                                    args['metadata_id'][p] = self.model_epoch
+                                    # args['metadata_id'][p] = self.num_episodes
                                 else:
                                     args['model_id'][p] = -1
+                                    args['metadata_id'][p] = -1
                             self.num_episodes += 1
 
                         elif args['role'] == 'e':
@@ -589,8 +780,11 @@ class Learner:
                             for p in self.env.players():
                                 if p in args['player']:
                                     args['model_id'][p] = self.model_epoch
+                                    args['metadata_id'][p] = self.model_epoch
+                                    # args['metadata_id'][p] = self.num_episodes
                                 else:
                                     args['model_id'][p] = -1
+                                    args['metadata_id'][p] = -1
                             self.num_results += 1
 
                         send_data.append(args)
@@ -605,6 +799,13 @@ class Learner:
                 self.feed_results(data)
                 send_data = [None] * len(data)
 
+            elif req == 'return_metadata':
+                # report evaluation results
+                if 'knn' in self.args['metadata']['name']:
+                    # feed_knn(self.knn, self.args, data)
+                    feed_knn(self.metadataset['knn'], self.args, data)
+                send_data = [None] * len(data)
+
             elif req == 'model':
                 for model_id in data:
                     model = self.model
@@ -617,6 +818,11 @@ class Learner:
                             pass
                     send_data.append(pickle.dumps(model))
 
+            elif req == 'metadata':
+                # trainer に保存して欲しい情報全般を取り出すリクエストメッセージ
+                self.metadataset['num_episodes'] = self.num_episodes
+                send_data.append(pickle.dumps(self.metadataset))
+
             if not multi_req and len(send_data) == 1:
                 send_data = send_data[0]
             self.worker.send(conn, send_data)
@@ -628,6 +834,8 @@ class Learner:
                 if self.args['epochs'] >= 0 and self.model_epoch >= self.args['epochs']:
                     self.shutdown_flag = True
         print('finished server')
+        self.time_end = time.perf_counter()
+        print('time :',self.time_end - self.time_start)
 
     def run(self):
         # open training thread
