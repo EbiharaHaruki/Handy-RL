@@ -28,6 +28,7 @@ env_args:
         observation_noise: 0 # 観測時にノイズがあるか（ 0:なし, 1:ノイズ小, 2;ノイズ大）
         jyotai_boolkari: True # ランダムな状態量の有無
 
+
 train_args:
     turn_based_training: False
     observation: False
