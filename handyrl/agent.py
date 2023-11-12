@@ -235,9 +235,12 @@ class RSRSAgent(Agent):
         latent = outputs['latent']
         if 'knn' in self.metadataset:
             c_reg = self.metadataset['knn'].regional_nn(latent)
-            c = self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
+            if c_reg is not None:
+                c = self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
+            else:
+                c = c_nn
         else:
-            c = c_nn 
+            c = c_nn
 
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
