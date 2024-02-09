@@ -26,7 +26,8 @@ RUN apt-get -y update && apt-get upgrade -qqy && apt-get -y install \
     pkg-config \
     gfortran \
     libopenblas-dev \
-    swig
+    swig \
+    zip
 
 RUN pip install --upgrade setuptools
 
