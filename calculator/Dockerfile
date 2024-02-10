@@ -27,7 +27,8 @@ RUN apt-get -y update && apt-get upgrade -qqy && apt-get -y install \
     gfortran \
     libopenblas-dev \
     swig \
-    zip
+    zip \
+    vim
 
 RUN pip install --upgrade setuptools
 
@@ -37,7 +38,7 @@ RUN groupadd --gid ${usergid} ${username} && \
     echo ${username}' ALL=NOPASSWD: ALL' >> /etc/sudoers
 
 # Import profile for bash
-COPY bash_profile /home/${username}/.bash_profile
+COPY calculator/bash_profile /home/${username}/.bash_profile
 RUN chown ${username}:${username} /home/${username}/.bash_profile
 
 # switch to user
@@ -45,4 +46,5 @@ USER ${username}
 WORKDIR /home/${username}
 
 # install formatter
-RUN pip install --user -r ../requirements.txt
+COPY ./requirements.txt /tmp/requirements.txt
+RUN pip install --user -r /tmp/requirements.txt
