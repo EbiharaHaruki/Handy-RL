@@ -37,7 +37,7 @@ class Generator:
         return_metadata = []
         # hidden = {}
         agents = {}
-        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'qvalue', 'reward', 'return', 'terminal']
+        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'qvalue', 'reward', 'return', 'terminal', 'c', 'c_reg']
         metadata_keys = []
 
         if self.env.reset():
