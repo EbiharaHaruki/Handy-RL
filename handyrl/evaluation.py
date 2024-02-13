@@ -382,8 +382,8 @@ def eval_main(args, argv):
 
     agent1 = build_agent(model_path, env)
     if agent1 is None:
-        model = load_model(model_path, env.net())
-        agent1 = agent_class(args['train_args']['agent'])(model)
+        model = load_model(model_path, env.net(args['train_args']['agent']['type']))
+        agent1 = agent_class(args['train_args']['agent'])(model, args['train_args']['metadata'])
     critic = None
 
     print('%d process, %d games' % (num_process, num_games))
