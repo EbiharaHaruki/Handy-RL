@@ -7,7 +7,9 @@ env_args:
     param:
         depth: 6 # 深度(変更可能)
         hyperplane_n: 3 # 超平面次元数(変更可能)
-        treasure: [[5, 2, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        # treasure: [[5, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        # treasure: [[5,2,1], [5,4,5]]
+        treasure: [[5,2,3,5], [5,4,3,1]]
         set_reward: [1] # 報酬の値(変更可能)
         other_reward: 0 # treasure以外に到達した時の報酬設定
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
@@ -18,9 +20,11 @@ env_args:
             random_trasures_bool: False # 報酬の場所をランダムに設定するか / True: 設定する, False: 設定しない
             random_trasures_num: 1 # 報酬の場所の個数
         random_reward_setting: # 確率的な報酬設定 ※現在はPOMDPとの併用不可
-            random_reward_bool: False # 確率的な報酬で設定するか / True: 設定する, False: 設定しない
-            random_reward: [[1], [1, 100]] # 報酬の量, 各要素は報酬の位置に対応
-            random_reward_p: [[1], [0.9, 0.1]] # 報酬の確率 , 各要素の合計値は1になるように設定
+            random_reward_bool: True # 確率的な報酬で設定するか / True: 設定する, False: 設定しない
+            # random_reward: [[1], [1, 100]] # 報酬の量, 各要素は報酬の位置に対応
+            # random_reward_p: [[1], [0.9, 0.1]] # 報酬の確率 , 各要素の合計値は1になるように設定
+            random_reward: [[0, 1], [0, 1]]
+            random_reward_p: [[0.1, 0.9], [0.3, 0.7]]
         uns_setting:
             uns_bool: False # 非定常の導入するか否か
             uns_num: 1000 # 非定常の周期（報酬位置をどの程度の間隔で変更するか）
@@ -46,33 +50,34 @@ train_args:
     batch_size: 256
     minimum_episodes: 10000
     maximum_episodes: 20000
-    epochs: 1000
+    epochs: 500
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
     worker:
-        num_parallel: 4
+        num_parallel: 8
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
-    policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
-    value_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    policy_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    value_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
     agent:
-        type: 'BASE' # 'BASE' 'QL' 'RSRS' 'RND' 'QL-RND' 'RSRS-RND',
-        # meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
-        # param: [0.1]
+        type: 'RSRS' # 'BASE' 'QL' 'RSRS' 'RND' 'QL-RND' 'RSRS-RND', 'R4D-RSRS'
+        #meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
+        #param: [0.1]
     metadata:
-        name: []
+        # name: []
         # name: ['rnd_weight'] # Unimplemented
-        # name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
-        # knn:
-        #     size: 5000
-        #     k: 32
-        # regional_weight: 0.5
-        # global_aleph: 1.0
-        # global_return_size: 100
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        # name: ['global_aleph', 'regional_weight', 'global_return_size']
+        knn:
+            size: 10000
+            k: 64
+        regional_weight: 0.5
+        global_aleph: 1.0
+        global_return_size: 100
         # rnd_weight: 2.0 # Unimplemented
 
 worker_args:
