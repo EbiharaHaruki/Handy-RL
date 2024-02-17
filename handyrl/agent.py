@@ -297,6 +297,8 @@ class RSRSAgent(Agent):
             action_log['moment']['action_mask'][player] = action_mask
             action_log['metadata']['latent'][player] = latent
             action_log['metadata']['action'][player] = one_hot_action
+            action_log['moment']['c'][player] = c
+            action_log['moment']['c_reg'][player] = c_reg
             # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action
