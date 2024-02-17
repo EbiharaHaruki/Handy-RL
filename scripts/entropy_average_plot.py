@@ -41,7 +41,7 @@ def get_reward_list(path):
             epoch_data_list.append({})
             for e in elms[2:]:
                 name, loss = e.split(':')
-                if name == "ent_c_nn" or name=="ent_c_reg" or name=="ent_c_mixed":
+                if name == "ent_c_nn" or name=="ent_c_reg" or name=="entropy_c_mixed":
                     loss = float(loss)
                     epoch_data_list[-1][name] = loss
         if line.startswith('epoch '):
@@ -99,14 +99,14 @@ for i in logs[:a]:
     if 'ent_c_reg' in averaged_loss_lists:
         reg_mean += averaged_loss_lists['ent_c_reg']
         reg_flag = True
-    if 'ent_c_mixed' in averaged_loss_lists:
-        mix_mean += averaged_loss_lists['ent_c_mixed']
+    if 'entropy_c_mixed' in averaged_loss_lists:
+        mix_mean += averaged_loss_lists['entropy_c_mixed']
 
 nn_mean =  nn_mean / a #平均を取る
 reg_mean =  reg_mean / a
 mix_mean = mix_mean / a
 if nn_flag == True and reg_flag == True:
-    averaged_loss_lists = {"ent_c_mixed" : mix_mean, "ent_c_nn" : nn_mean, "ent_c_reg" : reg_mean} #dict型に変換
+    averaged_loss_lists = {"entropy_c_mixed" : mix_mean, "ent_c_nn" : nn_mean, "ent_c_reg" : reg_mean} #dict型に変換
 elif nn_flag == True and reg_flag == False:
     averaged_loss_lists = {"ent_c_mixed" : mix_mean, "ent_c_nn" : nn_mean}
 elif nn_flag == False and reg_flag == True:
@@ -140,7 +140,7 @@ for opponent in opponents:
     elif opponent == 'ent_c_reg':
         np.savetxt(path + 'entropy_reg.csv', [loss_list[start:]], delimiter=',', fmt='%.5f')
         np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
-    elif opponent == 'ent_c_mixed':
+    elif opponent == 'entropy_c_mixed':
         np.savetxt(path + 'entropy_mix.csv', [loss_list[start:]], delimiter=',', fmt='%.5f')
         np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
     else:
