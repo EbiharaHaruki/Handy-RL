@@ -238,8 +238,12 @@ class RSRSAgent(Agent):
             if c_reg is not None:
                 c = self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
             else:
+                p_reg = 1.0 / actions.size
+                c_reg = np.full(actions.size, p_reg)
                 c = c_nn
         else:
+            p_reg = 1.0 / actions.size
+            c_reg = np.full(actions.size, p_reg)
             c = c_nn
 
         # rs = c * (q - aleph)
