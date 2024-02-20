@@ -8,6 +8,7 @@ N=$1 #標準入力から実験回数を取得
 eval "cp config.yaml trainlog/$DATE/config.yaml"
 
 ex_base="python3 -u main.py --train | tee trainlog/$DATE/train_log_xxx.txt" #ログを取りながら学習させる
+model_cp="cp models/latest.pth trainlog/$DATE/latest_xxx.pth" #最終モデルも保存
 #current_conda=$CONDA_DEFAULT_ENV
 
 for i in `seq -f %02g 1 $N`; do #指定回数以下を実行
@@ -16,6 +17,7 @@ for i in `seq -f %02g 1 $N`; do #指定回数以下を実行
     #ex_execution=${ex_base//xxx/$i} #ex_baseのxx部分に現在のを追加しコマンド実行
     #eval ${ex_execution}
     eval ${ex_base//xxx/$i}
+    eval ${model_cp//xxx/$i}
 done
 
 # echo @kumejun $DATE の実験 $N 回やったよ！！ | bash_scripts/slack_alarm.sh #slackに実験が終わったら通知を送る機能（別途で設定する必要あり）
