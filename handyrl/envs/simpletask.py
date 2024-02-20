@@ -478,6 +478,8 @@ class Environment(BaseEnvironment):
             self.state_qnp += self.tree_np
         #print(self.state_qnp) # デバッグ用
         self.state_qlist = self.state_qnp.tolist() # ランダムな状態量の配列をlist型に変換したもの（状態のインデックス取得するにはリスト型の方が都合がいい）
+        print('state:',self.state_qlist)
+
 
     def place_list_make(self):
         count = 0
