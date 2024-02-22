@@ -76,6 +76,8 @@ def make_batch(episodes, args):
             amask = np.array([[replace_none(m['action_mask'][player], amask_zeros + 1e32) for player in players] for m in moments])
             c = np.array([[[replace_none(m['c'][player], 0.0)] for player in players] for m in moments])
             c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
+            c_nn = np.array([[[replace_none(m['c_nn'][player], 0.0)] for player in players] for m in moments])
+            c_accuracy = np.array([[[replace_none(m['c_accuracy'][player], 0.0)] for player in players] for m in moments])
 
         # reshape observation
         obs = rotate(rotate(obs))  # (T, P, ..., ...) -> (P, ..., T, ...) -> (..., T, P, ...)
@@ -113,12 +115,14 @@ def make_batch(episodes, args):
             progress = np.pad(progress, [(pad_len_b, pad_len_a), (0, 0)], 'constant', constant_values=1)
             c = np.pad(c, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_reg = np.pad(c_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            c_nn = np.pad(c_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            c_accuracy = np.pad(c_accuracy, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, c_accuracy))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg,c_nn, c_accuracy = [to_torch(np.array(val)) for val in zip(*datum)]
 
     return {
         'observation': obs,
@@ -133,6 +137,8 @@ def make_batch(episodes, args):
         'progress': progress,
         'c': c,
         'c_reg': c_reg,
+        'c_nn': c_nn,
+        'c_accuracy': c_accuracy
     }
 
 
@@ -215,6 +221,8 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     omasks = batch['observation_mask']
     mixed_c = batch['c']
     c_reg = batch['c_reg']
+    c_nn = batch['c_nn']
+    c_accuracy = batch['c_accuracy']
 
     # loss の箱
     losses = {}
@@ -248,9 +256,13 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     if 'selected_confidence_loss' in outputs:
         losses['c'] = outputs['selected_confidence_loss'].mul(omasks).sum()
 
-        entropy_c_nn = -torch.sum(targets['c_nn'] * torch.log(targets['c_nn']),3)
-        entropy_c_nn = entropy_c_nn.mul(tmasks.sum(-1))
+        entropy_c_nn = -torch.sum(c_nn * torch.log(c_nn),4)
+        entropy_c_nn = entropy_c_nn.mul(tmasks)
         losses['ent_c_nn'] = entropy_c_nn.sum()
+
+        #entropy_c_nn = -torch.sum(targets['c_nn'] * torch.log(targets['c_nn']),3)
+        #entropy_c_nn = entropy_c_nn.mul(tmasks.sum(-1))
+        #losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:
             entropy_c_reg = -torch.sum(c_reg * torch.log(c_reg),4)
             entropy_c_reg = torch.nan_to_num(entropy_c_reg)
@@ -260,6 +272,9 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             entropy_c_mixed = -torch.sum(mixed_c * torch.log(mixed_c),4)
             entropy_c_mixed = entropy_c_mixed.mul(tmasks)
             losses['entropy_c_mixed'] = entropy_c_mixed.sum()
+
+            c_accuracy = c_accuracy.mul(tmasks)
+            losses['c_accuracy'] = c_accuracy.sum()
 
 
     if 'confidence' in outputs:
@@ -388,16 +403,16 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
         c_mse = torch.mean(c_loss, axis=4)
         outputs['selected_confidence_loss'] = c_mse.gather(-1,actions) *emasks #学習用
         # エントロピー監視用
-        c_predict = outputs['confidence_57']
-        c_target = outputs_nograd['confidence_57_fix']
-        c_predict = c_predict.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
-        c_target = c_target.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
+        #c_predict = outputs['confidence_57']
+        #c_target = outputs_nograd['confidence_57_fix']
+        #c_predict = c_predict.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
+        #c_target = c_target.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
         ## 計算
-        bottom = torch.mean((c_target - c_predict)**2, axis =4) #Σ(真-予測)^2
-        epsilon = 1e-6
-        rnd = epsilon/(bottom+epsilon) #0除算回避
+        #bottom = torch.mean((c_target - c_predict)**2, axis =4) #Σ(真-予測)^2
+        #epsilon = 1e-6
+        #rnd = epsilon/(bottom+epsilon) #0除算回避
         ## 正規化
-        targets['c_nn'] = rnd/torch.sum(rnd, keepdim=True,axis=3)
+        #targets['c_nn'] = rnd/torch.sum(rnd, keepdim=True,axis=3)
 
     if 'latent' in outputs_nograd:
         # 学習はしないが latent を抜き出しておく

@@ -349,10 +349,15 @@ class R4DRSRSAgent(Agent):
                 p_reg = 1.0/actions.size
                 c_reg = np.full(actions.size, p_reg)
                 c = c_nn
+            if np.argmax(c_reg) == np.argmax(c_nn):
+                c_accuracy = 1
+            else:
+                c_accuracy = 0
         else:
             p_reg = 1.0/actions.size
             c_reg = np.full(actions.size, p_reg)
             c = c_nn
+            c_accuracy = 0
 
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
@@ -405,6 +410,8 @@ class R4DRSRSAgent(Agent):
             action_log['metadata']['action'][player] = one_hot_action
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg
+            action_log['moment']['c_nn'][player] = c_nn
+            action_log['moment']['c_accuracy'][player] = c_accuracy
             # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action
