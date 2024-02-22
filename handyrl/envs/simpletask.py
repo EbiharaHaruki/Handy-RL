@@ -518,6 +518,9 @@ class Environment(BaseEnvironment):
             #print(self.state)
         else: #初期位置を固定にする場合 (False)
             self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
+            self.true_state = self.state
+            if self.jyotai_boolkari:
+                self.state = self.state_qnp[self.tree_list.index(self.state.tolist())]
         if self.observation_noise > 0: # 観測ノイズの生成
             self.state_quantity()
 
