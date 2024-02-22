@@ -200,6 +200,7 @@ for i in model_log[:a]:
     s_policy = []
     v_value = []
     q_value = []
+    reliability = []
 
     for s in epoch_s_list:
         input = torch.tensor(s)
@@ -208,24 +209,40 @@ for i in model_log[:a]:
         s_policy += [output["policy"].tolist()]
         v_value += [output["value"].item()]
         q_value += [output["qvalue"].tolist()]
+        if 'confidence_57' in output:
+            # エントロピー監視用
+            c_predict = output['confidence_57']
+            c_target = output['confidence_57_fix']
+            c_predict = c_predict.reshape(output['policy'].size(0),-1)
+            c_target = c_target.reshape(output['policy'].size(0),-1)
+            ## 計算
+            bottom = torch.mean((c_target - c_predict)**2, axis =-1) #Σ(真-予測)^2
+           
+            epsilon = 1e-6
+            rnd = epsilon/(bottom+epsilon) #0除算回避
+            ## 正規化
+            reliability += [(rnd/torch.sum(rnd, keepdim=True, axis=-1)).tolist()]
+
     if cnt == 0:
         policy_mean = s_policy
         v_mean = v_value
         q_mean = q_value
+        reliability_mean = reliability
     elif cnt!=0:
-        policy_mean = [sum(v) for v in zip(policy_mean, s_policy)]
-        v_mean = [sum(v) for v in zip(v_mean, v_value)]
-        q_mean = [sum(v) for v in zip(q_mean, q_value)]
-    #policy_mean += [s_policy]
-    #v_mean += [v_value]
-    #q_mean = [q_value]
+        policy_mean = np.array(policy_mean) + np.array(s_policy)
+        v_mean = np.array(v_mean) + np.array(v_value)
+        q_mean = np.array(q_mean) + np.array(q_value)
+        reliability_mean = np.array(reliability_mean) + np.array(reliability)
+    cnt += 1
+
 policy_mean = np.array(policy_mean) / a
 v_mean = np.array(v_mean) /a
 q_mean = np.array(q_mean) /a
+reliability_mean = np.array(reliability_mean) / a
 
 
 
-result_list = {"policy": policy_mean, "v": v_mean, "q": q_mean}
+result_list = {"policy": policy_mean, "v": v_mean, "q": q_mean, "reliability": reliability_mean}
 #nn_mean =  nn_mean / a #平均を取る
 #reg_mean =  reg_mean / a
 #mix_mean = mix_mean / a
@@ -266,6 +283,8 @@ for opponent in opponents:
         #np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
     elif opponent == 'q':
         np.savetxt(path + 'q.csv', l, delimiter=',', fmt='%.5f')
+    elif opponent == 'reliability':
+        np.savetxt(path + 'reliability.csv', l, delimiter=',', fmt='%.5f')
         #np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
     #else:
         #np.savetxt(path + 'retruns_' + opponent + '.csv', loss_list[start:], delimiter='', fmt='%.5f')
