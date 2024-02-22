@@ -74,6 +74,8 @@ def make_batch(episodes, args):
             prob = np.array([[[replace_none(m['selected_prob'][player], 1.0)] for player in players] for m in moments])
             act = np.array([[replace_none(m['action'][player], 0) for player in players] for m in moments], dtype=np.int64)[..., np.newaxis]
             amask = np.array([[replace_none(m['action_mask'][player], amask_zeros + 1e32) for player in players] for m in moments])
+            c = np.array([[[replace_none(m['c'][player], 0.0)] for player in players] for m in moments])
+            c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
 
         # reshape observation
         obs = rotate(rotate(obs))  # (T, P, ..., ...) -> (P, ..., T, ...) -> (..., T, P, ...)
@@ -109,12 +111,14 @@ def make_batch(episodes, args):
             omask = np.pad(omask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             amask = np.pad(amask, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=1e32)
             progress = np.pad(progress, [(pad_len_b, pad_len_a), (0, 0)], 'constant', constant_values=1)
+            c = np.pad(c, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            c_reg = np.pad(c_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg = [to_torch(np.array(val)) for val in zip(*datum)]
 
     return {
         'observation': obs,
@@ -127,6 +131,8 @@ def make_batch(episodes, args):
         'turn_mask': tmask, 'observation_mask': omask,
         'action_mask': amask,
         'progress': progress,
+        'c': c,
+        'c_reg': c_reg,
     }
 
 
@@ -207,6 +213,8 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     # losses の計算で終端 Return を target_values (deque) を最初（最後）に入れているのを mask で無効化
     tmasks = batch['turn_mask'] if args['return_buckup'] else lastcut_for_buckup(batch['turn_mask'], batch['terminal'])
     omasks = batch['observation_mask']
+    mixed_c = batch['c']
+    c_reg = batch['c_reg']
 
     # loss の箱
     losses = {}
@@ -249,10 +257,14 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:
-            p_c_reg = metadataset['knn'].regional_nn(targets['latent'][0,0,:].squeeze())
-            # p_c_reg = metadataset['knn'].regional_nn(targets['latent'].squeeze())
-            entropy_c_reg = -(p_c_reg * np.ma.log(p_c_reg)).sum()
-            losses['ent_c_reg'] = entropy_c_reg
+            entropy_c_reg = -torch.sum(c_reg * torch.log(c_reg),4)
+            entropy_c_reg = torch.nan_to_num(entropy_c_reg)
+            entropy_c_reg = entropy_c_reg.mul(tmasks)
+            losses['ent_c_reg'] = entropy_c_reg.sum()
+
+            entropy_c_mixed = -torch.sum(mixed_c * torch.log(mixed_c),4)
+            entropy_c_mixed = entropy_c_mixed.mul(tmasks)
+            losses['entropy_c_mixed'] = entropy_c_mixed.sum()
 
     # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
