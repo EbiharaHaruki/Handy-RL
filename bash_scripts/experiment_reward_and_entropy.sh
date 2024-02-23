@@ -1,5 +1,5 @@
 #! /bin/bash
-# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数]
+# Usage: . bash_scripts/experiment_reward_and_entropy.sh [任意の実行回数]
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成
@@ -22,6 +22,10 @@ done
 
 plot_now="timeout 10 python3 scripts/reward_average_plot.py 0 simpletask $DATE" #回数分のログの可視化
 eval $plot_now
+plot_now_entropy="timeout 10 python3 scripts/entropy_average_plot.py 0 simpletask $DATE" #回数分のログの可視化
+eval $plot_now_entropy
+plot_now_srs_entropy="timeout 10 python3 scripts/srs_entropy_average_plot.py 0 simpletask $DATE" #回数分のログの可視化
+eval $plot_now_srs_entropy
 cd trainlog
 zip -r $DATE.zip $DATE
 mv $DATE.zip $DATE/

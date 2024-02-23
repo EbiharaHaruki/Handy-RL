@@ -238,25 +238,33 @@ class RSRSAgent(Agent):
             if c_reg is not None:
                 c = self.rw * c_reg.squeeze() + (1.0 - self.rw) * c_nn
             else:
+                p_reg = 1.0 / actions.size
+                c_reg = np.full(actions.size, p_reg)
                 c = c_nn
         else:
+            p_reg = 1.0 / actions.size
+            c_reg = np.full(actions.size, p_reg)
             c = c_nn
 
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
-            fix_aleph = np.amax(q) + sys.float_info.epsilon
-            delta = fix_aleph - q
-            if np.amin(delta) < 0:
-                delta -= np.amin(delta)  # 丸め誤差が発生した場合の処理
-            if np.any(delta == 0.0):
-                delta += sys.float_info.epsilon
+            is_satisfied = q >= aleph
+            rsrs = np.zeros(len(q))
+            rs_value_plus_eps = c * (q - aleph) + sys.float_info.epsilon
+
+            # 達成状態の行動のRS値のみを考慮する
+            for i, b in enumerate(is_satisfied):
+                if b:
+                    rsrs[i] = rs_value_plus_eps[i] / np.sum(rs_value_plus_eps[is_satisfied])
         else:
+            # 非達成状態では通常のSRSの計算を行う
             delta = aleph - q
-        z = 1.0 / np.sum(1.0 / delta)
-        rho = z / delta
-        rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
-        if np.min(rsrs) < 0:
-            rsrs -= np.min(rsrs)
+            z = 1.0 / np.sum(1.0 / delta)
+            rho = z / delta
+            rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
+            if np.min(rsrs) < 0:
+                rsrs -= np.min(rsrs)
+
         if np.any(rsrs == 0.0):
             rsrs += sys.float_info.epsilon
         p = np.log(rsrs)
@@ -289,7 +297,9 @@ class RSRSAgent(Agent):
             action_log['moment']['action_mask'][player] = action_mask
             action_log['metadata']['latent'][player] = latent
             action_log['metadata']['action'][player] = one_hot_action
-            # action_log['metadata']['entropy_srs'][player] = entropy_srs
+            action_log['moment']['c'][player] = c
+            action_log['moment']['c_reg'][player] = c_reg
+            action_log['moment']['entropy_srs'][player] = entropy_srs
 
         return action
 
