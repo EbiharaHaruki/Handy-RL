@@ -78,6 +78,9 @@ def make_batch(episodes, args):
             c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
             c_nn = np.array([[[replace_none(m['c_nn'][player], 0.0)] for player in players] for m in moments])
             c_accuracy = np.array([[[replace_none(m['c_accuracy'][player], 0.0)] for player in players] for m in moments])
+            greedy_select = np.array([[[replace_none(m['greedy_select'][player], 0.0)] for player in players] for m in moments])
+            greedy_reg = np.array([[[replace_none(m['greedy_reg'][player], 0.0)] for player in players] for m in moments])
+            greedy_nn = np.array([[[replace_none(m['greedy_nn'][player], 0.0)] for player in players] for m in moments])
 
         # reshape observation
         obs = rotate(rotate(obs))  # (T, P, ..., ...) -> (P, ..., T, ...) -> (..., T, P, ...)
@@ -117,12 +120,15 @@ def make_batch(episodes, args):
             c_reg = np.pad(c_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_nn = np.pad(c_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_accuracy = np.pad(c_accuracy, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            greedy_select = np.pad(greedy_select, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            greedy_reg = np.pad(greedy_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            greedy_nn = np.pad(greedy_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, c_accuracy))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, c_accuracy, greedy_select, greedy_reg, greedy_nn))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg,c_nn, c_accuracy = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg,c_nn, c_accuracy, greedy_select, greedy_reg, greedy_nn = [to_torch(np.array(val)) for val in zip(*datum)]
 
     return {
         'observation': obs,
@@ -138,7 +144,10 @@ def make_batch(episodes, args):
         'c': c,
         'c_reg': c_reg,
         'c_nn': c_nn,
-        'c_accuracy': c_accuracy
+        'c_accuracy': c_accuracy,
+        'greedy_select': greedy_select,
+        'greedy_reg': greedy_reg,
+        'greedy_nn': greedy_nn
     }
 
 
@@ -223,6 +232,9 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     c_reg = batch['c_reg']
     c_nn = batch['c_nn']
     c_accuracy = batch['c_accuracy']
+    greedy_select = batch['greedy_select']
+    greedy_reg = batch['greedy_reg']
+    greedy_nn = batch['greedy_nn']
 
     # loss の箱
     losses = {}
@@ -275,6 +287,15 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
 
             c_accuracy = c_accuracy.mul(tmasks)
             losses['c_accuracy'] = c_accuracy.sum()
+
+            greedy_select = greedy_select.mul(tmasks)
+            losses['greedy_select'] = greedy_select.sum()
+
+            greedy_nn = greedy_nn.mul(tmasks)
+            losses['greedy_nn'] = greedy_nn.sum()
+
+            greedy_reg = greedy_reg.mul(tmasks)
+            losses['greedy_reg'] = greedy_reg.sum()
 
 
     if 'confidence' in outputs:

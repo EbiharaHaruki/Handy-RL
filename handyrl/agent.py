@@ -398,6 +398,18 @@ class R4DRSRSAgent(Agent):
             if show:
                 print_outputs(env, softmax(p), v)
         one_hot_action = np.identity(len(p))[action]
+        if np.argmax(q) == action:
+            greedy_select = 1
+        else:
+            greedy_select = 0
+        if np.argmax(q) == np.argmax(c_nn):
+            greedy_nn = 1
+        else:
+            greedy_nn = 0
+        if np.argmax(q) == np.argmax(c_reg):
+            greedy_reg = 1
+        else:
+            greedy_reg = 0
 
         # action log は action 決定過程の情報
         if self.generating:
@@ -412,6 +424,9 @@ class R4DRSRSAgent(Agent):
             action_log['moment']['c_reg'][player] = c_reg
             action_log['moment']['c_nn'][player] = c_nn
             action_log['moment']['c_accuracy'][player] = c_accuracy
+            action_log['moment']['greedy_select'][player] = greedy_select
+            action_log['moment']['greedy_reg'][player] = greedy_reg
+            action_log['moment']['greedy_nn'][player] = greedy_nn
             # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action
