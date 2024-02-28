@@ -113,9 +113,9 @@ greedy_select_mean = greedy_select_mean / a
 if nn_flag == True and reg_flag == True:
     averaged_loss_lists = {"greedy_select" : greedy_select_mean, "greedy_nn" : nn_mean, "greedy_reg" : reg_mean} #dict型に変換
 elif nn_flag == True and reg_flag == False:
-    averaged_loss_lists = {"greedy_nn" : nn_mean}
+    averaged_loss_lists = {"greedy_select" : greedy_select_mean, "greedy_nn" : nn_mean}
 elif nn_flag == False and reg_flag == True:
-    averaged_loss_lists = {"greedy_reg" : reg_mean}
+    averaged_loss_lists = {"greedy_select" : greedy_select_mean,"greedy_reg" : reg_mean}
 else:
     print("Not Regional!")
     sys.exit()

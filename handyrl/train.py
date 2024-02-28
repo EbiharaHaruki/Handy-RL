@@ -288,14 +288,14 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             c_accuracy = c_accuracy.mul(tmasks)
             losses['c_accuracy'] = c_accuracy.sum()
 
-            greedy_select = greedy_select.mul(tmasks)
-            losses['greedy_select'] = greedy_select.sum()
-
-            greedy_nn = greedy_nn.mul(tmasks)
-            losses['greedy_nn'] = greedy_nn.sum()
-
             greedy_reg = greedy_reg.mul(tmasks)
             losses['greedy_reg'] = greedy_reg.sum()
+
+        greedy_select = greedy_select.mul(tmasks)
+        losses['greedy_select'] = greedy_select.sum()
+
+        greedy_nn = greedy_nn.mul(tmasks)
+        losses['greedy_nn'] = greedy_nn.sum()
 
 
     if 'confidence' in outputs:
