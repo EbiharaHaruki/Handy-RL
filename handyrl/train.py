@@ -423,7 +423,8 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
         # 信頼度の学習用のloss
         c_loss = ((outputs['confidence_57'] - outputs_nograd['confidence_57_fix']) **2)
         c_loss = c_loss.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
-        c_mse = torch.mean(c_loss, axis=4)
+        #c_mse = torch.mean(c_loss, axis=4)
+        c_mse = torch.sum(c_loss, axis=4)
         outputs['selected_confidence_loss'] = c_mse.gather(-1,actions) *emasks #学習用
         # エントロピー監視用
         #c_predict = outputs['confidence_57']

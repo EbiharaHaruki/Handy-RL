@@ -335,7 +335,8 @@ class R4DRSRSAgent(Agent):
         c_predict = c_predict.reshape(-1, actions.size)
         c_target = c_target.reshape(-1, actions.size)
         # 計算
-        rnd = np.mean((c_target - c_predict)**2,axis=0)
+        #rnd = np.mean((c_target - c_predict)**2,axis=0)
+        rnd = np.sum((c_target - c_predict)**2,axis=0) #二乗した L2 ノルムと呼ばれる
         rnd = 1e-6/(rnd+1e-6)
         #正規化
         c_nn = rnd/np.sum(rnd)
