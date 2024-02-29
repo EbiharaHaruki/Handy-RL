@@ -532,9 +532,11 @@ class Trainer:
         self.model = model
         self.metadataset = metadataset
         self.default_lr = 3e-8
+        self.default_lr_r4d = 3e-9
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
         lr = self.default_lr * self.data_cnt_ema
+        lr_r4d = self.default_lr * self.data_cnt_ema
 
         if self.args['agent']['type'] == 'R4D-RSRS':
             self.params_fc1 = list(self.model.fc1.parameters())
@@ -546,7 +548,7 @@ class Trainer:
             self.params_r4d = list(self.model.fc_c.parameters())
             self.params_r4d_head = list(self.model.head_c.parameters())
             self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b}], lr=lr, weight_decay=1e-5)
-            self.optimizer_r4d = optim.Adam([{'params' : self.params_r4d}, {'params': self.params_r4d_head}], lr=lr*0.01, weight_decay=1e-5)
+            self.optimizer_r4d = optim.Adam([{'params' : self.params_r4d}, {'params': self.params_r4d_head}], lr=lr_r4d, weight_decay=1e-5)
             #self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b},
                                           #{'params': self.params_r4d, 'lr': lr_r4d}, {'params': self.params_r4d_head, 'lr': lr_r4d}], lr=lr, weight_decay=1e-5)
         else:
@@ -638,6 +640,8 @@ class Trainer:
         self.data_cnt_ema = self.data_cnt_ema * 0.8 + data_cnt / (1e-2 + batch_cnt) * 0.2
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
+        for param_group in self.optimizer_r4d.param_groups:
+            param_group['lr'] = self.default_lr_r4d * self.data_cnt_ema / (1 + self.steps * 1e-5)
         self.model.cpu()
         self.model.eval()
         return copy.deepcopy(self.model)
