@@ -325,9 +325,11 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     losses['ent'] = entropy.sum()
 
     # value と policy の loss の計算
-    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0) + losses.get('c', 0)
+    #base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0) + losses.get('c', 0)
+    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0)
     # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
+    losses['r4d'] = losses.get('c', 0)
     losses['total'] = base_loss + entropy_loss
 
     return losses, dcnt
@@ -533,7 +535,23 @@ class Trainer:
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
         lr = self.default_lr * self.data_cnt_ema
-        self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
+
+        if self.args['agent']['type'] == 'R4D-RSRS':
+            self.params_fc1 = list(self.model.fc1.parameters())
+            self.params_p = list(self.model.head_p.parameters())
+            self.params_v = list(self.model.head_v.parameters())
+            self.params_a = list(self.model.head_a.parameters())
+            self.params_b = list(self.model.head_b.parameters())
+
+            self.params_r4d = list(self.model.fc_c.parameters())
+            self.params_r4d_head = list(self.model.head_c.parameters())
+            self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b}], lr=lr, weight_decay=1e-5)
+            self.optimizer_r4d = optim.Adam([{'params' : self.params_r4d}, {'params': self.params_r4d_head}], lr=lr*0.01, weight_decay=1e-5)
+            #self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b},
+                                          #{'params': self.params_r4d, 'lr': lr_r4d}, {'params': self.params_r4d_head, 'lr': lr_r4d}], lr=lr, weight_decay=1e-5)
+        else:
+            self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
+        #self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
         self.steps = 0
         self.batcher = Batcher(self.args, self.episodes)
         self.update_flag = False
@@ -590,6 +608,11 @@ class Trainer:
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
             self.optimizer.step()
+
+            self.optimizer_r4d.zero_grad() #分けることで他の学習スピードに引っ張られすぎない
+            losses['r4d'].backward()
+            nn.utils.clip_grad_norm_(self.params, 4.0)
+            self.optimizer_r4d.step()
 
             # target net の更新
             if self.target_update == 'soft':
