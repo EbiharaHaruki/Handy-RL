@@ -94,12 +94,14 @@ class Agent:
         p = p - action_mask
 
         if self.generating or self.temperature != 0.0:
+            # role is generate
             policy = softmax(p) if self.temperature is None else softmax(p / self.temperature)
             action = random.choices(np.arange(len(p)), weights=policy)[0]
             selected_prob = policy[action]
             if show:
                 print_outputs(env, policy, v)
         else:
+            # role is eval
             ap_list = sorted([(a, p[a]) for a in actions], key=lambda x: -x[1])
             action = ap_list[0][0]
             selected_prob = 1.0
@@ -112,6 +114,7 @@ class Agent:
             action_log['moment']['value'][player] = v
             action_log['moment']['selected_prob'][player] = selected_prob
             action_log['moment']['action_mask'][player] = action_mask
+            action_log['moment']['state_index'][player] = env.observation_index(action, player) # agent の軌跡可視化時に必要
 
         return action
 
@@ -250,19 +253,21 @@ class RSRSAgent(Agent):
 
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
-            fix_aleph = np.amax(q) + sys.float_info.epsilon
-            delta = fix_aleph - q
-            if np.amin(delta) < 0:
-                delta -= np.amin(delta)  # 丸め誤差が発生した場合の処理
-            if np.any(delta == 0.0):
-                delta += sys.float_info.epsilon
+            is_satisfied = q >= aleph
+            rsrs = np.zeros(len(q))
+            rs_value_plus_eps = c * (q - aleph) + sys.float_info.epsilon
+
+            # 達成状態の行動のRS値のみを考慮する
+            for i, b in enumerate(is_satisfied):
+                if b:
+                    rsrs[i] = rs_value_plus_eps[i] / np.sum(rs_value_plus_eps[is_satisfied])
         else:
             delta = aleph - q
-        z = 1.0 / np.sum(1.0 / delta)
-        rho = z / delta
-        rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
-        if np.min(rsrs) < 0:
-            rsrs -= np.min(rsrs)
+            z = 1.0 / np.sum(1.0 / delta)
+            rho = z / delta
+            rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
+            if np.min(rsrs) < 0:
+                rsrs -= np.min(rsrs)
         if np.any(rsrs == 0.0):
             rsrs += sys.float_info.epsilon
         p = np.log(rsrs)
@@ -279,6 +284,7 @@ class RSRSAgent(Agent):
             if show:
                 print_outputs(env, policy, v)
         else:
+            # eval 時なのにRS 値が最大のものを選択する(挙動方策の argmax)のはおかしい。修正が必要
             ap_list = sorted([(a, p[a]) for a in actions], key=lambda x: -x[1])
             action = ap_list[0][0]
             selected_prob = 1.0
@@ -297,6 +303,7 @@ class RSRSAgent(Agent):
             action_log['metadata']['action'][player] = one_hot_action
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg
+            action_log['moment']['state_index'][player] = env.observation_index(action,player)
             # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action
@@ -335,8 +342,7 @@ class R4DRSRSAgent(Agent):
         c_predict = c_predict.reshape(-1, actions.size)
         c_target = c_target.reshape(-1, actions.size)
         # 計算
-        #rnd = np.mean((c_target - c_predict)**2,axis=0)
-        rnd = np.sum((c_target - c_predict)**2,axis=0) #二乗した L2 ノルムと呼ばれる
+        rnd = np.sum((c_target - c_predict)**2,axis=0) # L2 ノルムと呼ばれる
         rnd = 1e-6/(rnd+1e-6)
         #正規化
         c_nn = rnd/np.sum(rnd)
@@ -350,33 +356,28 @@ class R4DRSRSAgent(Agent):
                 p_reg = 1.0/actions.size
                 c_reg = np.full(actions.size, p_reg)
                 c = c_nn
-            if np.argmax(c_reg) == np.argmax(c_nn):
-                c_accuracy = 1
-            else:
-                c_accuracy = 0
         else:
             p_reg = 1.0/actions.size
             c_reg = np.full(actions.size, p_reg)
             c = c_nn
-            c_accuracy = 0
 
         # rs = c * (q - aleph)
         if np.amax(q) >= aleph:
-            #print("満足")
-            fix_aleph = np.amax(q) + sys.float_info.epsilon
-            delta = fix_aleph - q
-            if np.amin(delta) < 0:
-                delta -= np.amin(delta)  # 丸め誤差が発生した場合の処理
-            if np.any(delta == 0.0):
-                delta += sys.float_info.epsilon
+            is_satisfied = q >= aleph
+            rsrs = np.zeros(len(q))
+            rs_value_plus_eps = c * (q - aleph) + sys.float_info.epsilon
+
+            # 達成状態の行動のRS値のみを考慮する
+            for i, b in enumerate(is_satisfied):
+                if b:
+                    rsrs[i] = rs_value_plus_eps[i] / np.sum(rs_value_plus_eps[is_satisfied])
         else:
-            #print("非満足")
             delta = aleph - q
-        z = 1.0 / np.sum(1.0 / delta)
-        rho = z / delta #17
-        rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
-        if np.min(rsrs) < 0:
-            rsrs -= np.min(rsrs)
+            z = 1.0 / np.sum(1.0 / delta)
+            rho = z / delta
+            rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
+            if np.min(rsrs) < 0:
+                rsrs -= np.min(rsrs)
         if np.any(rsrs == 0.0):
             rsrs += sys.float_info.epsilon
         p = np.log(rsrs)
@@ -399,18 +400,6 @@ class R4DRSRSAgent(Agent):
             if show:
                 print_outputs(env, softmax(p), v)
         one_hot_action = np.identity(len(p))[action]
-        if np.argmax(q) == action:
-            greedy_select = 1
-        else:
-            greedy_select = 0
-        if np.argmax(q) == np.argmax(c_nn):
-            greedy_nn = 1
-        else:
-            greedy_nn = 0
-        if np.argmax(q) == np.argmax(c_reg):
-            greedy_reg = 1
-        else:
-            greedy_reg = 0
 
         # action log は action 決定過程の情報
         if self.generating:
@@ -424,10 +413,7 @@ class R4DRSRSAgent(Agent):
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg
             action_log['moment']['c_nn'][player] = c_nn
-            action_log['moment']['c_accuracy'][player] = c_accuracy
-            action_log['moment']['greedy_select'][player] = greedy_select
-            action_log['moment']['greedy_reg'][player] = greedy_reg
-            action_log['moment']['greedy_nn'][player] = greedy_nn
+            action_log['moment']['state_index'][player] = env.observation_index(action,player)
             # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action
