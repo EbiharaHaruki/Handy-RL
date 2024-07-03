@@ -37,7 +37,7 @@ class Generator:
         return_metadata = []
         # hidden = {}
         agents = {}
-        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'qvalue', 'reward', 'return', 'terminal', 'c', 'c_reg','c_nn', 'c_accuracy', 'greedy_select', 'greedy_reg', 'greedy_nn']
+        moment_keys = ['observation', 'selected_prob', 'action_mask', 'action', 'value', 'qvalue', 'reward', 'return', 'terminal', 'c', 'c_reg','c_nn', 'c_accuracy', 'state_index']
         metadata_keys = []
 
         if self.env.reset():
@@ -156,19 +156,19 @@ class Generator:
             # 各 step に対する割引率付きの target return を step 全体で計算
             for i, m in reversed(list(enumerate(moments))):
                 # (m['reward'][player] or 0) は reward が None の対策
-                ret = (m['reward'][player] or 0) + self.args['gamma'] * ret
-                g_ret = (m['reward'][player] or 0) + 1.0 * g_ret
+                ret = (m['reward'][player] or 0) + self.args['gamma'] * ret #収益
+                g_ret = (m['reward'][player] or 0) + 1.0 * g_ret #割引率なし収益
                 moments[i]['return'][player] = ret
             if hasattr(self, 'global_returns'):
                 l = self.lastidx[player]
-                self.global_returns[player][l] = g_ret
+                self.global_returns[player][l] = g_ret #エピソードの長さぶん格納
                 self.lastidx[player] = (self.lastidx[player] + 1) if l >= (self.size - 1) else 0
                 if self.num[player] == self.size:
                     self.num[player] += 1
-                    # self.global_v[player] = self.global_returns[player][0:self.num[player]].mean()
+                    #self.global_v[player] = self.global_returns[player][0:self.num[player]].mean()
                     self.global_v[player] = np.max(self.global_returns[player][0:self.num[player]])
                 else:
-                    # self.global_v[player] = self.global_returns[player].mean()
+                    #self.global_v[player] = self.global_returns[player].mean()
                     self.global_v[player] = np.amax(self.global_returns[player])
 
         # episode の詳細情報(moments)は bz2 で圧縮されて送る
