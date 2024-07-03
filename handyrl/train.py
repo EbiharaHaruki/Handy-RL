@@ -13,6 +13,8 @@ import pickle
 import warnings
 import queue
 from collections import deque
+import collections
+import csv
 # import faiss
 
 import numpy as np
@@ -77,10 +79,7 @@ def make_batch(episodes, args):
             c = np.array([[[replace_none(m['c'][player], 0.0)] for player in players] for m in moments])
             c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
             c_nn = np.array([[[replace_none(m['c_nn'][player], 0.0)] for player in players] for m in moments])
-            c_accuracy = np.array([[[replace_none(m['c_accuracy'][player], 0.0)] for player in players] for m in moments])
-            greedy_select = np.array([[[replace_none(m['greedy_select'][player], 0.0)] for player in players] for m in moments])
-            greedy_reg = np.array([[[replace_none(m['greedy_reg'][player], 0.0)] for player in players] for m in moments])
-            greedy_nn = np.array([[[replace_none(m['greedy_nn'][player], 0.0)] for player in players] for m in moments])
+            state_index = np.array([[[replace_none(m['state_index'][player], 0.0)] for player in players] for m in moments])
 
         # reshape observation
         obs = rotate(rotate(obs))  # (T, P, ..., ...) -> (P, ..., T, ...) -> (..., T, P, ...)
@@ -119,16 +118,12 @@ def make_batch(episodes, args):
             c = np.pad(c, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_reg = np.pad(c_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_nn = np.pad(c_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
-            c_accuracy = np.pad(c_accuracy, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
-            greedy_select = np.pad(greedy_select, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
-            greedy_reg = np.pad(greedy_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
-            greedy_nn = np.pad(greedy_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, c_accuracy, greedy_select, greedy_reg, greedy_nn))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, state_index))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg,c_nn, c_accuracy, greedy_select, greedy_reg, greedy_nn = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg,c_nn, state_index = [to_torch(np.array(val)) for val in zip(*datum)]
 
     return {
         'observation': obs,
@@ -144,10 +139,7 @@ def make_batch(episodes, args):
         'c': c,
         'c_reg': c_reg,
         'c_nn': c_nn,
-        'c_accuracy': c_accuracy,
-        'greedy_select': greedy_select,
-        'greedy_reg': greedy_reg,
-        'greedy_nn': greedy_nn
+        'state_index': state_index
     }
 
 
@@ -235,6 +227,9 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     greedy_select = batch['greedy_select']
     greedy_reg = batch['greedy_reg']
     greedy_nn = batch['greedy_nn']
+    state_index_tmp = batch['state_index']
+    state_index = state_index_tmp[:,0,0,0].tolist()
+    state_index = list(map(str,state_index))
 
     # loss の箱
     losses = {}
@@ -264,17 +259,13 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     if 'loss_rnd' in outputs:
         losses['rnd'] = outputs['loss_rnd'].mul(tmasks).sum()
     
-    # c loss
+    # RS の c loss
     if 'selected_confidence_loss' in outputs:
         losses['c'] = outputs['selected_confidence_loss'].mul(omasks).sum()
-
         entropy_c_nn = -torch.sum(c_nn * torch.log(c_nn),4)
         entropy_c_nn = entropy_c_nn.mul(tmasks)
         losses['ent_c_nn'] = entropy_c_nn.sum()
 
-        #entropy_c_nn = -torch.sum(targets['c_nn'] * torch.log(targets['c_nn']),3)
-        #entropy_c_nn = entropy_c_nn.mul(tmasks.sum(-1))
-        #losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:
             entropy_c_reg = -torch.sum(c_reg * torch.log(c_reg),4)
             entropy_c_reg = torch.nan_to_num(entropy_c_reg)
@@ -284,28 +275,14 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             entropy_c_mixed = -torch.sum(mixed_c * torch.log(mixed_c),4)
             entropy_c_mixed = entropy_c_mixed.mul(tmasks)
             losses['entropy_c_mixed'] = entropy_c_mixed.sum()
-
-            c_accuracy = c_accuracy.mul(tmasks)
-            losses['c_accuracy'] = c_accuracy.sum()
-
-            greedy_reg = greedy_reg.mul(tmasks)
-            losses['greedy_reg'] = greedy_reg.sum()
-
-        greedy_select = greedy_select.mul(tmasks)
-        losses['greedy_select'] = greedy_select.sum()
-
-        greedy_nn = greedy_nn.mul(tmasks)
-        losses['greedy_nn'] = greedy_nn.sum()
-
-
+    # R4D-RS の c loss
     if 'confidence' in outputs:
-    # 信頼度の cross_entropy loss
         b_size = outputs["confidence"].shape[0]
         s_size = outputs["confidence"].shape[1]
         a_size = outputs["confidence"].shape[-1]
         o_c = torch.reshape(outputs["confidence"], (b_size * s_size, a_size))
         t_c = torch.reshape(targets["confidence"], (b_size * s_size, 1)).squeeze_()
-        # losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
+
         losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, s_size, 1, 1)).mul(omasks).sum()
         entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
         # 信頼度割合に関する各種監視変数を追加
@@ -326,13 +303,11 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
 
     # value と policy の loss の計算
     base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0) + losses.get('c', 0)
-    #base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('rnd', 0)
     # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
-    #losses['r4d'] = losses.get('c', 0)
     losses['total'] = base_loss + entropy_loss
 
-    return losses, dcnt
+    return losses, dcnt, state_index
 
 
 def compute_loss(batch, model, target_model, metadataset, hidden, args):
@@ -416,27 +391,15 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
             outputs['bonus'] = intrinsic_reward
 
     if 'confidence' in outputs:
-        # 信頼度の学習
+        # CE 信頼度の学習
         targets['confidence'] = (actions * emasks).to(torch.long)
 
     if 'confidence_57' in outputs:
-        # 信頼度の学習用のloss
+        # R4D 信頼度の学習
         c_loss = ((outputs['confidence_57'] - outputs_nograd['confidence_57_fix']) **2)
         c_loss = c_loss.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
-        #c_mse = torch.mean(c_loss, axis=4)
-        c_mse = torch.sum(c_loss, axis=4)
-        outputs['selected_confidence_loss'] = c_mse.gather(-1,actions) *emasks #学習用
-        # エントロピー監視用
-        #c_predict = outputs['confidence_57']
-        #c_target = outputs_nograd['confidence_57_fix']
-        #c_predict = c_predict.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
-        #c_target = c_target.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
-        ## 計算
-        #bottom = torch.mean((c_target - c_predict)**2, axis =4) #Σ(真-予測)^2
-        #epsilon = 1e-6
-        #rnd = epsilon/(bottom+epsilon) #0除算回避
-        ## 正規化
-        #targets['c_nn'] = rnd/torch.sum(rnd, keepdim=True,axis=3)
+        c_sumloss = torch.sum(c_loss, axis=4)
+        outputs['selected_confidence_loss'] = c_sumloss.gather(-1,actions) *emasks #学習用
 
     if 'latent' in outputs_nograd:
         # 学習はしないが latent を抜き出しておく
@@ -533,29 +496,27 @@ class Trainer:
         self.model = model
         self.metadataset = metadataset
         self.default_lr = 3e-8
-        self.default_lr_r4d = 3e-9
+        self.default_lr_r4d = 3e-8 #r4d だけ一応分離
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
         lr = self.default_lr * self.data_cnt_ema
         lr_r4d = self.default_lr_r4d * self.data_cnt_ema
         self.init_lr_r4d = lr_r4d
 
+
         if self.args['agent']['type'] == 'R4D-RSRS':
+            # パラメータ分離のため
             self.params_fc1 = list(self.model.fc1.parameters())
             self.params_p = list(self.model.head_p.parameters())
             self.params_v = list(self.model.head_v.parameters())
             self.params_a = list(self.model.head_a.parameters())
             self.params_b = list(self.model.head_b.parameters())
-
             self.params_r4d = list(self.model.fc_c.parameters())
             self.params_r4d_head = list(self.model.head_c.parameters())
-            #self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b}], lr=lr, weight_decay=1e-5)
-            #self.optimizer_r4d = optim.Adam([{'params' : self.params_r4d}, {'params': self.params_r4d_head}], lr=lr_r4d, weight_decay=1e-5)
             self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b},
                                           {'params': self.params_r4d, 'lr': lr_r4d}, {'params': self.params_r4d_head, 'lr': lr_r4d}], lr=lr, weight_decay=1e-5)
         else:
             self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
-        #self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
         self.steps = 0
         self.batcher = Batcher(self.args, self.episodes)
         self.update_flag = False
@@ -591,7 +552,7 @@ class Trainer:
             time.sleep(0.1)
             return self.model
 
-        batch_cnt, data_cnt, loss_sum = 0, 0, {}
+        batch_cnt, data_cnt, loss_sum, result_dict = 0, 0, {}, {}
         if self.gpu > 0:
             self.trained_model.cuda()
         self.trained_model.train()
@@ -606,17 +567,19 @@ class Trainer:
                 batch = to_gpu(batch)
                 hidden = to_gpu(hidden)
 
+            losses, dcnt, state_index = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
+            # 訪問回数の集計
+            """dict_state_index = dict(collections.Counter(state_index))
+            for i in (result_dict.keys() | dict_state_index.keys()):
+                num1 = int(result_dict.get(i) or 0)
+                num2 = int(dict_state_index.get(i) or 0)
+                total = num1 + num2
+                result_dict[i] = total"""
             # loss の計算
-            losses, dcnt = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
             self.optimizer.zero_grad()
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
             self.optimizer.step()
-
-            #self.optimizer_r4d.zero_grad() #分けることで他の学習スピードに引っ張られすぎない
-            #losses['r4d'].backward()
-            #nn.utils.clip_grad_norm_(self.params, 4.0)
-            #self.optimizer_r4d.step()
 
             # target net の更新
             if self.target_update == 'soft':
@@ -636,22 +599,26 @@ class Trainer:
                 loss_sum[k] = loss_sum.get(k, 0.0) + l.item()
 
             self.steps += 1
-
         print('loss = %s' % ' '.join([k + ':' + '%.3f' % (l / data_cnt) for k, l in loss_sum.items()]))
+        # 集計結果の保存
+        """with open(self.args['path']+'state_index_result.csv', 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames = list(result_dict.keys()))
+            writer.writeheader()
+            writer.writerows([result_dict])"""
 
         self.data_cnt_ema = self.data_cnt_ema * 0.8 + data_cnt / (1e-2 + batch_cnt) * 0.2
-        for param_group in self.optimizer.param_groups:
-            #print(param_group)
-            if param_group['lr'] == self.init_lr_r4d:
-                param_group['lr'] = self.default_lr_r4d * self.data_cnt_ema / (1 + self.steps * 1e-5)
-                tmp_param = param_group['lr']
-            else:
+        if self.args['agent']['type'] == 'R4D-RSRS':
+            for param_group in self.optimizer.param_groups:
+                if param_group['lr'] == self.init_lr_r4d:
+                    param_group['lr'] = self.default_lr_r4d * self.data_cnt_ema / (1 + self.steps * 1e-5)
+                    tmp_param = param_group['lr']
+                else:
+                    param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
+            self.init_lr_r4d = tmp_param
+        else:
+            for param_group in self.optimizer.param_groups:
                 param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
-        self.init_lr_r4d = tmp_param
 
-            #param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
-        #for param_group in self.optimizer_r4d.param_groups:
-            #param_group['lr'] = self.default_lr_r4d * self.data_cnt_ema / (1 + self.steps * 1e-5)
         self.model.cpu()
         self.model.eval()
         return copy.deepcopy(self.model)
