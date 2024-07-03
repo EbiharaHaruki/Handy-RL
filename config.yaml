@@ -5,9 +5,9 @@ env_args:
     # env: 'handyrl.envs.parallel_tictactoe'  # specify by path
     env: 'simpletask'
     param:
-        depth: 6 # 深度(変更可能)
+        depth: 8 # 深度(変更可能)
         hyperplane_n: 2 # 超平面次元数(変更可能)
-        treasure: [[5, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        treasure: [[7, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: [1] # 報酬の値(変更可能)
         other_reward: 0 # treasure以外に到達した時の報酬設定
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
