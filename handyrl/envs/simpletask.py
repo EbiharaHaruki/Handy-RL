@@ -478,8 +478,6 @@ class Environment(BaseEnvironment):
             self.state_qnp += self.tree_np
         #print(self.state_qnp) # デバッグ用
         self.state_qlist = self.state_qnp.tolist() # ランダムな状態量の配列をlist型に変換したもの（状態のインデックス取得するにはリスト型の方が都合がいい）
-        print('state:',self.state_qlist)
-
 
     def place_list_make(self):
         count = 0
@@ -515,7 +513,6 @@ class Environment(BaseEnvironment):
             self.true_state = self.state
             if self.jyotai_boolkari:
                 self.state = self.state_qnp[self.tree_list.index(self.state.tolist())]
-            #print(self.state)
         else: #初期位置を固定にする場合 (False)
             self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
             self.true_state = self.state
@@ -613,6 +610,18 @@ class Environment(BaseEnvironment):
 
     def observation(self, player=None):
         return self.state.astype(np.float32)
+    
+    def observation_index(self,  a, player=None):
+         # action から次状態を取得してその index を返す
+        action = np.array([a], )
+        if self.jyotai_boolkari: # ランダムな状態量を通常の状態に変換
+            state = self.tree_np[self.state_qlist.index(self.state.tolist())]
+        action = self.action_list_np[action]
+        new_state_tmp = [state[i+1]+ action[0][i] for i in range(self.hyperplane_n)]
+        new_state = (state[0]+1,) + tuple(new_state_tmp)
+        new_state = np.array(new_state)
+
+        return self.tree_list.index(new_state.tolist())
 
     def legal_actions(self, player):
         legal_actions = np.arange(2**self.hyperplane_n)
