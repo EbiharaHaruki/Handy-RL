@@ -223,10 +223,6 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     mixed_c = batch['c']
     c_reg = batch['c_reg']
     c_nn = batch['c_nn']
-    c_accuracy = batch['c_accuracy']
-    greedy_select = batch['greedy_select']
-    greedy_reg = batch['greedy_reg']
-    greedy_nn = batch['greedy_nn']
     state_index_tmp = batch['state_index']
     state_index = state_index_tmp[:,0,0,0].tolist()
     state_index = list(map(str,state_index))
@@ -601,7 +597,7 @@ class Trainer:
             self.steps += 1
         print('loss = %s' % ' '.join([k + ':' + '%.3f' % (l / data_cnt) for k, l in loss_sum.items()]))
         # 集計結果の保存
-        """with open(self.args['path']+'state_index_result.csv', 'a', newline='') as f:
+        """with open('state_index_result.csv', 'a', newline='') as f:
             writer = csv.DictWriter(f, fieldnames = list(result_dict.keys()))
             writer.writeheader()
             writer.writerows([result_dict])"""
