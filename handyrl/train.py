@@ -161,8 +161,7 @@ def forward_prediction(model, hidden, batch, args):
         # feed-forward neural network
         obs = map_r(observations, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         act = map_r(actions, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
-        outputs = model({'s':obs, 'a':act})
-        # outputs = model({'s':obs})
+        outputs = model({'o':obs, 'a':act})
         outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape))  # (..., B, T, P or 1, ...)
     else:
         # sequential computation with RNN
@@ -179,11 +178,11 @@ def forward_prediction(model, hidden, batch, args):
             if t < args['burn_in_steps']:
                 model.eval()
                 with torch.no_grad():
-                    outputs_ = model({'s':obs}, hidden_)
+                    outputs_ = model({'o':obs}, hidden_)
             else:
                 if not model.training:
                     model.train()
-                outputs_ = model({'s':obs}, hidden_)
+                outputs_ = model({'o':obs}, hidden_)
             outputs_ = map_r(outputs_, lambda o: o.unflatten(0, (batch_shape[0], batch_shape[2])))  # (..., B, P or 1, ...)
             for k, o in outputs_.items():
                 if k == 'hidden':
@@ -256,12 +255,12 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     if 'confidence' in outputs:
     # 信頼度の cross_entropy loss
         b_size = outputs['confidence'].shape[0]
-        s_size = outputs['confidence'].shape[1]
+        o_size = outputs['confidence'].shape[1]
         a_size = outputs['confidence'].shape[-1]
-        o_c = torch.reshape(outputs['confidence'], (b_size * s_size, a_size))
-        t_c = torch.reshape(targets['confidence'], (b_size * s_size, 1)).squeeze_()
+        o_c = torch.reshape(outputs['confidence'], (b_size * o_size, a_size))
+        t_c = torch.reshape(targets['confidence'], (b_size * o_size, 1)).squeeze_()
         # losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
-        losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, s_size, 1, 1)).mul(omasks).sum()
+        losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, o_size, 1, 1)).mul(omasks).sum()
         entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_c_nn'] = entropy_c_nn.sum()
@@ -276,27 +275,38 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             losses['entropy_c_mixed'] = entropy_c_mixed.sum()
         losses['entropy_srs'] = entropy_srs.sum()
 
-    bool = ('policy_latent' in outputs)
     if 'policy_latent' in outputs:
+        c_args = args.get('contrastive_learning', {})
         losses['re_state'] = F.smooth_l1_loss(outputs['re_state'], targets['re_state'], reduction='none').mul(omasks).sum()
         b_size = outputs['re_policy'].shape[0]
-        s_size = outputs['re_policy'].shape[1]
+        o_size = outputs['re_policy'].shape[1]
         a_size = outputs['re_policy'].shape[-1]
-        o_re_p = torch.reshape(outputs['re_policy'], (b_size * s_size, a_size))
-        t_re_p = torch.reshape(targets['re_policy'], (b_size * s_size, 1)).squeeze_()
+        o_re_p = torch.reshape(outputs['re_policy'], (b_size * o_size, a_size))
+        t_re_p = torch.reshape(targets['re_policy'], (b_size * o_size, 1)).squeeze_()
         # Reconstruction loss
-        losses['re_policy'] = torch.reshape(F.cross_entropy(o_re_p, t_re_p, reduction='none'), (b_size, s_size, 1, 1)).mul(omasks).sum()
+        losses['re_policy'] = torch.reshape(F.cross_entropy(o_re_p, t_re_p, reduction='none'), (b_size, o_size, 1, 1)).mul(omasks).sum()
         # Reconstruction policy entropy
         entropy_re_p = dist.Categorical(logits=outputs['re_policy']).entropy().mul(tmasks.sum(-1))
         # KL loss
         losses['p_l_KL'] = -0.5 * torch.sum(1 + outputs['log_dev'] - outputs['average']**2 - outputs['log_dev'].exp()) 
-        # TODO: Contrastive_loss
-        half_latent = torch.chunk(outputs['policy_latent'], 2, dim=0)
-        latent_i = F.normalize(torch.reshape(half_latent[0], (b_size * s_size, -1)), dim=-1)
-        latent_j = F.normalize(torch.reshape(half_latent[1], (b_size * s_size, -1)), dim=-1)
-        logits = torch.mm(latent_i, latent_j.t()) / args.get('contrastive_temperature', 1.0)
-        labels = torch.arange(logits.size(0))
-        losses['contrast'] = F.cross_entropy(logits, labels)
+        # Contrastive_loss
+        ## average
+        half_average = torch.chunk(outputs['average'].mul(omasks), 2, dim=0)
+        average_i = F.normalize(torch.reshape(half_average[0], (b_size * o_size, -1)), dim=-1)
+        average_j = F.normalize(torch.reshape(half_average[1], (b_size * o_size, -1)), dim=-1)
+        # average_i = F.normalize(torch.reshape(half_average[0][:,0,:], (b_size, -1)), dim=-1)
+        # average_j = F.normalize(torch.reshape(half_average[1][:,0,:], (b_size, -1)), dim=-1)
+        average_logits = torch.mm(average_i, average_j.t()) / c_args.get('temperature', 1.0)
+        average_labels = torch.arange(average_logits.size(0))
+        ## log_dev
+        half_log_dev = torch.chunk(outputs['log_dev'].mul(omasks), 2, dim=0)
+        log_dev_i = F.normalize(torch.reshape(half_log_dev[0], (b_size * o_size, -1)), dim=-1)
+        log_dev_j = F.normalize(torch.reshape(half_log_dev[1], (b_size * o_size, -1)), dim=-1)
+        # log_dev_i = F.normalize(torch.reshape(half_log_dev[0][:,0,:], (b_size, -1)), dim=-1)
+        # log_dev_j = F.normalize(torch.reshape(half_log_dev[1][:,0,:], (b_size, -1)), dim=-1)
+        log_dev_logits = torch.mm(log_dev_i, log_dev_j.t()) / c_args.get('temperature', 1.0)
+        log_dev_labels = torch.arange(log_dev_logits.size(0))
+        losses['contrast'] = c_args.get('loss_factor', 1.0) * (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
 
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_re_p'] = entropy_re_p.sum()
@@ -401,9 +411,9 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
         # 信頼度の学習
         targets['confidence'] = (actions * emasks).to(torch.long)
 
-    if 'latent' in outputs_nograd:
+    if 'rl_latent' in outputs_nograd:
         # 学習はしないが latent を抜き出しておく
-        targets['latent'] = (outputs_nograd['latent'] * emasks)
+        targets['rl_latent'] = (outputs_nograd['rl_latent'] * emasks)
 
     if 'policy_latent' in outputs_nograd:
         targets['re_state'] = batch['observation'].detach() * emasks
@@ -497,7 +507,7 @@ class Batcher:
             'start': st, 'end': ed, 'train_start': train_st, 'total': ep['steps'],
         }
         ep_contrast = None
-        if self.args['contrastive_learning']:
+        if self.args['contrastive_learning']['use']:
             contrast_st = random.randrange(turn_candidates)
             c_st, c_ed, c_st_block, c_ed_block = self._rand_step(contrast_st, turn_candidates, ep['steps'])
             ep_contrast = {
@@ -658,12 +668,12 @@ class Learner:
 
         # trained datum
         self.model_epoch = self.args['restart_epoch']
-        self.model = net if net is not None else self.env.net(args['agent']['type'])
+        self.model = net if net is not None else self.env.net(args['agent'])
         if self.model_epoch > 0:
             self.model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
         # used target_model
         if args['target_model'].get('use', False):
-            self.target_model = net if net is not None else self.env.net(args['agent']['type'])
+            self.target_model = net if net is not None else self.env.net(args['agent'])
             if self.model_epoch > 0:
                 self.target_model.load_state_dict(torch.load(self.model_path(self.model_epoch)), strict=False)
         else: 

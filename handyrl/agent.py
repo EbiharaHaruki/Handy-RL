@@ -76,7 +76,7 @@ class Agent:
         return []
 
     def plan(self, obs):
-        outputs = self.model.inference({'s': obs}, self.hidden)
+        outputs = self.model.inference({'o': obs}, self.hidden)
         self.hidden = outputs.pop('hidden', None)
         return outputs
 
@@ -205,7 +205,7 @@ class QAgent(Agent):
 class RSRSAgent(Agent):
     def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args=None):
         super().__init__(model, metadataset, role, temperature, observation, args)
-        self.metadata_keys = ['latent', 'action']
+        self.metadata_keys = ['rl_latent', 'action']
         # TODO なぜか偶に metadata の key が player になってる問題解決
         self.global_aleph = metadataset.get('global_aleph', 1.0)
         self.rw = metadataset.get('regional_weight', 0.0)
@@ -231,7 +231,7 @@ class RSRSAgent(Agent):
         q = outputs.get('qvalue', None)
         aleph = global_delta + np.amax(q) if q is not None else 0.0
         c_nn = softmax(outputs.get('confidence', None).squeeze())
-        latent = outputs['latent']
+        latent = outputs['rl_latent']
         if 'knn' in self.metadataset:
             c_reg = self.metadataset['knn'].regional_nn(latent)
             if c_reg is not None:
@@ -294,7 +294,7 @@ class RSRSAgent(Agent):
             # TODO 満足していると 0.0 が入っちゃう問題
             action_log['moment']['selected_prob'][player] = selected_prob
             action_log['moment']['action_mask'][player] = action_mask
-            action_log['metadata']['latent'][player] = latent
+            action_log['metadata']['rl_latent'][player] = latent
             action_log['metadata']['action'][player] = one_hot_action
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg

@@ -20,7 +20,7 @@ def feed_knn(knn, args, return_metadata):
             continue
         if 'knn' in args['metadata']['name']:
             for p in metadata['args']['player']:
-                latent = np.array([md['latent'][p] for md in metadata['metadata']])
+                latent = np.array([md['rl_latent'][p] for md in metadata['metadata']])
                 actions = np.array([md['action'][p] for md in metadata['metadata']])
                 knn.feed(latent, actions)
             knn.update_nn_index()

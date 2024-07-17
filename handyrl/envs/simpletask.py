@@ -21,43 +21,6 @@ import torch.optim as optim
 from ..environment import BaseEnvironment
 
 
-class Conv(nn.Module):
-    def __init__(self, filters0, filters1, kernel_size, bn, bias=True):
-        super().__init__()
-        if bn:
-            bias = False
-        self.conv = nn.Conv2d(
-            filters0, filters1, kernel_size,
-            stride=1, padding=kernel_size//2, bias=bias
-        )
-        self.bn = nn.BatchNorm2d(filters1) if bn else None
-
-    def forward(self, x):
-        s = x.get('s', None)
-        h = self.conv(x)
-        if self.bn is not None:
-            h = self.bn(h)
-        return h
-
-
-class Head(nn.Module):
-    def __init__(self, input_size, out_filters, outputs):
-        super().__init__()
-
-        self.board_size = input_size[1] * input_size[2]
-        self.out_filters = out_filters
-
-        self.conv = Conv(input_size[0], out_filters, 1, bn=False)
-        self.activation = nn.LeakyReLU(0.1)
-        self.fc = nn.Linear(self.board_size * out_filters, outputs, bias=False)
-
-    def forward(self, x):
-        s = x.get('s', None)
-        h = self.activation(self.conv(s))
-        h = self.fc(h.view(-1, self.board_size * self.out_filters))
-        return h
-
-
 class SimpleModel(nn.Module):
     def __init__(self, hyperplane_n):
         super().__init__()
@@ -69,8 +32,8 @@ class SimpleModel(nn.Module):
         self.head_v = nn.Linear(nn_size, 1)
 
     def forward(self, x, hidden=None):
-        s = x.get('s', None)
-        h = F.relu(self.fc1(s))
+        o = x.get('o', None)
+        h = F.relu(self.fc1(o))
         p = self.head_p(h)
         v = self.head_v(h)
         # return {'policy': p, 'value': torch.tanh(v)}
@@ -91,8 +54,8 @@ class PVQModel(nn.Module):
         self.head_b = nn.Linear(nn_size, 1) # ベースライン
 
     def forward(self, x, hidden=None):
-        s = x.get('s', None)
-        h_l = self.fc1(s)
+        o = x.get('o', None)
+        h_l = self.fc1(o)
         h = F.relu(h_l)
         p = self.head_p(h)
         v = self.head_v(h)
@@ -101,7 +64,7 @@ class PVQModel(nn.Module):
         q = b + a - a.sum(-1).unsqueeze(-1)
         return {
             'policy': p, 'value': v, 
-            'advantage_for_q': a, 'qvalue': q, 'latent': h_l}
+            'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l}
 
 
 # RSRS
@@ -119,8 +82,8 @@ class PVQCModel(nn.Module):
         self.head_c = nn.Linear(nn_size, 2**hyperplane_n) # 信頼度(confidence rate)
 
     def forward(self, x, hidden=None):
-        s = x.get('s', None)
-        h_l = self.fc1(s)
+        o = x.get('o', None)
+        h_l = self.fc1(o)
         h = F.relu(h_l)
         p = self.head_p(h)
         v = self.head_v(h)
@@ -130,120 +93,50 @@ class PVQCModel(nn.Module):
         c = self.head_c(h)
         return {
             'policy': p, 'value': v, 
-            'advantage_for_q': a, 'qvalue': q, 'latent': h_l, 'confidence': c}
+            'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l, 'confidence': c}
 
 
-# PG + RND
-class SimpleRNDModel(nn.Module):
+# RND
+class RNDModel(nn.Module):
     def __init__(self, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
-        self.head_v = nn.Linear(nn_size, 1)
-        # RND 用
-        rnd_size = 16
+        # RND head dim：探索の複雑性
+        rnd_head_size = 16
         ## 学習
         self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd = nn.Linear(nn_size, rnd_size)
+        self.head_rnd = nn.Linear(nn_size, rnd_head_size)
         ## 固定
         self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
+        self.head_rnd_fix = nn.Linear(nn_size, rnd_head_size)
 
-    def forward(self, x, hidden=None):
-        s = x.get('s', None)
-        h = F.relu(self.fc1(s))
-        p = self.head_p(h)
-        v = self.head_v(h)
-        rnd = F.relu(self.fc_rnd(x))
+    def forward(self, o_in, hidden=None):
+        rnd = F.relu(self.fc_rnd(o_in))
         rnd = self.head_rnd(rnd)
-        rnd_fix = F.relu(self.fc_rnd_fix(x))
+        rnd_fix = F.relu(self.fc_rnd_fix(o_in))
         rnd_fix = self.head_rnd_fix(rnd_fix)
-        return {'policy': p, 'value': v, 'embed_state': rnd, 'embed_state_fix': rnd_fix}
+        return {'embed_state': rnd, 'embed_state_fix': rnd_fix}
 
 
-# Q-Learning + RND
-class PVQRNDModel(nn.Module):
-    def __init__(self, hyperplane_n):
+# RL with RND wrapper model
+class RLwithRNDModel(nn.Module):
+    def __init__(self, hyperplane_n, rl_net):
         super().__init__()
-        self.relu = nn.ReLU()
-        #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
-        self.head_v = nn.Linear(nn_size, 1) # value
-        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
-        self.head_b = nn.Linear(nn_size, 1) # ベースライン
-        # RND 用
-        rnd_size = 16
-        ## 学習
-        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd = nn.Linear(nn_size, rnd_size)
-        ## 固定
-        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
+        # RL モデル関連
+        self.rl_net = rl_net
+        ## 生成モデル関係
+        self.rnd_net = RNDModel(hyperplane_n)
 
     def forward(self, x, hidden=None):
-        s = x.get('s', None)
-        h_l = self.fc1(s)
-        h = F.relu(h_l)
-        p = self.head_p(h)
-        v = self.head_v(h)
-        a = self.head_a(h)
-        b = self.head_b(h)
-        q = b + a - a.sum(-1).unsqueeze(-1)
-        rnd = F.relu(self.fc_rnd(x))
-        rnd = self.head_rnd(rnd)
-        rnd_fix = F.relu(self.fc_rnd_fix(x))
-        rnd_fix = self.head_rnd_fix(rnd_fix)
-        return {
-            'policy': p, 'value': v, 
-            'advantage_for_q': a, 'qvalue': q, 'latent': h_l,
-            'embed_state': rnd, 'embed_state_fix': rnd_fix}
-
-
-# RSRS + RND
-class PVQCRNDModel(nn.Module):
-    def __init__(self, hyperplane_n):
-        super().__init__()
-        self.relu = nn.ReLU()
-        #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
-        self.head_v = nn.Linear(nn_size, 1) # value
-        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
-        self.head_b = nn.Linear(nn_size, 1) # ベースライン
-        self.head_c = nn.Linear(nn_size, 2**hyperplane_n) # 信頼度(confidence rate)
-        # RND 用
-        rnd_size = 16
-        ## 学習
-        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd = nn.Linear(nn_size, rnd_size)
-        ## 固定
-        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
-
-    def forward(self, x, hidden=None):
-        s = x.get('s', None)
-        h_l = self.fc1(s)
-        h = F.relu(h_l)
-        p = self.head_p(h)
-        v = self.head_v(h)
-        a = self.head_a(h)
-        b = self.head_b(h)
-        q = b + a - a.sum(-1).unsqueeze(-1)
-        c = self.head_c(h)
-        rnd = F.relu(self.fc_rnd(x))
-        rnd = self.head_rnd(rnd)
-        rnd_fix = F.relu(self.fc_rnd_fix(x))
-        rnd_fix = self.head_rnd_fix(rnd_fix)
-        return {
-            'policy': p, 'value': v, 
-            'advantage_for_q': a, 'qvalue': q, 'latent': h_l, 'confidence': c,
-            'embed_state': rnd, 'embed_state_fix': rnd_fix}
+        o_in = x.get('o', None)
+        # RL model
+        out = self.rl_net(x)
+        # rnd
+        out_rnd = self.rnd_net(o_in)
+        out = {**out, **out_rnd}
+        return out
 
 
 # VAE パラメータ
@@ -261,9 +154,9 @@ class Encoder(nn.Module):
         self.fc_dev = nn.Linear(vae_nn_size[1], latent_size) # 標準偏差
         self.relu = nn.ReLU()
 
-    def forward(self, s, a, hidden=None):
-        a = F.one_hot(torch.squeeze(a), num_classes=self.action_num)
-        x = torch.cat((s,a), 1)
+    def forward(self, o_in, a_in, hidden=None):
+        a_hot = F.one_hot(torch.squeeze(a_in), num_classes=self.action_num)
+        x = torch.cat((o_in, a_hot), 1)
         h = self.fc1(x)
         h = self.relu(h)
         h = self.fc2(h)
@@ -273,7 +166,7 @@ class Encoder(nn.Module):
 
         # Reparametrization Trick
         epsilon = torch.randn_like(ave)  # 平均0分散1の正規分布に従い生成されるz_dim次元の乱数ε
-        policy_latent = ave + torch.exp(log_dev / 2) * epsilon  # z = μ + σε
+        policy_latent = ave + torch.exp(log_dev / 2) * epsilon  # ζ = μ + σε
         return {'policy_latent': policy_latent, 'average': ave, 'log_dev': log_dev}
 
 # Action decoder
@@ -285,8 +178,8 @@ class ActionDecoder(nn.Module):
         self.fc_p = nn.Linear(vae_nn_size[0], 2**hyperplane_n)
         self.relu = nn.ReLU()
 
-    def forward(self, latent, s, hidden=None):
-        x = torch.cat((latent, s), 1)
+    def forward(self, latent, o_in, hidden=None):
+        x = torch.cat((latent, o_in), 1)
         h = self.fc1(x)
         h = self.relu(h)
         h = self.fc2(h)
@@ -295,7 +188,7 @@ class ActionDecoder(nn.Module):
         return {'re_policy': re_p}
 
 # State decoder
-class StateDecoder(nn.Module):
+class ObservationDecoder(nn.Module):
     def __init__(self, hyperplane_n):
         super().__init__()
         self.fc1 = nn.Linear(latent_size, vae_nn_size[1])
@@ -313,188 +206,48 @@ class StateDecoder(nn.Module):
 
 # Action-State VAE
 class ASVAE(nn.Module):
-    def __init__(self, encoder, action_decoder, state_decoder):
+    def __init__(self, encoder, a_decoder, o_decoder):
         super().__init__()
         self.encoder = encoder
-        self.action_decoder = action_decoder
-        self.state_decoder = state_decoder
+        self.a_decoder = a_decoder
+        self.o_decoder = o_decoder
 
-    def forward(self, s, a, hidden=None):
-        h_l = self.encoder(s, a)
-        re_p = self.action_decoder(h_l['policy_latent'], s)
-        re_s = self.state_decoder(h_l['policy_latent'])
+    def forward(self, o_in, a_in, hidden=None):
+        h_l = self.encoder(o_in, a_in)
+        re_p = self.a_decoder(h_l['policy_latent'], o_in)
+        re_s = self.o_decoder(h_l['policy_latent'])
         return {**re_p, **re_s, **h_l}
 
-# Policy, Value, Q-value, Generative model + RND
-class PVQGRNDModel(nn.Module):
-    def __init__(self, hyperplane_n):
+
+# RL with VAE wrapper model (ASC)
+class ASCModel(nn.Module):
+    def __init__(self, hyperplane_n, rl_net):
         super().__init__()
-        self.relu = nn.ReLU()
-        #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
-        self.head_v = nn.Linear(nn_size, 1) # value
-        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
-        self.head_b = nn.Linear(nn_size, 1) # ベースライン
-        # RND 用
-        rnd_size = 16
-        ## 学習
-        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd = nn.Linear(nn_size, rnd_size)
-        ## 固定
-        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_rnd_fix = nn.Linear(nn_size, rnd_size)
+        # RL モデル関連
+        self.rl_net = rl_net
         ## 生成モデル関係
         self.encoder = Encoder(hyperplane_n)
         self.action_decoder = ActionDecoder(hyperplane_n)
-        self.state_decoder = StateDecoder(hyperplane_n)
-        self.asvae = ASVAE(self.encoder, self.action_decoder, self.state_decoder)
+        self.observation_decoder = ObservationDecoder(hyperplane_n)
+        self.asvae = ASVAE(self.encoder, self.action_decoder, self.observation_decoder)
 
     def forward(self, x, hidden=None):
-        s_in = x.get('s', None)
+        o_in = x.get('o', None)
         a_in = x.get('a', None)
         latent = x.get('latent', None)
         # RL model
-        h_l = self.fc1(s_in)
-        h = F.relu(h_l)
-        p = self.head_p(h)
-        v = self.head_v(h)
-        a = self.head_a(h)
-        b = self.head_b(h)
-        q = b + a - a.sum(-1).unsqueeze(-1)
-        # RND
-        rnd = F.relu(self.fc_rnd(s_in))
-        rnd = self.head_rnd(rnd)
-        rnd_fix = F.relu(self.fc_rnd_fix(s_in))
-        rnd_fix = self.head_rnd_fix(rnd_fix)
+        out = self.rl_net(x)
         # State-Action VAE
-        g = self.asvae(s_in, a_in) if a_in!=None else None
+        out_g = self.asvae(o_in, a_in) if a_in!=None else None
+        if out_g is not None:
+            out = {**out, **out_g}
         # VAE action decoder
-        g_p = self.action_decoder(s_in, latent) if latent!=None else None
-        out = {
-            'policy': p, 'value': v, 
-            'advantage_for_q': a, 'qvalue': q, 'latent': h_l,
-            'embed_state': rnd, 'embed_state_fix': rnd_fix}
-        if g is not None:
-            out = {**out, **g}
-        if g_p is not None:
-            out = {**out, **g_p}
+        out_g_p = self.action_decoder(o_in, latent) if latent!=None else None
+        if out_g_p is not None:
+            out = {**out, **out_g_p}
         return out
 
 
-
-class CountBasedModel(nn.Module):
-    def __init__(self, hyperplane_n):
-        super().__init__()
-        self.relu = nn.ReLU()
-        #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 2096
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
-        self.head_v = nn.Linear(nn_size, 1)
-        self.count_dict = {}
-
-    def forward(self, x, hidden=None):
-        h = F.relu(self.fc1(x))
-        h_p = self.head_p(h)
-        h_v = self.head_v(h)
-        coord_array = []
-        for i in x[0]: coord_array.append(int(i.to('cpu').detach().numpy().copy()))
-        coord_array = tuple(coord_array)
-        if coord_array in self.count_dict: self.count_dict[coord_array] += 1
-        else: self.count_dict[coord_array] = 1
-        h_v += 1 / (2 * np.sqrt(self.count_dict[coord_array]))
-        return {'policy': h_p, 'value': torch.tanh(h_v)}
-
-
-class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
-
-
-class TargetModel(nn.Module):
-    def __init__(self, hyperplane_n):
-        super(TargetModel, self).__init__()
-        self.target = nn.Sequential(
-            nn.Linear(hyperplane_n+1, 512)
-        )
-        for p in self.modules():
-            if isinstance(p, nn.Linear):
-                init.orthogonal_(p.weight, np.sqrt(2))
-                p.bias.data.zero_()
-        for param in self.target.parameters():
-            param.requires_grad = False
-
-    def forward(self, obs):
-        target_feature = self.target(obs)
-        return target_feature
-
-
-class PredictorModel(nn.Module):
-    def __init__(self, hyperplane_n):
-        super(PredictorModel, self).__init__()
-        self.predictor = nn.Sequential(
-            nn.Linear(hyperplane_n+1, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512)
-        )
-        for p in self.modules():
-            if isinstance(p, nn.Linear):
-                init.orthogonal_(p.weight, np.sqrt(2))
-                p.bias.data.zero_()
-        for param in self.predictor.parameters():
-            param.requires_grad = True
-
-    def forward(self, obs):
-        obs.requires_grad = True
-        predict_feature = self.predictor(obs)
-        return predict_feature
-
-
-class RNDModel(nn.Module):
-    def __init__(self, hyperplane_n):
-        super().__init__()
-        self.relu = nn.ReLU()
-        #100 ,256, 512 ,1024, 2048, 4096
-        nn_size = 2048
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
-        self.head_v = nn.Linear(nn_size, 1)
-        self.hyperplane_n = hyperplane_n
-        self.learning_rate = 1e-6
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.target_model = TargetModel(hyperplane_n).to(self.device)
-        self.predictor_model = PredictorModel(hyperplane_n).to(self.device)
-        self.mse_loss = nn.MSELoss()
-        self.optimizer = optim.Adam(list(self.predictor_model.parameters()), lr=self.learning_rate)
-
-    def get_intrinsic_rewards(self, x):
-        self.predictor_model.eval()
-        target_value = self.target_model(x)
-        predictor_value = self.predictor_model(x)
-        intrinsic_reward = (target_value - predictor_value).pow(2).sum(1)
-        intrinsic_reward = intrinsic_reward.to('cpu').detach().numpy().copy()
-        return intrinsic_reward, target_value, predictor_value
-
-    def optimize(self, target_value, predictor_value):
-        self.predictor_model.train()
-        self.optimizer.zero_grad()
-        loss = self.mse_loss(predictor_value, target_value)
-        # (.backward) RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
-        # loss.backward()
-        self.optimizer.step()
-
-    def forward(self, x, hidden=None):
-        h = F.relu(self.fc1(x))
-        h_p = self.head_p(h)
-        h_v = self.head_v(h)
-        intrinsic_reward, target_value, predictor_value = self.get_intrinsic_rewards(x)
-        self.optimize(target_value, predictor_value)
-        h_v += intrinsic_reward[0]
-        return {'policy': h_p, 'value': torch.tanh(h_v)}
 
 # base class of Environment
 
@@ -692,26 +445,26 @@ class Environment(BaseEnvironment):
     def players(self):
         return [0]
 
-    def net(self, agent_type):
-        # 切り替え可能
+    def net(self, args):
+        agent_type = args['type']
+
         if agent_type == 'BASE':
-            return SimpleModel(self.hyperplane_n)
-        elif agent_type == 'RND':
-            return SimpleRNDModel(self.hyperplane_n)
+            rl_model = SimpleModel(self.hyperplane_n)
         elif agent_type == 'QL' or agent_type == 'SAC':
-            return PVQModel(self.hyperplane_n)
-        elif agent_type == 'QL-RND' or agent_type == 'SAC-RND':
-            return PVQRNDModel(self.hyperplane_n)
+            rl_model = PVQModel(self.hyperplane_n)
         elif agent_type == 'RSRS':
-            return PVQCModel(self.hyperplane_n)
-        elif agent_type == 'RSRS-RND':
-            return PVQCRNDModel(self.hyperplane_n)
-        elif agent_type == 'QL-G-RND' or agent_type == 'SAC-G-RND':
-            return PVQGRNDModel(self.hyperplane_n)
+            rl_model = PVQCModel(self.hyperplane_n)
         else:
-            return SimpleModel(self.hyperplane_n)
-            # return CountBasedModel(self.hyperplane_n)
-            # return RNDModel(self.hyperplane_n)
+            rl_model = SimpleModel(self.hyperplane_n)
+        # RND を任意の RL model に付随させる
+        if args.get('use_RND', False):
+            rl_model = RLwithRNDModel(self.hyperplane_n, rl_model)
+        # ASC model
+        if args.get('use_ASC', False):
+            rl_model = ASCModel(self.hyperplane_n, rl_model)
+        
+        return rl_model
+
 
     def observation(self, player=None):
         return self.state.astype(np.float32)
