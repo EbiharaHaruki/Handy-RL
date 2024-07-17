@@ -14,7 +14,7 @@ from .util import softmax
 def agent_class(args):
     if args['type'] == 'BASE' or args['type'] == 'RND':
         return Agent
-    elif args['type'] == 'QL' or args['type'] == 'QL-RND':
+    elif args['type'] == 'QL' or args['type'] == 'QL-RND' or args['type'] == 'QL-G-RND':
         return QAgent
     elif args['type'] == 'RSRS' or args['type'] == 'RSRS-RND':
         return RSRSAgent
@@ -76,7 +76,7 @@ class Agent:
         return []
 
     def plan(self, obs):
-        outputs = self.model.inference(obs, self.hidden)
+        outputs = self.model.inference({'s': obs}, self.hidden)
         self.hidden = outputs.pop('hidden', None)
         return outputs
 
@@ -199,7 +199,6 @@ class QAgent(Agent):
             action_log['moment']['qvalue'][player] = q
             action_log['moment']['selected_prob'][player] = selected_prob
             action_log['moment']['action_mask'][player] = action_mask
-
         return action
 
 
@@ -312,7 +311,7 @@ class EnsembleAgent(Agent):
     def plan(self, obs):
         outputs = {}
         for i, model in enumerate(self.model):
-            o = model.inference(obs, self.hidden[i])
+            o = model.inference({'s':obs}, self.hidden[i])
             for k, v in o.items():
                 if k == 'hidden':
                     self.hidden[i] = v

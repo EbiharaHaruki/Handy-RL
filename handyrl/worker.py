@@ -68,7 +68,7 @@ class Worker:
                         self.env.reset()
                         obs = self.env.observation(self.env.players()[0])
                         # 学習が始まるまではランダム model
-                        model = RandomModel(model, obs)
+                        model = RandomModel(model, {'s':obs})
                     # モデルを格納する
                     model_pool[model_id] = ModelWrapper(model)
                     # update latest model
