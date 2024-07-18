@@ -29,11 +29,12 @@ env_args:
 
 
 train_args:
+    default_learning_rate: 3.0e-8 # default: 3.0e-8 
     turn_based_training: False
     observation: False
     return_buckup: False # QL or AC or SAC => True, PG => False
     gamma: 1.0
-    forward_steps: 1 # QL => 2
+    forward_steps: 2 # QL => 2
     burn_in_steps: 0  # for RNNs
     compress_steps: 4
     entropy_regularization: 0.001
@@ -44,31 +45,38 @@ train_args:
         # update_param: 0.001
     update_episodes: 500
     batch_size: 128 # 256
-    minimum_episodes: 1000
+    minimum_episodes: 10000
     maximum_episodes: 20000
     epochs: 1000
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
     worker:
-        num_parallel: 1
+        num_parallel: 4
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
-    policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
-    value_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    policy_target: 'TD-Q-HARDMAX' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    value_target: 'TD-Q-HARDMAX' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
     agent:
-        type: 'BASE' # 'BASE' 'QL' 'RSRS',
+        type: 'QL' # 'BASE' 'QL' 'RSRS',
         use_RND: True
-        use_ASC: True
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
-        param: [0.4] # [0.1]
+        mp_param: [0.4] # [0.1]
+        ASC_type: 'VQ-VAE' # False, 'VAE', 'VQ-VAE'
     contrastive_learning: 
         use: True
         temperature: 0.5
-        loss_factor: 10 
+    loss_factor:
+        rl: 1.0 # default: 1.0 # RL loss weight
+        rnd: 1.0 # default: 1.0 # RND loss weight
+        recon: 0.001 # default: 1.0 # reconstruction loss weight for VAE and VQ-VAE
+        vae_kl: 0.001 # default: 1.0 # KL loss weight for VAE
+        codebook: 1.0 # default: 1.0 # reconstruction loss for VQ-VAE
+        commitment: 0.8 # default: 0.25 # commitment weight for VQ-VAE
+        contrastion: 0.001 # default: 1.0  # commitment weight for contrastive learning
     metadata:
         name: []
         # name: ['rnd_weight'] # Unimplemented

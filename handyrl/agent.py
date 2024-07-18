@@ -165,7 +165,7 @@ class QAgent(Agent):
             self.meta_policy = softmax_from_value
         else:
             self.meta_policy = greedy_from_value
-        self.param = args.get('param', None)
+        self.param = args.get('mp_param', None)
         if self.param is None and not self.generating:
             self.param = [0.0]
 

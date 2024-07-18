@@ -193,7 +193,7 @@ def forward_prediction(model, hidden, batch, args):
         outputs = {k: torch.stack(o, dim=1) for k, o in outputs.items() if o[0] is not None}
 
     for k, o in outputs.items():
-        if k == 'policy' or k == 'confidence' or k == 're_policy' or k == 'generated_policy':
+        if k == 'policy' or k == 'confidence' or k == 're_policy':
             o = o.mul(batch['turn_mask'])
             if o.size(2) > 1 and batch_shape[2] == 1:  # turn-alternating batch
                 o = o.sum(2, keepdim=True)  # gather turn player's policies
@@ -201,6 +201,7 @@ def forward_prediction(model, hidden, batch, args):
         else:
             # mask valid target values and cumulative rewards
             outputs[k] = o.mul(batch['observation_mask'])
+        # TODO: policy_vq_latent など特殊な形状になりえるベクトルの形状にも対応する 
 
     return outputs
 
@@ -276,8 +277,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         losses['entropy_srs'] = entropy_srs.sum()
 
     if 'policy_latent' in outputs:
-        c_args = args.get('contrastive_learning', {})
-        losses['re_state'] = F.smooth_l1_loss(outputs['re_state'], targets['re_state'], reduction='none').mul(omasks).sum()
+        losses['re_observation'] = F.smooth_l1_loss(outputs['re_observation'], targets['re_observation'], reduction='none').mul(omasks).sum()
         b_size = outputs['re_policy'].shape[0]
         o_size = outputs['re_policy'].shape[1]
         a_size = outputs['re_policy'].shape[-1]
@@ -287,39 +287,63 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         losses['re_policy'] = torch.reshape(F.cross_entropy(o_re_p, t_re_p, reduction='none'), (b_size, o_size, 1, 1)).mul(omasks).sum()
         # Reconstruction policy entropy
         entropy_re_p = dist.Categorical(logits=outputs['re_policy']).entropy().mul(tmasks.sum(-1))
-        # KL loss
-        losses['p_l_KL'] = -0.5 * torch.sum(1 + outputs['log_dev'] - outputs['average']**2 - outputs['log_dev'].exp()) 
-        # Contrastive_loss
-        ## average
-        half_average = torch.chunk(outputs['average'].mul(omasks), 2, dim=0)
-        average_i = F.normalize(torch.reshape(half_average[0], (b_size * o_size, -1)), dim=-1)
-        average_j = F.normalize(torch.reshape(half_average[1], (b_size * o_size, -1)), dim=-1)
-        # average_i = F.normalize(torch.reshape(half_average[0][:,0,:], (b_size, -1)), dim=-1)
-        # average_j = F.normalize(torch.reshape(half_average[1][:,0,:], (b_size, -1)), dim=-1)
-        average_logits = torch.mm(average_i, average_j.t()) / c_args.get('temperature', 1.0)
-        average_labels = torch.arange(average_logits.size(0))
-        ## log_dev
-        half_log_dev = torch.chunk(outputs['log_dev'].mul(omasks), 2, dim=0)
-        log_dev_i = F.normalize(torch.reshape(half_log_dev[0], (b_size * o_size, -1)), dim=-1)
-        log_dev_j = F.normalize(torch.reshape(half_log_dev[1], (b_size * o_size, -1)), dim=-1)
-        # log_dev_i = F.normalize(torch.reshape(half_log_dev[0][:,0,:], (b_size, -1)), dim=-1)
-        # log_dev_j = F.normalize(torch.reshape(half_log_dev[1][:,0,:], (b_size, -1)), dim=-1)
-        log_dev_logits = torch.mm(log_dev_i, log_dev_j.t()) / c_args.get('temperature', 1.0)
-        log_dev_labels = torch.arange(log_dev_logits.size(0))
-        losses['contrast'] = c_args.get('loss_factor', 1.0) * (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
+        c_args = args.get('contrastive_learning', {})
+        # 生成モデルの loss 選択
+        asc_type = args['agent'].get('ASC_type', False)
+        if asc_type == 'VAE':
+            # KL loss
+            losses['p_l_KL'] = -0.5 * torch.sum(1 + outputs['log_dev'] - outputs['average']**2 - outputs['log_dev'].exp()) 
+            # Contrastive_loss
+            ## average
+            half_average = torch.chunk(outputs['average'].mul(omasks), 2, dim=0)
+            average_i = F.normalize(torch.reshape(half_average[0], (b_size * o_size, -1)), dim=-1)
+            average_j = F.normalize(torch.reshape(half_average[1], (b_size * o_size, -1)), dim=-1)
+            # average_i = F.normalize(torch.reshape(half_average[0][:,0,:], (b_size, -1)), dim=-1)
+            # average_j = F.normalize(torch.reshape(half_average[1][:,0,:], (b_size, -1)), dim=-1)
+            average_logits = torch.mm(average_i, average_j.t()) / c_args.get('temperature', 1.0)
+            average_labels = torch.arange(average_logits.size(0))
+            ## log_dev
+            half_log_dev = torch.chunk(outputs['log_dev'].mul(omasks), 2, dim=0)
+            log_dev_i = F.normalize(torch.reshape(half_log_dev[0], (b_size * o_size, -1)), dim=-1)
+            log_dev_j = F.normalize(torch.reshape(half_log_dev[1], (b_size * o_size, -1)), dim=-1)
+            # log_dev_i = F.normalize(torch.reshape(half_log_dev[0][:,0,:], (b_size, -1)), dim=-1)
+            # log_dev_j = F.normalize(torch.reshape(half_log_dev[1][:,0,:], (b_size, -1)), dim=-1)
+            log_dev_logits = torch.mm(log_dev_i, log_dev_j.t()) / c_args.get('temperature', 1.0)
+            log_dev_labels = torch.arange(log_dev_logits.size(0))
+            losses['contrast'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
+        elif asc_type == 'VQ-VAE':
+            # coodbook loss
+            losses['vq_l_cb'] = F.mse_loss(outputs['quantized_policy_latent'], targets['policy_latent']).sum()
+            # commitment loss
+            losses['vq_l_cm'] = args['agent'].get('commitment_factor', 1.0) * F.mse_loss(targets['quantized_policy_latent'], outputs['policy_latent']).sum()
+            losses['p_l_norm'] = torch.norm(outputs['policy_latent'], dim=-1).mean()
+            losses['q_p_l_norm'] = torch.norm(outputs['quantized_policy_latent'], dim=-1).mean()
+            # Contrastive_loss
+            ## average
+            half_latent = torch.chunk(outputs['policy_latent'].mul(omasks), 2, dim=0)
+            latent_i = F.normalize(torch.reshape(half_latent[0], (b_size * o_size, -1)), dim=-1)
+            latent_j = F.normalize(torch.reshape(half_latent[1], (b_size * o_size, -1)), dim=-1)
+            latent_logits = torch.mm(latent_i, latent_j.t()) / c_args.get('temperature', 1.0)
+            latent_labels = torch.arange(latent_logits.size(0))
+            losses['contrast'] = F.cross_entropy(latent_logits, latent_labels)
 
-        # 信頼度割合に関する各種監視変数を追加
+
+        # 生成モデル policy entropy を各種監視変数を追加
         losses['ent_re_p'] = entropy_re_p.sum()
 
     # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
     losses['ent'] = entropy.sum()
 
+    factor = args.get('loss_factor', {})
     # value と policy の loss の計算
-    base_loss = losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + \
-        losses.get('rnd', 0) + \
-        losses.get('c', 0) +\
-        losses.get('re_state', 0) + losses.get('re_policy', 0) + losses.get('p_l_KL', 0) + losses.get('contrast', 0)
+    base_loss = factor.get('rl', 1.0) * (losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('c', 0)) + \
+        factor.get('rnd', 1.0) * losses.get('rnd', 0) + \
+        factor.get('recon', 1.0) * (losses.get('re_observation', 0) + losses.get('re_policy', 0)) +\
+        factor.get('vae_kl', 1.0) * losses.get('p_l_KL', 0) +\
+        factor.get('codebook', 1.0) * losses.get('vq_l_cb', 0) + \
+        factor.get('commitment', 1.0) * losses.get('vq_l_cm', 0) +\
+        factor.get('contrastion', 1.0) * losses.get('contrast', 0)
     # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
@@ -416,8 +440,11 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
         targets['rl_latent'] = (outputs_nograd['rl_latent'] * emasks)
 
     if 'policy_latent' in outputs_nograd:
-        targets['re_state'] = batch['observation'].detach() * emasks
+        targets['re_observation'] = batch['observation'].detach() * emasks
         targets['re_policy'] = (actions * emasks).to(torch.long)
+        targets['policy_latent'] = (outputs_nograd['policy_latent'] * emasks)
+    if 'quantized_policy_latent' in outputs_nograd:
+        targets['quantized_policy_latent'] = (outputs_nograd['quantized_policy_latent'] * emasks)
         # targets['re_policy'] = F.one_hot(torch.squeeze(batch['action']), num_classes=outputs['policy'].shape[-1]).detach()
 
     # model forward 計算の value, 生の outcome, None, 終端フラグ, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
@@ -544,7 +571,7 @@ class Trainer:
         self.gpu = torch.cuda.device_count()
         self.model = model
         self.metadataset = metadataset
-        self.default_lr = 3e-8
+        self.default_lr = self.args['default_learning_rate'] # 3.0e-8
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
         lr = self.default_lr * self.data_cnt_ema
