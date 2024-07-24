@@ -40,19 +40,19 @@ train_args:
     entropy_regularization: 0.001
     entropy_regularization_decay: 1.0
     target_model:
-        use: False # It is not essential in distributed reinforcement learning.
-        # update: 'soft' # 'soft', 'hard'
-        # update_param: 0.001
+        use: True # It is not essential in distributed reinforcement learning.
+        update: 'soft' # 'soft', 'hard'
+        update_param: 0.001
     update_episodes: 500
     batch_size: 128 # 256
     minimum_episodes: 10000
     maximum_episodes: 20000
-    epochs: 1000
+    epochs: 5000
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
     worker:
-        num_parallel: 4
+        num_parallel: 1
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
     policy_target: 'TD-Q-HARDMAX' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
     value_target: 'TD-Q-HARDMAX' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
@@ -64,19 +64,24 @@ train_args:
         type: 'QL' # 'BASE' 'QL' 'RSRS',
         use_RND: True
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
-        mp_param: [0.4] # [0.1]
-        ASC_type: 'VQ-VAE' # False, 'VAE', 'VQ-VAE'
+        mp_param: [0.8] # [0.1]
+        ASC_type: 'Transformer-VAE' # False, 'VAE', 'VQ-VAE', 'Transformer-VAE'
+        ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
+        ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
+        ASC_dropout: 0.4 # ASC model の dropout 率
     contrastive_learning: 
         use: True
         temperature: 0.5
     loss_factor:
         rl: 1.0 # default: 1.0 # RL loss weight
         rnd: 1.0 # default: 1.0 # RND loss weight
-        recon: 0.001 # default: 1.0 # reconstruction loss weight for VAE and VQ-VAE
-        vae_kl: 0.001 # default: 1.0 # KL loss weight for VAE
+        recon: 1.0 # default: 1.0 # reconstruction loss weight for VAE and VQ-VAE
+        vae_kl: 1.0 # default: 1.0 # KL loss weight for VAE
         codebook: 1.0 # default: 1.0 # reconstruction loss for VQ-VAE
         commitment: 0.8 # default: 0.25 # commitment weight for VQ-VAE
-        contrastion: 0.001 # default: 1.0  # commitment weight for contrastive learning
+        contrast: 1.0 # default: 1.0  # commitment weight for contrastive learning
+        recon_p_set: 1.0 # default: 1.0 # policy reconstruction loss weight for Transformer-VAE
+        recon_o_set: 1.0 # default: 1.0 # re_observation reconstruction loss weight for Transformer-VAE
     metadata:
         name: []
         # name: ['rnd_weight'] # Unimplemented

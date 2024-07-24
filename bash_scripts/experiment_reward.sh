@@ -1,11 +1,14 @@
 #! /bin/bash
 # Usage: . bash_scripts/experiment_reward.sh [任意の実行回数]
+# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数] [environment の ファイル名.py]
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成
 
 N=$1 #標準入力から実験回数を取得
+ENV=$2
 eval "cp config.yaml trainlog/$DATE/config.yaml"
+eval "cp handyrl/envs/$ENV.py trainlog/$DATE/$ENV.py"
 
 ex_base="python3 -u main.py --train | tee trainlog/$DATE/train_log_xxx.txt" #ログを取りながら学習させる
 #current_conda=$CONDA_DEFAULT_ENV

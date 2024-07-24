@@ -32,7 +32,9 @@ from .worker import WorkerCluster, WorkerServer
 from .metadata import KNN, feed_knn
 
 
-def make_batch(episodes, args):
+def make_batch(episodes, step_init, step_length, args, 
+               keys={'moment': 'moment', 'start':'start', 'end':'end', 'base':'base', 'train_start':'train_start'}
+               ):
     """Making training batch
 
     Args:
@@ -48,6 +50,7 @@ def make_batch(episodes, args):
     """
 
     obss, datum = [], []
+    k = keys
 
     def replace_none(a, b):
         return a if a is not None else b
@@ -55,8 +58,8 @@ def make_batch(episodes, args):
     for i in range(len(episodes[0])):
         for ep_ in episodes:
             ep = ep_[i]
-            moments_ = sum([pickle.loads(bz2.decompress(ms)) for ms in ep['moment']], [])
-            moments = moments_[ep['start'] - ep['base']:ep['end'] - ep['base']]
+            moments_ = sum([pickle.loads(bz2.decompress(ms)) for ms in ep[k['moment']]], [])
+            moments = moments_[ep[k['start']] - ep[k['base']]:ep[k['end']] - ep[k['base']]]
             players = list(moments[0]['observation'].keys())
             if not args['turn_based_training']:  # solo training
                 players = [random.choice(players)]
@@ -95,12 +98,12 @@ def make_batch(episodes, args):
             tmask = np.array([[[m['selected_prob'][player] is not None] for player in players] for m in moments], dtype=np.float32)
             omask = np.array([[[m['observation'][player] is not None] for player in players] for m in moments], dtype=np.float32)
 
-            progress = np.arange(ep['start'], ep['end'], dtype=np.float32)[..., np.newaxis] / ep['total']
+            progress = np.arange(ep[k['start']], ep[k['end']], dtype=np.float32)[..., np.newaxis] / ep['total']
 
             # pad each array if step length is short
-            batch_steps = args['burn_in_steps'] + args['forward_steps']
+            batch_steps = step_init + step_length
             if len(tmask) < batch_steps:
-                pad_len_b = args['burn_in_steps'] - (ep['train_start'] - ep['start'])
+                pad_len_b = step_init - (ep[k['train_start']] - ep[k['start']])
                 pad_len_a = batch_steps - len(tmask) - pad_len_b
                 obs = map_r(obs, lambda o: np.pad(o, [(pad_len_b, pad_len_a)] + [(0, 0)] * (len(o.shape) - 1), 'constant', constant_values=0))
                 prob = np.pad(prob, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=1)
@@ -156,13 +159,21 @@ def forward_prediction(model, hidden, batch, args):
     observations = batch['observation']  # (..., B, T, P or 1, ...)
     actions = batch['action']  # (..., B, T, P or 1, ...)
     batch_shape = batch['action'].size()[:3]  # (B, T, P or 1)
+    if args['agent']['ASC_trajectory_length'] > 0:
+        observations_set = batch['set']['observation']  # (..., B, T, P or 1, ...)
+        actions_set = batch['set']['action']  # (..., B, T, P or 1, ...)
 
     if hidden is None:
         # feed-forward neural network
         obs = map_r(observations, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         act = map_r(actions, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
-        outputs = model({'o':obs, 'a':act})
-        outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape))  # (..., B, T, P or 1, ...)
+        inputs = {'o':obs, 'a':act}
+        if args['agent']['ASC_trajectory_length'] > 0:
+            obs_set = observations_set.squeeze(dim=2) 
+            act_set = actions_set.squeeze(dim=2) 
+            inputs = {** inputs, **{'os': obs_set, 'as': act_set}}
+        outputs = model(inputs)
+        outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape) if o.size(0) != batch_shape[0] else o)  # (..., B, T, P or 1, ...)
     else:
         # sequential computation with RNN
         outputs = {}
@@ -198,6 +209,9 @@ def forward_prediction(model, hidden, batch, args):
             if o.size(2) > 1 and batch_shape[2] == 1:  # turn-alternating batch
                 o = o.sum(2, keepdim=True)  # gather turn player's policies
             outputs[k] = o - batch['action_mask']
+        elif '_set' in k: # 集合に対する処理
+            # TODO mask の掛け方を考える
+            outputs[k] = o
         else:
             # mask valid target values and cumulative rewards
             outputs[k] = o.mul(batch['observation_mask'])
@@ -262,7 +276,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         t_c = torch.reshape(targets['confidence'], (b_size * o_size, 1)).squeeze_()
         # losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
         losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, o_size, 1, 1)).mul(omasks).sum()
-        entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
+        entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.mean(-1))
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:
@@ -286,7 +300,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         # Reconstruction loss
         losses['re_policy'] = torch.reshape(F.cross_entropy(o_re_p, t_re_p, reduction='none'), (b_size, o_size, 1, 1)).mul(omasks).sum()
         # Reconstruction policy entropy
-        entropy_re_p = dist.Categorical(logits=outputs['re_policy']).entropy().mul(tmasks.sum(-1))
+        entropy_re_p = dist.Categorical(logits=outputs['re_policy']).entropy().mul(tmasks.mean(-1))
         c_args = args.get('contrastive_learning', {})
         # 生成モデルの loss 選択
         asc_type = args['agent'].get('ASC_type', False)
@@ -295,19 +309,15 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             losses['p_l_KL'] = -0.5 * torch.sum(1 + outputs['log_dev'] - outputs['average']**2 - outputs['log_dev'].exp()) 
             # Contrastive_loss
             ## average
-            half_average = torch.chunk(outputs['average'].mul(omasks), 2, dim=0)
-            average_i = F.normalize(torch.reshape(half_average[0], (b_size * o_size, -1)), dim=-1)
-            average_j = F.normalize(torch.reshape(half_average[1], (b_size * o_size, -1)), dim=-1)
-            # average_i = F.normalize(torch.reshape(half_average[0][:,0,:], (b_size, -1)), dim=-1)
-            # average_j = F.normalize(torch.reshape(half_average[1][:,0,:], (b_size, -1)), dim=-1)
+            half_average = torch.chunk(F.normalize(outputs['average'], dim=-1).mul(omasks), 2, dim=0)
+            average_i = torch.reshape(half_average[0], (b_size * o_size, -1))
+            average_j = torch.reshape(half_average[1], (b_size * o_size, -1))
             average_logits = torch.mm(average_i, average_j.t()) / c_args.get('temperature', 1.0)
             average_labels = torch.arange(average_logits.size(0))
             ## log_dev
-            half_log_dev = torch.chunk(outputs['log_dev'].mul(omasks), 2, dim=0)
-            log_dev_i = F.normalize(torch.reshape(half_log_dev[0], (b_size * o_size, -1)), dim=-1)
-            log_dev_j = F.normalize(torch.reshape(half_log_dev[1], (b_size * o_size, -1)), dim=-1)
-            # log_dev_i = F.normalize(torch.reshape(half_log_dev[0][:,0,:], (b_size, -1)), dim=-1)
-            # log_dev_j = F.normalize(torch.reshape(half_log_dev[1][:,0,:], (b_size, -1)), dim=-1)
+            half_log_dev = torch.chunk(F.normalize(outputs['log_dev'], dim=-1).mul(omasks), 2, dim=0)
+            log_dev_i = torch.reshape(half_log_dev[0], (b_size * o_size, -1))
+            log_dev_j = torch.reshape(half_log_dev[1], (b_size * o_size, -1))
             log_dev_logits = torch.mm(log_dev_i, log_dev_j.t()) / c_args.get('temperature', 1.0)
             log_dev_labels = torch.arange(log_dev_logits.size(0))
             losses['contrast'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
@@ -320,16 +330,54 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             losses['q_p_l_norm'] = torch.norm(outputs['quantized_policy_latent'], dim=-1).mean()
             # Contrastive_loss
             ## average
-            half_latent = torch.chunk(outputs['policy_latent'].mul(omasks), 2, dim=0)
-            latent_i = F.normalize(torch.reshape(half_latent[0], (b_size * o_size, -1)), dim=-1)
-            latent_j = F.normalize(torch.reshape(half_latent[1], (b_size * o_size, -1)), dim=-1)
+            half_latent = torch.chunk(F.normalize(outputs['policy_latent'], dim=-1).mul(omasks), 2, dim=0)
+            latent_i = torch.reshape(half_latent[0], (b_size * o_size, -1))
+            latent_j = torch.reshape(half_latent[1], (b_size * o_size, -1))
             latent_logits = torch.mm(latent_i, latent_j.t()) / c_args.get('temperature', 1.0)
             latent_labels = torch.arange(latent_logits.size(0))
             losses['contrast'] = F.cross_entropy(latent_logits, latent_labels)
 
-
         # 生成モデル policy entropy を各種監視変数を追加
         losses['ent_re_p'] = entropy_re_p.sum()
+
+    if 'policy_latent_set' in outputs:
+        b_size = outputs['re_policy_set'].shape[0]
+        s_size = outputs['re_policy_set'].shape[1]
+        a_size = outputs['re_policy_set'].shape[-1]
+        o_re_ps = torch.reshape(outputs['re_policy_set'], (b_size * s_size, a_size))
+        t_re_ps = torch.reshape(targets['re_policy_set'], (b_size * s_size, 1)).squeeze_()
+        # Reconstruction loss
+        ## policy set
+        losses['re_policy_set'] = torch.reshape(F.cross_entropy(o_re_ps, t_re_ps, reduction='none'), (b_size, s_size, 1, 1)).sum()
+        ## observation set
+        o_re_os = outputs['re_observation_set'].squeeze(-2)
+        t_re_os = targets['re_observation_set'].squeeze(-2)
+        ### 負の cos 類似度
+        norm = torch.bmm(torch.norm(o_re_os, p=1, dim=2, keepdim=True), torch.norm(t_re_os, p=1, dim=2, keepdim=True).permute(0,2,1))
+        dot = torch.bmm(o_re_os, t_re_os.permute(0,2,1))
+        i_distances = -dot/norm
+        w_i_distances = (torch.exp(i_distances)/torch.sum(torch.exp(i_distances), dim=-1, keepdim=True))
+        mse = F.smooth_l1_loss(o_re_os.unsqueeze(-2).expand(-1, -1, s_size, -1), t_re_os.unsqueeze(-3), reduction='none')
+        losses['re_observation_set'] = torch.mul(w_i_distances.unsqueeze(-1), mse).sum()
+        # Reconstruction policy entropy
+        entropy_re_ps = dist.Categorical(logits=o_re_ps).entropy().sum()
+        # 生成モデルの loss 選択
+        asc_type = args['agent'].get('ASC_type', False)
+        c_args = args.get('contrastive_learning', {})
+        if asc_type == 'Transformer-VAE':
+            # KL loss
+            losses['p_l_KL_set'] = -0.5 * torch.sum(1 + outputs['log_dev_set'] - outputs['average_set'].pow(2) - outputs['log_dev_set'].exp()) 
+            # Contrastive_loss
+            ## average
+            half_average = torch.chunk(F.normalize(outputs['average_set'], dim=-1), 2, dim=0)
+            average_logits = torch.mm(half_average[0], half_average[1].t()) / c_args.get('temperature', 1.0)
+            average_labels = torch.arange(average_logits.size(0))
+            ## log_dev
+            half_log_dev = torch.chunk(F.normalize(outputs['log_dev_set'], dim=-1), 2, dim=0)
+            log_dev_logits = torch.mm(half_log_dev[0], half_log_dev[1].t()) / c_args.get('temperature', 1.0)
+            log_dev_labels = torch.arange(log_dev_logits.size(0))
+            losses['contrast_set'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
+        losses['ent_re_ps'] = entropy_re_ps.sum()
 
     # エントロピー正則化のためのエントロピー計算
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
@@ -343,7 +391,11 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         factor.get('vae_kl', 1.0) * losses.get('p_l_KL', 0) +\
         factor.get('codebook', 1.0) * losses.get('vq_l_cb', 0) + \
         factor.get('commitment', 1.0) * losses.get('vq_l_cm', 0) +\
-        factor.get('contrastion', 1.0) * losses.get('contrast', 0)
+        factor.get('contrast', 1.0) * losses.get('contrast', 0) +\
+        factor.get('recon_p_set', 1.0) * (losses.get('re_policy_set', 0) +\
+        factor.get('recon_o_set', 1.0) *losses.get('re_observation_set', 0)) +\
+        factor.get('vae_kl', 1.0) * losses.get('p_l_KL_set', 0) +\
+        factor.get('contrast', 1.0) * losses.get('contrast_set', 0)
     # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
@@ -445,7 +497,10 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
         targets['policy_latent'] = (outputs_nograd['policy_latent'] * emasks)
     if 'quantized_policy_latent' in outputs_nograd:
         targets['quantized_policy_latent'] = (outputs_nograd['quantized_policy_latent'] * emasks)
-        # targets['re_policy'] = F.one_hot(torch.squeeze(batch['action']), num_classes=outputs['policy'].shape[-1]).detach()
+
+    if 'policy_latent_set' in outputs:
+        targets['re_observation_set'] = batch['set']['observation'].detach()
+        targets['re_policy_set'] = batch['set']['action'].to(torch.long).detach()
 
     # model forward 計算の value, 生の outcome, None, 終端フラグ, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
     # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
@@ -498,20 +553,32 @@ class Batcher:
         print('started batcher %d' % bid)
         while True:
             episodes = conn.recv()
-            batch = make_batch(episodes, self.args)
+            batch = make_batch(episodes, self.args['burn_in_steps'], self.args['forward_steps'], self.args)
+            if self.args['agent']['ASC_trajectory_length'] > 0:
+                batch['set'] = make_batch(episodes, 0, self.args['agent']['ASC_trajectory_length'], self.args,
+                        {'moment': 'moment_set', 'start':'start_set', 'end':'end_set', 'base':'base_set', 'train_start':'train_start_set'})
             conn.send(batch)
         print('finished batcher %d' % bid)
 
     def run(self):
         self.executor.start()
     
-    def _rand_step(self, train_st, turn_candidates, steps):
-        train_st = random.randrange(turn_candidates)
+    def _rand_step(self, train_st, steps):
         st = max(0, train_st - self.args['burn_in_steps']) # burn_in_steps を考慮した開始 step 
         ed = min(train_st + self.args['forward_steps'], steps) # forward_steps を考慮した終了 step
         st_block = st // self.args['compress_steps']
         ed_block = (ed - 1) // self.args['compress_steps'] + 1
         return st, ed, st_block, ed_block
+
+    def _rand_step_for_set(self, steps, trajectory_length):
+        # A-S-C で集合として学習する場合に
+        turn_candidates = 1 + max(0, steps - trajectory_length)  # change start turn by sequence length
+        train_st_set = random.randrange(turn_candidates)
+        st_set = train_st_set # 開始 step 
+        ed_set = min(train_st_set + trajectory_length, steps) # 終了 step が極端に短い場合を考慮した終了 step
+        st_block_set = st_set // self.args['compress_steps']
+        ed_block_set = (ed_set - 1) // self.args['compress_steps'] + 1
+        return train_st_set, st_set, ed_set, st_block_set, ed_block_set
 
     def select_episode(self):
         while True:
@@ -526,23 +593,37 @@ class Batcher:
         # ed = min(train_st + self.args['forward_steps'], ep['steps']) # forward_steps を考慮した終了 step
         # st_block = st // self.args['compress_steps']
         # ed_block = (ed - 1) // self.args['compress_steps'] + 1
-        st, ed, st_block, ed_block = self._rand_step(train_st, turn_candidates, ep['steps'])
+        st, ed, st_block, ed_block = self._rand_step(train_st, ep['steps'])
         ep_minimum = {
             'args': ep['args'], 'outcome': ep['outcome'],
             'moment': ep['moment'][st_block:ed_block],
             'base': st_block * self.args['compress_steps'],
             'start': st, 'end': ed, 'train_start': train_st, 'total': ep['steps'],
         }
+        if self.args['agent']['ASC_trajectory_length'] > 0:
+            train_st_set, st_set, ed_set, st_block_set, ed_block_set = self._rand_step_for_set(ep['steps'], self.args['agent']['ASC_trajectory_length'])
+            ep_minimum = {**ep_minimum, **{
+                'moment_set': ep['moment'][st_block_set:ed_block_set],
+                'base_set': st_block_set * self.args['compress_steps'],
+                'start_set': st_set, 'end_set': ed_set, 'train_start_set': train_st_set,
+            }}
         ep_contrast = None
         if self.args['contrastive_learning']['use']:
             contrast_st = random.randrange(turn_candidates)
-            c_st, c_ed, c_st_block, c_ed_block = self._rand_step(contrast_st, turn_candidates, ep['steps'])
+            c_st, c_ed, c_st_block, c_ed_block = self._rand_step(contrast_st, ep['steps'])
             ep_contrast = {
                 'args': ep['args'], 'outcome': ep['outcome'],
                 'moment': ep['moment'][c_st_block:c_ed_block],
                 'base': c_st_block * self.args['compress_steps'],
                 'start': c_st, 'end': c_ed, 'train_start': contrast_st, 'total': ep['steps'],
             }
+            if self.args['agent']['ASC_trajectory_length'] > 0:
+                contrast_st_set, c_st_set, c_ed_set, c_st_block_set, c_ed_block_set = self._rand_step_for_set(ep['steps'], self.args['agent']['ASC_trajectory_length'])
+                ep_contrast = {**ep_contrast, **{
+                    'moment_set': ep['moment'][c_st_block_set:c_ed_block_set],
+                    'base_set': c_st_block_set * self.args['compress_steps'],
+                    'start_set': c_st_set, 'end_set': c_ed_set, 'train_start_set': contrast_st_set,
+                }}
             return [ep_minimum, ep_contrast]
             # ep_minimum = {**ep_minimum, **ep_contrast}
         #     ep['outcome'] = torch.cat((ep['outcome'], ep['outcome']), 0)

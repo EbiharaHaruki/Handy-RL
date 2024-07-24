@@ -22,7 +22,7 @@ from ..environment import BaseEnvironment
 
 
 class SimpleModel(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
@@ -42,7 +42,7 @@ class SimpleModel(nn.Module):
 
 # Q-Learning
 class PVQModel(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
@@ -69,7 +69,7 @@ class PVQModel(nn.Module):
 
 # RSRS
 class PVQCModel(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
@@ -98,7 +98,7 @@ class PVQCModel(nn.Module):
 
 # RND
 class RNDModel(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
@@ -122,12 +122,12 @@ class RNDModel(nn.Module):
 
 # RL with RND wrapper model
 class RLwithRNDModel(nn.Module):
-    def __init__(self, hyperplane_n, rl_net):
+    def __init__(self, args, hyperplane_n, rl_net):
         super().__init__()
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.rnd_net = RNDModel(hyperplane_n)
+        self.rnd_net = RNDModel(args, hyperplane_n)
 
     def forward(self, x, hidden=None):
         o_in = x.get('o', None)
@@ -146,22 +146,26 @@ vae_nn_size = [258, 128]
 # VAE
 ## Encoder
 class Encoder(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
+        self.args = args
         self.action_num = 2**hyperplane_n
         self.fc1 = nn.Linear(hyperplane_n + 1 + self.action_num, vae_nn_size[0])
         self.fc2 = nn.Linear(vae_nn_size[0], vae_nn_size[1])
         self.fc_ave = nn.Linear(vae_nn_size[1], vae_latent_dim) # 平均
         self.fc_dev = nn.Linear(vae_nn_size[1], vae_latent_dim) # 標準偏差
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, o_in, a_in, hidden=None):
         a_hot = F.one_hot(torch.squeeze(a_in), num_classes=self.action_num)
         x = torch.cat((o_in, a_hot), 1)
         h = self.fc1(x)
         h = self.relu(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.relu(h)
+        h = self.dropout(h)
         ave = self.fc_ave(h)
         log_dev = self.fc_dev(h)
 
@@ -172,43 +176,52 @@ class Encoder(nn.Module):
 
 ## Action decoder
 class ActionDecoder(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
+        self.args = args
         self.fc1 = nn.Linear(vae_latent_dim + hyperplane_n + 1, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
         self.fc_p = nn.Linear(vae_nn_size[0], 2**hyperplane_n)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, latent, o_in, hidden=None):
         x = torch.cat((latent, o_in), 1)
         h = self.fc1(x)
         h = self.relu(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.relu(h)
+        h = self.dropout(h)
         re_p = self.fc_p(h)
         return {'re_policy': re_p}
 
 ## Observation decoder
 class ObservationDecoder(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
+        self.args = args
         self.fc1 = nn.Linear(vae_latent_dim, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_s = nn.Linear(vae_nn_size[0], hyperplane_n + 1)
+        self.fc_o = nn.Linear(vae_nn_size[0], hyperplane_n + 1)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, latent, hidden=None):
         h = self.fc1(latent)
         h = self.relu(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.relu(h)
-        re_s = self.fc_s(h)
-        return {'re_observation': re_s}
+        h = self.dropout(h)
+        re_o = self.fc_o(h)
+        return {'re_observation': re_o}
 
 ## Action-Observation VAE
 class AOVAE(nn.Module):
-    def __init__(self, encoder, a_decoder, o_decoder):
+    def __init__(self, args, encoder, a_decoder, o_decoder):
         super().__init__()
+        self.args = args
         self.encoder = encoder
         self.a_decoder = a_decoder
         self.o_decoder = o_decoder
@@ -221,15 +234,16 @@ class AOVAE(nn.Module):
 
 # RL with VAE wrapper model (ASC)
 class ASCModel(nn.Module):
-    def __init__(self, hyperplane_n, rl_net):
+    def __init__(self, args, hyperplane_n, rl_net):
         super().__init__()
+        self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = Encoder(hyperplane_n)
-        self.action_decoder = ActionDecoder(hyperplane_n)
-        self.observation_decoder = ObservationDecoder(hyperplane_n)
-        self.vae = AOVAE(self.encoder, self.action_decoder, self.observation_decoder)
+        self.encoder = Encoder(args, hyperplane_n)
+        self.action_decoder = ActionDecoder(args, hyperplane_n)
+        self.observation_decoder = ObservationDecoder(args, hyperplane_n)
+        self.vae = AOVAE(args, self.encoder, self.action_decoder, self.observation_decoder)
 
     def forward(self, x, hidden=None):
         o_in = x.get('o', None)
@@ -256,34 +270,39 @@ vq_nn_size = [258, 128]
 # VQ-VAE
 ## Encoder (VQ)
 class VQEncoder(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
+        self.args = args
         self.action_num = 2**hyperplane_n
         self.fc1 = nn.Linear(hyperplane_n + 1 + self.action_num, vae_nn_size[0])
         self.fc2 = nn.Linear(vae_nn_size[0], vae_nn_size[1])
         self.fc_latent = nn.Linear(vae_nn_size[1], vq_latent_size * vq_embedding_dim) # 潜在変数
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, o_in, a_in, hidden=None):
         a_hot = F.one_hot(torch.squeeze(a_in), num_classes=self.action_num)
         x = torch.cat((o_in, a_hot), 1)
         h = self.fc1(x)
         h = self.relu(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.relu(h)
+        h = self.dropout(h)
         policy_latent = self.fc_latent(h)
         # policy_latent = policy_latent.view((policy_latent.size(0), vq_latent_dim, vq_embedding_dim))
-        # print(f'<><><> policy_latent.size(): {policy_latent.size()}')
         return {'policy_latent': policy_latent}
 
 ## Action decoder (VQ)
 class ActionVQDecoder(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
+        self.args = args
         self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim + hyperplane_n + 1, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
         self.fc_p = nn.Linear(vae_nn_size[0], 2**hyperplane_n)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, latent, o_in, hidden=None):
         # latent_flattened = latent.view((latent.size(0), vq_latent_dim * vq_embedding_dim))
@@ -291,36 +310,41 @@ class ActionVQDecoder(nn.Module):
         x = torch.cat((latent_flattened, o_in), 1)
         h = self.fc1(x)
         h = self.relu(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.relu(h)
+        h = self.dropout(h)
         re_p = self.fc_p(h)
-        # print(f'<><><> re_p.size() in ActionVQDecoder: {re_p.size()}')
         return {'re_policy': re_p}
 
 ## Observation decoder (VQ)
 class ObservationVQDecoder(nn.Module):
-    def __init__(self, hyperplane_n):
+    def __init__(self, args, hyperplane_n):
         super().__init__()
+        self.args = args
         self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_s = nn.Linear(vae_nn_size[0], hyperplane_n + 1)
+        self.fc_o = nn.Linear(vae_nn_size[0], hyperplane_n + 1)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, latent, hidden=None):
         # latent_flattened = latent.view((latent.size(0), vq_latent_dim * vq_embedding_dim))
         latent_flattened = latent
         h = self.fc1(latent_flattened)
         h = self.relu(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.relu(h)
-        re_s = self.fc_s(h)
-        # print(f'<><><> re_s.size() in ObservationVQDecoder: {re_s.size()}')
-        return {'re_observation': re_s}
+        h = self.dropout(h)
+        re_o = self.fc_o(h)
+        return {'re_observation': re_o}
 
 ## Vector quantizer
 class VectorQuantizer(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(VectorQuantizer, self).__init__()
+        self.args = args
         self.latent_size = vq_latent_size
         self.embedding_size = vq_embedding_size
         self.embedding_dim = vq_embedding_dim
@@ -336,18 +360,15 @@ class VectorQuantizer(nn.Module):
         encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
         encodings = torch.zeros(encoding_indices.size(0), self.embedding_size, device=latent.device)
         encodings.scatter_(1, encoding_indices, 1)
-        # print(f'<><><> encodings.size(): {encodings.size()}')
-        # print(f'<><><> latent.size(): {latent.size()}')
         quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
-        # print(f'<><><> vq_latent.size(): {vq_latent.size()}')
         policy_vq_latent = latent + (quantized_latent - latent).detach()
-        # print(f'<><><> policy_vq_latent.size(): {policy_vq_latent.size()}')
         return {'policy_vq_latent': policy_vq_latent, 'quantized_policy_latent': quantized_latent}
 
 ## Action-Observation VQ-VAE
 class AOVQVAE(nn.Module):
-    def __init__(self, encoder, a_decoder, o_decoder, quantizer):
+    def __init__(self, args, encoder, a_decoder, o_decoder, quantizer):
         super().__init__()
+        self.args = args
         self.encoder = encoder
         self.quantizer = quantizer
         self.a_decoder = a_decoder
@@ -362,16 +383,17 @@ class AOVQVAE(nn.Module):
 
 # RL with VAE wrapper model (ASC)
 class ASCVQModel(nn.Module):
-    def __init__(self, hyperplane_n, rl_net):
+    def __init__(self, args, hyperplane_n, rl_net):
         super().__init__()
+        self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = VQEncoder(hyperplane_n)
-        self.quantizer = VectorQuantizer()
-        self.action_decoder = ActionVQDecoder(hyperplane_n)
-        self.observation_decoder = ObservationVQDecoder(hyperplane_n)
-        self.vqvae = AOVQVAE(self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
+        self.encoder = VQEncoder(args, hyperplane_n)
+        self.quantizer = VectorQuantizer(args)
+        self.action_decoder = ActionVQDecoder(args, hyperplane_n)
+        self.observation_decoder = ObservationVQDecoder(args, hyperplane_n)
+        self.vqvae = AOVQVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
 
     def forward(self, x, hidden=None):
         o_in = x.get('o', None)
@@ -388,6 +410,176 @@ class ASCVQModel(nn.Module):
         if out_g_p is not None:
             out = {**out, **out_g_p}
         return out
+
+
+#  VAE + Transformer パラメータ
+tvae_latent_dim = 32 # 潜在変数の次元数
+tvae_emb_size = 64 # transformer に入力する潜在変数を線形変換したサイズ
+tvae_ffn_size = 256 # transformer に FFN 中間ユニット数
+tvae_cnn_size = 256 # action decoder の中間ユニット数 
+tvae_head_num = 4 # ヘッド数
+tvae_tf_layer_num = 4 # transformer のレイヤー数
+tvae_noise_num = 9 # observation decoder の target 入力するノイズ数
+
+#  VAE + Transformer
+## Encoder
+class TranEncoder(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.args = args
+        self.action_num = 2**hyperplane_n
+        self.feature_num = hyperplane_n + 1 + self.action_num
+        # 1D Convolution
+        self.conv = nn.Conv1d(in_channels=(self.feature_num), out_channels=tvae_emb_size, kernel_size=1)
+        # # Positional Encoding
+        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
+        # Transformer Encoder
+        encoder_layer = nn.TransformerEncoderLayer(tvae_emb_size, tvae_head_num, tvae_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, tvae_tf_layer_num)
+        self.fc_ave = nn.Linear(tvae_emb_size, vae_latent_dim) # 平均
+        self.fc_dev = nn.Linear(tvae_emb_size, vae_latent_dim) # 標準偏差
+        self.bn = nn.BatchNorm1d(tvae_emb_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
+
+    def forward(self, os_in, as_in, oa_mask=None, hidden=None):
+        as_hot = F.one_hot(torch.squeeze(as_in), num_classes=self.action_num)
+        x = torch.cat((os_in, as_hot), -1)
+        h = torch.permute(x, (0, 2, 1))
+        h = self.conv(h) 
+        h = torch.permute(h, (0, 2, 1))
+        h = self.transformer_encoder(h).mean(dim=-2)
+        h = self.bn(h)
+        h = self.relu(h)
+        h = self.dropout(h)
+        ave = self.fc_ave(h)
+        log_dev = self.fc_dev(h)
+        return {'average_set': ave, 'log_dev_set': log_dev}
+
+## Action decoder
+class ActionConvDecoder(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.args = args
+        # 1D Convolution
+        self.conv1 = nn.Conv1d(in_channels=(vae_latent_dim + hyperplane_n + 1), out_channels=tvae_cnn_size, kernel_size=1)
+        self.conv2 = nn.Conv1d(in_channels=tvae_cnn_size, out_channels=tvae_cnn_size, kernel_size=1)
+        self.conv3 = nn.Conv1d(in_channels=tvae_cnn_size, out_channels=tvae_cnn_size, kernel_size=1)
+        self.conv_p = nn.Conv1d(in_channels=tvae_cnn_size, out_channels=2**hyperplane_n, kernel_size=1)
+        self.bn1 = nn.BatchNorm1d(tvae_cnn_size)
+        self.bn2 = nn.BatchNorm1d(tvae_cnn_size)
+        self.bn3 = nn.BatchNorm1d(tvae_cnn_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
+
+    def forward(self, latent, os_in, hidden=None):
+        # latents = latent.unsqueeze(1).expand(-1, os_in.size(1), -1)
+        x = torch.cat((latent, os_in), -1)
+        h = torch.permute(x, (0, 2, 1))
+        h = self.conv1(h)
+        h = self.bn1(h)
+        h = self.relu(h)
+        h = self.conv2(h)
+        h = self.bn2(h)
+        h = self.relu(h)
+        h = self.conv3(h)
+        h = self.bn3(h)
+        h = self.relu(h)
+        h = self.dropout(h)
+        re_ps = self.conv_p(h)
+        re_ps = torch.permute(re_ps, (0, 2, 1))
+        return {'re_policy_set': re_ps}
+
+## Observation decoder
+class ObservationTranDecoder(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.args = args
+        # 1D Convolution
+        self.conv = nn.Conv1d(in_channels=(tvae_latent_dim), out_channels=tvae_emb_size, kernel_size=1)
+        self.conv_o= nn.Conv1d(in_channels=tvae_emb_size, out_channels=hyperplane_n + 1, kernel_size=1)
+        # # Positional Encoding
+        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
+        # Transformer Encoder
+        decoder_layer = nn.TransformerDecoderLayer(tvae_emb_size, tvae_head_num, tvae_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
+        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, tvae_tf_layer_num)
+        self.bn = nn.BatchNorm1d(tvae_emb_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
+
+    def forward(self, noise, latent, hidden=None):
+        # noise linear transformation
+        h_n = torch.permute(noise, (0, 2, 1))
+        h_n = self.conv(h_n) 
+        h_n = torch.permute(h_n, (0, 2, 1))
+        # latent linear transformation
+        h_l = torch.permute(latent, (0, 2, 1))
+        h_l = self.conv(h_l) 
+        h_l = torch.permute(h_l, (0, 2, 1))
+        # transformer decoder 
+        h = self.transformer_decoder(h_n, h_l)
+        h = torch.permute(h, (0, 2, 1))
+        h = self.bn(h)
+        h = self.relu(h)
+        h = self.dropout(h)
+        re_os = self.conv_o(h)
+        re_os = torch.permute(re_os, (0, 2, 1))
+        return {'re_observation_set': re_os}
+
+## Action-Observation VAE
+class AOTranVAE(nn.Module):
+    def __init__(self, args, encoder, a_decoder, o_decoder):
+        super().__init__()
+        self.args = args
+        self.encoder = encoder
+        self.a_decoder = a_decoder
+        self.o_decoder = o_decoder
+
+    def forward(self, os_in, as_in, hidden=None):
+        h_l = self.encoder(os_in, as_in)
+        average = h_l['average_set'].unsqueeze(1)
+        log_dev = h_l['log_dev_set'].unsqueeze(1)
+
+        # Latent generation and Reparametrization Trick
+        epsilon = torch.randn_like(average.expand(-1, os_in.size(1), -1))  # 乱数ε
+        policy_latent_set = average + torch.exp(log_dev / 2) * epsilon  # ζ = μ + σε
+        # Noise generation and Reparametrization Trick (detach)
+        epsilon_noise = torch.randn_like(average.expand(-1, tvae_noise_num, -1))  # 乱数ε
+        noise_latent_set = (average + torch.exp(log_dev / 2) * epsilon_noise).detach()  # ζ = μ + σε
+
+        re_p = self.a_decoder(policy_latent_set, os_in)
+        re_s = self.o_decoder(noise_latent_set, policy_latent_set)
+        return {**re_p, **re_s, **h_l, 'policy_latent_set': policy_latent_set}
+
+# RL with VAE wrapper model (ASC)
+class TranASCModel(nn.Module):
+    def __init__(self, args, hyperplane_n, rl_net):
+        super().__init__()
+        self.args = args
+        # RL モデル関連
+        self.rl_net = rl_net
+        ## 生成モデル関係
+        self.encoder = TranEncoder(args, hyperplane_n)
+        self.action_decoder = ActionConvDecoder(args, hyperplane_n)
+        self.observation_decoder = ObservationTranDecoder(args, hyperplane_n)
+        self.vae = AOTranVAE(args, self.encoder, self.action_decoder, self.observation_decoder)
+
+    def forward(self, x, hidden=None):
+        os_in = x.get('os', None)
+        as_in = x.get('as', None)
+        latent = x.get('latent', None)
+        # RL model
+        out = self.rl_net(x)
+        # State-Action VAE
+        out_g = self.vae(os_in, as_in) if as_in!=None else None
+        if out_g is not None:
+            out = {**out, **out_g}
+        # VAE action decoder
+        out_g_p = self.action_decoder(os_in, latent) if latent!=None else None
+        if out_g_p is not None:
+            out = {**out, **out_g_p}
+        return out
+
 
 
 # base class of Environment
@@ -590,22 +782,24 @@ class Environment(BaseEnvironment):
         agent_type = args['type']
 
         if agent_type == 'BASE':
-            rl_model = SimpleModel(self.hyperplane_n)
+            rl_model = SimpleModel(args, self.hyperplane_n)
         elif agent_type == 'QL' or agent_type == 'SAC':
-            rl_model = PVQModel(self.hyperplane_n)
+            rl_model = PVQModel(args, self.hyperplane_n)
         elif agent_type == 'RSRS':
-            rl_model = PVQCModel(self.hyperplane_n)
+            rl_model = PVQCModel(args, self.hyperplane_n)
         else:
-            rl_model = SimpleModel(self.hyperplane_n)
+            rl_model = SimpleModel(args, self.hyperplane_n)
         # RND を任意の RL model に付随させる
         if args.get('use_RND', False):
-            rl_model = RLwithRNDModel(self.hyperplane_n, rl_model)
+            rl_model = RLwithRNDModel(args, self.hyperplane_n, rl_model)
         # ASC model
         asc_type = args.get('ASC_type', False)
         if asc_type == 'VAE':
-            rl_model = ASCModel(self.hyperplane_n, rl_model)
-        if asc_type == 'VQ-VAE':
-            rl_model = ASCVQModel(self.hyperplane_n, rl_model)
+            rl_model = ASCModel(args, self.hyperplane_n, rl_model)
+        elif asc_type == 'VQ-VAE':
+            rl_model = ASCVQModel(args, self.hyperplane_n, rl_model)
+        elif asc_type == 'Transformer-VAE':
+            rl_model = TranASCModel(args, self.hyperplane_n, rl_model)
         
         return rl_model
 
