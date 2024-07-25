@@ -233,7 +233,8 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     """
     # return_buckup が True だと　teaminals を引いて post terminal state(dummy) について伝搬しなくする
     # losses の計算で終端 Return を target_values (deque) を最初（最後）に入れているのを mask で無効化
-    tmasks = batch['turn_mask'] if args['return_buckup'] else lastcut_for_buckup(batch['turn_mask'], batch['terminal'])
+    # tmasks = batch['turn_mask'] if args['return_buckup'] else lastcut_for_buckup(batch['turn_mask'], batch['terminal'])
+    tmasks = lastcut_for_buckup(batch['turn_mask'], batch['terminal']) if args['return_buckup'] else batch['turn_mask']
     omasks = batch['observation_mask']
     mixed_c = batch['c']
     c_reg = batch['c_reg']
@@ -320,7 +321,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             log_dev_j = torch.reshape(half_log_dev[1], (b_size * o_size, -1))
             log_dev_logits = torch.mm(log_dev_i, log_dev_j.t()) / c_args.get('temperature', 1.0)
             log_dev_labels = torch.arange(log_dev_logits.size(0))
-            losses['contrast'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
+            losses['contrast'] = (F.cross_entropy(average_logits, average_labels, reduction='none') + F.cross_entropy(log_dev_logits, log_dev_labels, reduction='none')).sum()
         elif asc_type == 'VQ-VAE':
             # coodbook loss
             # losses['vq_l_cb'] = F.smooth_l1_loss(outputs['quantized_policy_latent'], targets['policy_latent']).sum()
@@ -337,7 +338,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             latent_j = torch.reshape(half_latent[1], (b_size * o_size, -1))
             latent_logits = torch.mm(latent_i, latent_j.t()) / c_args.get('temperature', 1.0)
             latent_labels = torch.arange(latent_logits.size(0))
-            losses['contrast'] = F.cross_entropy(latent_logits, latent_labels)
+            losses['contrast'] = F.cross_entropy(latent_logits, latent_labels, reduction='none').sum()
 
         # 生成モデル policy entropy を各種監視変数を追加
         losses['ent_re_p'] = entropy_re_p.sum()
@@ -379,7 +380,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             log_dev_logits = torch.mm(half_log_dev[0], half_log_dev[1].t()) / c_args.get('temperature', 1.0)
             log_dev_labels = torch.arange(log_dev_logits.size(0))
             losses['contrast_set'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
-        if asc_type == 'SeTranVQ-VAE':
+        if asc_type == 'VQ-SeTranVAE':
             # coodbook loss
             # losses['vq_l_cb'] = F.smooth_l1_loss(outputs['quantized_policy_latent_set'], targets['policy_latent_set']).sum()
             losses['vq_l_cb'] = (((outputs['quantized_policy_latent_set'] - targets['policy_latent_set']) ** 2) / 2).sum()
@@ -593,7 +594,7 @@ class Batcher:
 
     def _rand_step_for_set(self, steps, trajectory_length):
         # A-S-C で集合として学習する場合に
-        turn_candidates = 1 + max(0, steps - trajectory_length)  # change start turn by sequence length
+        turn_candidates = 1 + max(0, steps - trajectory_length - 1 if self.args['return_buckup'] else 0)  # buckup 用 dummy 状態を除外 
         train_st_set = random.randrange(turn_candidates)
         st_set = train_st_set # 開始 step 
         ed_set = min(train_st_set + trajectory_length, steps) # 終了 step が極端に短い場合を考慮した終了 step

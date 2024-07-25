@@ -32,7 +32,7 @@ train_args:
     default_learning_rate: 3.0e-8 # default: 3.0e-8 
     turn_based_training: False
     observation: False
-    return_buckup: False # QL or AC or SAC => True, PG => False
+    return_buckup: True # QL or AC or SAC => True, PG => False
     gamma: 1.0
     forward_steps: 2 # QL => 2
     burn_in_steps: 0  # for RNNs
@@ -46,8 +46,8 @@ train_args:
     update_episodes: 500
     batch_size: 128 # 256
     minimum_episodes: 10000
-    maximum_episodes: 20000
-    epochs: 5000
+    maximum_episodes: 100000
+    epochs: 20000
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
@@ -65,7 +65,7 @@ train_args:
         use_RND: True
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
         mp_param: [0.8] # [0.1]
-        ASC_type: 'SeTranVQ-VAE' # False, 'VAE', 'VQ-VAE', 'SeTranVAE', 'SeTranVQ-VAE'
+        ASC_type: 'VQ-SeTranVAE' # False, 'VAE', 'VQ-VAE', 'SeTranVAE', 'VQ-SeTranVAE'
         ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
         ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
         ASC_dropout: 0.4 # ASC model の dropout 率

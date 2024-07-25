@@ -595,7 +595,7 @@ tvq_noise_num = 9 # observation decoder の target 入力するノイズ数
 
 #  VAE + Transformer
 ## Encoder
-class TranVQEncoder(nn.Module):
+class VQTranEncoder(nn.Module):
     def __init__(self, args, hyperplane_n):
         super().__init__()
         self.args = args
@@ -627,7 +627,7 @@ class TranVQEncoder(nn.Module):
         return {'policy_latent_set': latent}
 
 ## Action decoder
-class ActionConvVQDecoder(nn.Module):
+class ActionVQConvDecoder(nn.Module):
     def __init__(self, args, hyperplane_n):
         super().__init__()
         self.args = args
@@ -665,7 +665,7 @@ class ActionConvVQDecoder(nn.Module):
         return {'re_policy_set': re_ps}
 
 ## Observation decoder
-class ObservationTranVQDecoder(nn.Module):
+class ObservationVQTranDecoder(nn.Module):
     def __init__(self, args, hyperplane_n):
         super().__init__()
         self.args = args
@@ -728,7 +728,7 @@ class TranVectorQuantizer(nn.Module):
         return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
 
 ## Action-Observation VQ-VAE
-class AOTranVQVAE(nn.Module):
+class AOVQTranVAE(nn.Module):
     def __init__(self, args, encoder, a_decoder, o_decoder, quantizer):
         super().__init__()
         self.args = args
@@ -754,18 +754,18 @@ class AOTranVQVAE(nn.Module):
         return {**re_p, **re_s, **h_l, **re_q}
 
 # RL with VQ-VAE wrapper model (ASC)
-class TranVQASCModel(nn.Module):
+class VQTranASCModel(nn.Module):
     def __init__(self, args, hyperplane_n, rl_net):
         super().__init__()
         self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = TranVQEncoder(args, hyperplane_n)
+        self.encoder = VQTranEncoder(args, hyperplane_n)
         self.quantizer = TranVectorQuantizer(args)
-        self.action_decoder = ActionConvVQDecoder(args, hyperplane_n)
-        self.observation_decoder = ObservationTranVQDecoder(args, hyperplane_n)
-        self.vae = AOTranVQVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
+        self.action_decoder = ActionVQConvDecoder(args, hyperplane_n)
+        self.observation_decoder = ObservationVQTranDecoder(args, hyperplane_n)
+        self.vae = AOVQTranVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
 
     def forward(self, x, hidden=None):
         os_in = x.get('os', None)
@@ -1003,8 +1003,8 @@ class Environment(BaseEnvironment):
             rl_model = ASCVQModel(args, self.hyperplane_n, rl_model)
         elif asc_type == 'SeTranVAE':
             rl_model = TranASCModel(args, self.hyperplane_n, rl_model)
-        elif asc_type == 'SeTranVQ-VAE':
-            rl_model = TranVQASCModel(args, self.hyperplane_n, rl_model)
+        elif asc_type == 'VQ-SeTranVAE':
+            rl_model = VQTranASCModel(args, self.hyperplane_n, rl_model)
         
         return rl_model
 

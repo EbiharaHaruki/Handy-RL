@@ -1,5 +1,4 @@
 #! /bin/bash
-# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数]
 # Usage: . bash_scripts/experiment_reward.sh [任意の実行回数] [environment の ファイル名.py]
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
