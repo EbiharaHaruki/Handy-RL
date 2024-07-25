@@ -6,8 +6,8 @@ env_args:
     env: 'simpletask'
     param:
         depth: 6 # 深度(変更可能)
-        hyperplane_n: 3 # 超平面次元数(変更可能)
-        treasure: [[5, 2, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
+        hyperplane_n: 2 # 超平面次元数(変更可能)
+        treasure: [[5, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
         set_reward: [1] # 報酬の値(変更可能)
         other_reward: 0 # treasure以外に到達した時の報酬設定
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
@@ -65,7 +65,7 @@ train_args:
         use_RND: True
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
         mp_param: [0.8] # [0.1]
-        ASC_type: 'Transformer-VAE' # False, 'VAE', 'VQ-VAE', 'Transformer-VAE'
+        ASC_type: 'SeTranVQ-VAE' # False, 'VAE', 'VQ-VAE', 'SeTranVAE', 'SeTranVQ-VAE'
         ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
         ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
         ASC_dropout: 0.4 # ASC model の dropout 率
@@ -78,7 +78,7 @@ train_args:
         recon: 1.0 # default: 1.0 # reconstruction loss weight for VAE and VQ-VAE
         vae_kl: 1.0 # default: 1.0 # KL loss weight for VAE
         codebook: 1.0 # default: 1.0 # reconstruction loss for VQ-VAE
-        commitment: 0.8 # default: 0.25 # commitment weight for VQ-VAE
+        commitment: 0.25 # default: 0.25 # commitment weight for VQ-VAE
         contrast: 1.0 # default: 1.0  # commitment weight for contrastive learning
         recon_p_set: 1.0 # default: 1.0 # policy reconstruction loss weight for Transformer-VAE
         recon_o_set: 1.0 # default: 1.0 # re_observation reconstruction loss weight for Transformer-VAE

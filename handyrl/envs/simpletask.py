@@ -262,7 +262,7 @@ class ASCModel(nn.Module):
         return out
 
 # VQ-VAE パラメータ
-vq_latent_size= 1 # lattent の個数，lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
+vq_latent_size= 4 # lattent の個数，lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
 vq_embedding_size = 8 # codebook の code　(embedding vector) の数
 vq_embedding_dim = 4 # embedding vector 1 つずつの長さ
 vq_nn_size = [258, 128]
@@ -343,7 +343,7 @@ class ObservationVQDecoder(nn.Module):
 ## Vector quantizer
 class VectorQuantizer(nn.Module):
     def __init__(self, args):
-        super(VectorQuantizer, self).__init__()
+        super().__init__()
         self.args = args
         self.latent_size = vq_latent_size
         self.embedding_size = vq_embedding_size
@@ -412,13 +412,13 @@ class ASCVQModel(nn.Module):
         return out
 
 
-#  VAE + Transformer パラメータ
+# VAE + Transformer (SeTranVAE) パラメータ 
 tvae_latent_dim = 32 # 潜在変数の次元数
 tvae_emb_size = 64 # transformer に入力する潜在変数を線形変換したサイズ
 tvae_ffn_size = 256 # transformer に FFN 中間ユニット数
-tvae_cnn_size = 256 # action decoder の中間ユニット数 
-tvae_head_num = 4 # ヘッド数
-tvae_tf_layer_num = 4 # transformer のレイヤー数
+tvae_cnn_size = [128, 256, 128, 64] # action decoder の中間ユニット数 
+tvae_head_num = 2 # ヘッド数
+tvae_tf_layer_num = 3 # transformer のレイヤー数
 tvae_noise_num = 9 # observation decoder の target 入力するノイズ数
 
 #  VAE + Transformer
@@ -431,13 +431,11 @@ class TranEncoder(nn.Module):
         self.feature_num = hyperplane_n + 1 + self.action_num
         # 1D Convolution
         self.conv = nn.Conv1d(in_channels=(self.feature_num), out_channels=tvae_emb_size, kernel_size=1)
-        # # Positional Encoding
-        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
         # Transformer Encoder
         encoder_layer = nn.TransformerEncoderLayer(tvae_emb_size, tvae_head_num, tvae_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, tvae_tf_layer_num)
-        self.fc_ave = nn.Linear(tvae_emb_size, vae_latent_dim) # 平均
-        self.fc_dev = nn.Linear(tvae_emb_size, vae_latent_dim) # 標準偏差
+        self.fc_ave = nn.Linear(tvae_emb_size, tvae_latent_dim) # 平均
+        self.fc_dev = nn.Linear(tvae_emb_size, tvae_latent_dim) # 標準偏差
         self.bn = nn.BatchNorm1d(tvae_emb_size)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
@@ -462,18 +460,19 @@ class ActionConvDecoder(nn.Module):
         super().__init__()
         self.args = args
         # 1D Convolution
-        self.conv1 = nn.Conv1d(in_channels=(vae_latent_dim + hyperplane_n + 1), out_channels=tvae_cnn_size, kernel_size=1)
-        self.conv2 = nn.Conv1d(in_channels=tvae_cnn_size, out_channels=tvae_cnn_size, kernel_size=1)
-        self.conv3 = nn.Conv1d(in_channels=tvae_cnn_size, out_channels=tvae_cnn_size, kernel_size=1)
-        self.conv_p = nn.Conv1d(in_channels=tvae_cnn_size, out_channels=2**hyperplane_n, kernel_size=1)
-        self.bn1 = nn.BatchNorm1d(tvae_cnn_size)
-        self.bn2 = nn.BatchNorm1d(tvae_cnn_size)
-        self.bn3 = nn.BatchNorm1d(tvae_cnn_size)
+        self.conv1 = nn.Conv1d(in_channels=(tvae_latent_dim + hyperplane_n + 1), out_channels=tvae_cnn_size[0], kernel_size=1)
+        self.conv2 = nn.Conv1d(in_channels=tvae_cnn_size[0], out_channels=tvae_cnn_size[1], kernel_size=1)
+        self.conv3 = nn.Conv1d(in_channels=tvae_cnn_size[1], out_channels=tvae_cnn_size[2], kernel_size=1)
+        self.conv4 = nn.Conv1d(in_channels=tvae_cnn_size[2], out_channels=tvae_cnn_size[3], kernel_size=1)
+        self.conv_p = nn.Conv1d(in_channels=tvae_cnn_size[3], out_channels=2**hyperplane_n, kernel_size=1)
+        self.bn1 = nn.BatchNorm1d(tvae_cnn_size[0])
+        self.bn2 = nn.BatchNorm1d(tvae_cnn_size[1])
+        self.bn3 = nn.BatchNorm1d(tvae_cnn_size[2])
+        self.bn4 = nn.BatchNorm1d(tvae_cnn_size[3])
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
     def forward(self, latent, os_in, hidden=None):
-        # latents = latent.unsqueeze(1).expand(-1, os_in.size(1), -1)
         x = torch.cat((latent, os_in), -1)
         h = torch.permute(x, (0, 2, 1))
         h = self.conv1(h)
@@ -484,6 +483,8 @@ class ActionConvDecoder(nn.Module):
         h = self.relu(h)
         h = self.conv3(h)
         h = self.bn3(h)
+        h = self.conv4(h)
+        h = self.bn4(h)
         h = self.relu(h)
         h = self.dropout(h)
         re_ps = self.conv_p(h)
@@ -498,8 +499,6 @@ class ObservationTranDecoder(nn.Module):
         # 1D Convolution
         self.conv = nn.Conv1d(in_channels=(tvae_latent_dim), out_channels=tvae_emb_size, kernel_size=1)
         self.conv_o= nn.Conv1d(in_channels=tvae_emb_size, out_channels=hyperplane_n + 1, kernel_size=1)
-        # # Positional Encoding
-        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
         # Transformer Encoder
         decoder_layer = nn.TransformerDecoderLayer(tvae_emb_size, tvae_head_num, tvae_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
         self.transformer_decoder = nn.TransformerDecoder(decoder_layer, tvae_tf_layer_num)
@@ -563,6 +562,210 @@ class TranASCModel(nn.Module):
         self.action_decoder = ActionConvDecoder(args, hyperplane_n)
         self.observation_decoder = ObservationTranDecoder(args, hyperplane_n)
         self.vae = AOTranVAE(args, self.encoder, self.action_decoder, self.observation_decoder)
+
+    def forward(self, x, hidden=None):
+        os_in = x.get('os', None)
+        as_in = x.get('as', None)
+        latent = x.get('latent', None)
+        # RL model
+        out = self.rl_net(x)
+        # State-Action VAE
+        out_g = self.vae(os_in, as_in) if as_in!=None else None
+        if out_g is not None:
+            out = {**out, **out_g}
+        # VAE action decoder
+        out_g_p = self.action_decoder(os_in, latent) if latent!=None else None
+        if out_g_p is not None:
+            out = {**out, **out_g_p}
+        return out
+
+
+#  VQ-VAE + Transformer (SeTranVQ-VAE) パラメータ
+# VQ-VAE パラメータ
+tvq_latent_size= 4 # lattent の個数，lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
+tvq_embedding_size = 8 # codebook の code　(embedding vector) の数
+tvq_embedding_dim = 8 # embedding vector 1 つずつの長さ
+
+tvq_emb_size = 64 # transformer に入力する潜在変数を線形変換したサイズ
+tvq_ffn_size = 256 # transformer に FFN 中間ユニット数
+tvq_cnn_size = [128, 256, 128, 64] # action decoder の中間ユニット数 
+tvq_head_num = 2 # ヘッド数
+tvq_tf_layer_num = 3 # transformer のレイヤー数
+tvq_noise_num = 9 # observation decoder の target 入力するノイズ数
+
+#  VAE + Transformer
+## Encoder
+class TranVQEncoder(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.args = args
+        self.action_num = 2**hyperplane_n
+        self.feature_num = hyperplane_n + 1 + self.action_num
+        # 1D Convolution
+        self.conv = nn.Conv1d(in_channels=(self.feature_num), out_channels=tvq_emb_size, kernel_size=1)
+        # # Positional Encoding
+        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
+        # Transformer Encoder
+        encoder_layer = nn.TransformerEncoderLayer(tvq_emb_size, tvq_head_num, tvq_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, tvq_tf_layer_num)
+        self.fc_latent = nn.Linear(tvq_emb_size, tvq_latent_size * tvq_embedding_dim) # 生の潜在変数
+        self.bn = nn.BatchNorm1d(tvq_emb_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
+
+    def forward(self, os_in, as_in, oa_mask=None, hidden=None):
+        as_hot = F.one_hot(torch.squeeze(as_in), num_classes=self.action_num)
+        x = torch.cat((os_in, as_hot), -1)
+        h = torch.permute(x, (0, 2, 1))
+        h = self.conv(h) 
+        h = torch.permute(h, (0, 2, 1))
+        h = self.transformer_encoder(h).mean(dim=-2)
+        h = self.bn(h)
+        h = self.relu(h)
+        h = self.dropout(h)
+        latent = self.fc_latent(h)
+        return {'policy_latent_set': latent}
+
+## Action decoder
+class ActionConvVQDecoder(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.args = args
+        # 1D Convolution
+        self.conv1 = nn.Conv1d(in_channels=(tvq_latent_size * tvq_embedding_dim + hyperplane_n + 1), out_channels=tvq_cnn_size[0], kernel_size=1)
+        self.conv2 = nn.Conv1d(in_channels=tvq_cnn_size[0], out_channels=tvq_cnn_size[1], kernel_size=1)
+        self.conv3 = nn.Conv1d(in_channels=tvq_cnn_size[1], out_channels=tvq_cnn_size[2], kernel_size=1)
+        self.conv4 = nn.Conv1d(in_channels=tvq_cnn_size[2], out_channels=tvq_cnn_size[3], kernel_size=1)
+        self.conv_p = nn.Conv1d(in_channels=tvq_cnn_size[3], out_channels=2**hyperplane_n, kernel_size=1)
+        self.bn1 = nn.BatchNorm1d(tvq_cnn_size[0])
+        self.bn2 = nn.BatchNorm1d(tvq_cnn_size[1])
+        self.bn3 = nn.BatchNorm1d(tvq_cnn_size[2])
+        self.bn4 = nn.BatchNorm1d(tvq_cnn_size[3])
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
+
+    def forward(self, vq_latent, os_in, hidden=None):
+        # latents = latent.unsqueeze(1).expand(-1, os_in.size(1), -1)
+        x = torch.cat((vq_latent, os_in), -1)
+        h = torch.permute(x, (0, 2, 1))
+        h = self.conv1(h)
+        h = self.bn1(h)
+        h = self.relu(h)
+        h = self.conv2(h)
+        h = self.bn2(h)
+        h = self.relu(h)
+        h = self.conv3(h)
+        h = self.bn3(h)
+        h = self.conv4(h)
+        h = self.bn4(h)
+        h = self.relu(h)
+        h = self.dropout(h)
+        re_ps = self.conv_p(h)
+        re_ps = torch.permute(re_ps, (0, 2, 1))
+        return {'re_policy_set': re_ps}
+
+## Observation decoder
+class ObservationTranVQDecoder(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.args = args
+        # 1D Convolution
+        self.conv = nn.Conv1d(in_channels=(tvq_embedding_dim), out_channels=tvq_emb_size, kernel_size=1)
+        self.conv_o= nn.Conv1d(in_channels=tvq_emb_size, out_channels=hyperplane_n + 1, kernel_size=1)
+        # # Positional Encoding
+        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
+        # Transformer Encoder
+        decoder_layer = nn.TransformerDecoderLayer(tvq_emb_size, tvq_head_num, tvq_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
+        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, tvq_tf_layer_num)
+        self.bn = nn.BatchNorm1d(tvq_emb_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(self.args['ASC_dropout'])
+
+    def forward(self, noise, vq_latent, hidden=None):
+        # noise linear transformation
+        h_n = torch.permute(noise, (0, 2, 1))
+        h_n = self.conv(h_n) 
+        h_n = torch.permute(h_n, (0, 2, 1))
+        # latent linear transformation
+        h_l = torch.permute(vq_latent, (0, 2, 1))
+        h_l = self.conv(h_l) 
+        h_l = torch.permute(h_l, (0, 2, 1))
+        # transformer decoder 
+        h = self.transformer_decoder(h_n, h_l)
+        h = torch.permute(h, (0, 2, 1))
+        h = self.bn(h)
+        h = self.relu(h)
+        h = self.dropout(h)
+        re_os = self.conv_o(h)
+        re_os = torch.permute(re_os, (0, 2, 1))
+        return {'re_observation_set': re_os}
+
+## Vector quantizer
+class TranVectorQuantizer(nn.Module):
+    def __init__(self, args):
+        # super(TranVectorQuantizer, self).__init__()
+        super().__init__()
+        self.args = args
+        self.latent_size = tvq_latent_size
+        self.embedding_size = tvq_embedding_size
+        self.embedding_dim = tvq_embedding_dim
+        self.codebook = nn.Embedding(self.embedding_size, self.embedding_dim)
+        self.codebook.weight.data.uniform_(-1/self.embedding_size, 1/self.embedding_size)
+
+    def forward(self, latent):
+        # b_size = latent.size(0)
+        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, embedding_dim]
+        distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
+                     + torch.sum(self.codebook.weight**2, dim=-1)
+                     - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
+
+        encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
+        encodings = torch.zeros(encoding_indices.size(0), self.embedding_size, device=latent.device)
+        encodings.scatter_(1, encoding_indices, 1)
+        quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
+        policy_vq_latent = latent + (quantized_latent - latent).detach()
+        codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
+        return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
+
+## Action-Observation VQ-VAE
+class AOTranVQVAE(nn.Module):
+    def __init__(self, args, encoder, a_decoder, o_decoder, quantizer):
+        super().__init__()
+        self.args = args
+        self.encoder = encoder
+        self.quantizer = quantizer
+        self.a_decoder = a_decoder
+        self.o_decoder = o_decoder
+
+    def forward(self, os_in, as_in, hidden=None):
+        h_l = self.encoder(os_in, as_in)
+
+        # Latent quantization
+        re_q = self.quantizer(h_l['policy_latent_set'])
+        vq_latent = re_q['policy_vq_latent_set'].unsqueeze(1).expand(-1, os_in.size(1), -1)
+        memory = re_q['policy_vq_latent_set'].view(-1, tvq_latent_size, tvq_embedding_dim)
+
+        noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_embedding_size, size=(os_in.size(0), tvq_noise_num))).to(torch.float)
+        # Noise generation and Reparametrization Trick (detach)
+        noise = torch.bmm(noize_one_hot, re_q['codebook_set']).detach() # codebook から一様乱数で取得した乱数
+
+        re_p = self.a_decoder(vq_latent, os_in)
+        re_s = self.o_decoder(noise, memory)
+        return {**re_p, **re_s, **h_l, **re_q}
+
+# RL with VQ-VAE wrapper model (ASC)
+class TranVQASCModel(nn.Module):
+    def __init__(self, args, hyperplane_n, rl_net):
+        super().__init__()
+        self.args = args
+        # RL モデル関連
+        self.rl_net = rl_net
+        ## 生成モデル関係
+        self.encoder = TranVQEncoder(args, hyperplane_n)
+        self.quantizer = TranVectorQuantizer(args)
+        self.action_decoder = ActionConvVQDecoder(args, hyperplane_n)
+        self.observation_decoder = ObservationTranVQDecoder(args, hyperplane_n)
+        self.vae = AOTranVQVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
 
     def forward(self, x, hidden=None):
         os_in = x.get('os', None)
@@ -798,8 +1001,10 @@ class Environment(BaseEnvironment):
             rl_model = ASCModel(args, self.hyperplane_n, rl_model)
         elif asc_type == 'VQ-VAE':
             rl_model = ASCVQModel(args, self.hyperplane_n, rl_model)
-        elif asc_type == 'Transformer-VAE':
+        elif asc_type == 'SeTranVAE':
             rl_model = TranASCModel(args, self.hyperplane_n, rl_model)
+        elif asc_type == 'SeTranVQ-VAE':
+            rl_model = TranVQASCModel(args, self.hyperplane_n, rl_model)
         
         return rl_model
 

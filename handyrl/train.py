@@ -323,9 +323,11 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             losses['contrast'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
         elif asc_type == 'VQ-VAE':
             # coodbook loss
-            losses['vq_l_cb'] = F.mse_loss(outputs['quantized_policy_latent'], targets['policy_latent']).sum()
+            # losses['vq_l_cb'] = F.smooth_l1_loss(outputs['quantized_policy_latent'], targets['policy_latent']).sum()
+            losses['vq_l_cb'] = (((outputs['quantized_policy_latent'] - targets['policy_latent']) ** 2) / 2).sum()
             # commitment loss
-            losses['vq_l_cm'] = args['agent'].get('commitment_factor', 1.0) * F.mse_loss(targets['quantized_policy_latent'], outputs['policy_latent']).sum()
+            # losses['vq_l_cm'] = F.smooth_l1_loss(targets['quantized_policy_latent'], outputs['policy_latent']).sum()
+            losses['vq_l_cm'] = (((targets['quantized_policy_latent'] - outputs['policy_latent']) ** 2) / 2).sum()
             losses['p_l_norm'] = torch.norm(outputs['policy_latent'], dim=-1).mean()
             losses['q_p_l_norm'] = torch.norm(outputs['quantized_policy_latent'], dim=-1).mean()
             # Contrastive_loss
@@ -357,14 +359,14 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         dot = torch.bmm(o_re_os, t_re_os.permute(0,2,1))
         i_distances = -dot/norm
         w_i_distances = (torch.exp(i_distances)/torch.sum(torch.exp(i_distances), dim=-1, keepdim=True))
-        mse = F.smooth_l1_loss(o_re_os.unsqueeze(-2).expand(-1, -1, s_size, -1), t_re_os.unsqueeze(-3), reduction='none')
+        mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, i_distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, i_distances.size(-2), -1, -1), reduction='none')
         losses['re_observation_set'] = torch.mul(w_i_distances.unsqueeze(-1), mse).sum()
         # Reconstruction policy entropy
         entropy_re_ps = dist.Categorical(logits=o_re_ps).entropy().sum()
         # 生成モデルの loss 選択
         asc_type = args['agent'].get('ASC_type', False)
         c_args = args.get('contrastive_learning', {})
-        if asc_type == 'Transformer-VAE':
+        if asc_type == 'SeTranVAE':
             # KL loss
             losses['p_l_KL_set'] = -0.5 * torch.sum(1 + outputs['log_dev_set'] - outputs['average_set'].pow(2) - outputs['log_dev_set'].exp()) 
             # Contrastive_loss
@@ -377,6 +379,22 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             log_dev_logits = torch.mm(half_log_dev[0], half_log_dev[1].t()) / c_args.get('temperature', 1.0)
             log_dev_labels = torch.arange(log_dev_logits.size(0))
             losses['contrast_set'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
+        if asc_type == 'SeTranVQ-VAE':
+            # coodbook loss
+            # losses['vq_l_cb'] = F.smooth_l1_loss(outputs['quantized_policy_latent_set'], targets['policy_latent_set']).sum()
+            losses['vq_l_cb'] = (((outputs['quantized_policy_latent_set'] - targets['policy_latent_set']) ** 2) / 2).sum()
+            # commitment loss
+            # losses['vq_l_cm'] = F.smooth_l1_loss(targets['quantized_policy_latent_set'], outputs['policy_latent_set']).sum()
+            losses['vq_l_cm'] = (((targets['quantized_policy_latent_set'] - outputs['policy_latent_set']) ** 2) / 2).sum()
+            losses['p_l_norm'] = torch.norm(outputs['policy_latent_set'], dim=-1).mean()
+            losses['q_p_l_norm'] = torch.norm(outputs['quantized_policy_latent_set'], dim=-1).mean()
+            # Contrastive_loss
+            ## average
+            half_latent = torch.chunk(F.normalize(outputs['policy_latent_set'], dim=-1), 2, dim=0)
+            latent_logits = torch.mm(half_latent[0], half_latent[1].t()) / c_args.get('temperature', 1.0)
+            latent_labels = torch.arange(latent_logits.size(0))
+            losses['contrast_set'] = F.cross_entropy(latent_logits, latent_labels)
+
         losses['ent_re_ps'] = entropy_re_ps.sum()
 
     # エントロピー正則化のためのエントロピー計算
@@ -493,7 +511,7 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
 
     if 'policy_latent' in outputs_nograd:
         targets['re_observation'] = batch['observation'].detach() * emasks
-        targets['re_policy'] = (actions * emasks).to(torch.long)
+        targets['re_policy'] = (actions * emasks).to(torch.long).detach()
         targets['policy_latent'] = (outputs_nograd['policy_latent'] * emasks)
     if 'quantized_policy_latent' in outputs_nograd:
         targets['quantized_policy_latent'] = (outputs_nograd['quantized_policy_latent'] * emasks)
@@ -501,6 +519,9 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
     if 'policy_latent_set' in outputs:
         targets['re_observation_set'] = batch['set']['observation'].detach()
         targets['re_policy_set'] = batch['set']['action'].to(torch.long).detach()
+    if 'quantized_policy_latent_set' in outputs_nograd:
+        targets['policy_latent_set'] = outputs_nograd['policy_latent_set']
+        targets['quantized_policy_latent_set'] = outputs_nograd['quantized_policy_latent_set']
 
     # model forward 計算の value, 生の outcome, None, 終端フラグ, 適格度トレース値 λ, 割引率 γ=1, Vtorece で使う ρ, Vtorece で使う c 
     # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
