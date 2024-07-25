@@ -139,7 +139,7 @@ class Generator:
         # forward_steps で終端まで見なかったり MC 法を使わない場合には終端の buck up 用のダミー状態を入力
         # Q 学習等のためには終端の後にもう一つ state などの情報を格納する必要がある
         # post terminal state(summy)
-        if not self.args['return_buckup']:
+        if self.args['return_buckup']:
             last_moment = copy.deepcopy(moments[len_episode-1])
             last_moment['reward'][player] = 0.0 # reward を 0 に
             last_moment['terminal'][player] = 1 # dummy
