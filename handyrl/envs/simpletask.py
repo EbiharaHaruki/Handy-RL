@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import itertools
 import sys
 import datetime
+import math
 
 from torch.nn import init
 import torch.optim as optim
@@ -137,6 +138,23 @@ class RLwithRNDModel(nn.Module):
         out_rnd = self.rnd_net(o_in)
         out = {**out, **out_rnd}
         return out
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, latent_dim, dropout = 0.1, max_len = 50):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, latent_dim, 2) * (-math.log(500.0) / latent_dim))
+        positional_encoding = torch.zeros(1, max_len, latent_dim)
+        positional_encoding[0, :, 0::2] = torch.sin(position * div_term)
+        positional_encoding[0, :, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('positional_encoding', positional_encoding)
+
+    def forward(self, x):
+        x = x + (self.positional_encoding[:, :x.shape[1], :]).requires_grad_(False)
+        return self.dropout(x)
 
 
 # VAE パラメータ
@@ -263,7 +281,7 @@ class ASCModel(nn.Module):
 
 # VQ-VAE パラメータ
 vq_latent_size= 4 # lattent の個数，lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
-vq_embedding_size = 8 # codebook の code　(embedding vector) の数
+vq_codebook_size = 8 # codebook の code　(embedding vector) の数
 vq_embedding_dim = 4 # embedding vector 1 つずつの長さ
 vq_nn_size = [258, 128]
 
@@ -346,10 +364,10 @@ class VectorQuantizer(nn.Module):
         super().__init__()
         self.args = args
         self.latent_size = vq_latent_size
-        self.embedding_size = vq_embedding_size
+        self.codebook_size = vq_codebook_size
         self.embedding_dim = vq_embedding_dim
-        self.codebook = nn.Embedding(self.embedding_size, self.embedding_dim)
-        self.codebook.weight.data.uniform_(-1/self.embedding_size, 1/self.embedding_size)
+        self.codebook = nn.Embedding(self.codebook_size, self.embedding_dim)
+        self.codebook.weight.data.uniform_(-1/self.codebook_size, 1/self.codebook_size)
 
     def forward(self, latent):
         latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, embedding_dim]
@@ -358,7 +376,7 @@ class VectorQuantizer(nn.Module):
                      - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
 
         encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
-        encodings = torch.zeros(encoding_indices.size(0), self.embedding_size, device=latent.device)
+        encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
         encodings.scatter_(1, encoding_indices, 1)
         quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
         policy_vq_latent = latent + (quantized_latent - latent).detach()
@@ -421,7 +439,7 @@ tvae_head_num = 2 # ヘッド数
 tvae_tf_layer_num = 3 # transformer のレイヤー数
 tvae_noise_num = 9 # observation decoder の target 入力するノイズ数
 
-#  VAE + Transformer
+# VAE + Transformer
 ## Encoder
 class TranEncoder(nn.Module):
     def __init__(self, args, hyperplane_n):
@@ -580,20 +598,22 @@ class TranASCModel(nn.Module):
         return out
 
 
-#  VQ-VAE + Transformer (SeTranVQ-VAE) パラメータ
-# VQ-VAE パラメータ
-tvq_latent_size= 4 # lattent の個数，lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
-tvq_embedding_size = 8 # codebook の code　(embedding vector) の数
+# VQ-VAE + Transformer (VQ-SeTranVAE) パラメータ
+tvq_latent_size= 8 # lattent の個数, lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
+tvq_codebook_size = 128 # codebook の code (embedding vector) の数
 tvq_embedding_dim = 8 # embedding vector 1 つずつの長さ
 
-tvq_emb_size = 64 # transformer に入力する潜在変数を線形変換したサイズ
+tvq_emb_size = 128 # transformer に入力する潜在変数を線形変換したサイズ
 tvq_ffn_size = 256 # transformer に FFN 中間ユニット数
 tvq_cnn_size = [128, 256, 128, 64] # action decoder の中間ユニット数 
 tvq_head_num = 2 # ヘッド数
 tvq_tf_layer_num = 3 # transformer のレイヤー数
-tvq_noise_num = 9 # observation decoder の target 入力するノイズ数
+tvq_noise_num = 16 # observation decoder の target 入力するノイズ数
 
-#  VAE + Transformer
+tvq_decay = 0.99
+tvq_epsilon = 1e-5
+
+# VQ-VAE + Transformer
 ## Encoder
 class VQTranEncoder(nn.Module):
     def __init__(self, args, hyperplane_n):
@@ -673,13 +693,15 @@ class ObservationVQTranDecoder(nn.Module):
         self.conv = nn.Conv1d(in_channels=(tvq_embedding_dim), out_channels=tvq_emb_size, kernel_size=1)
         self.conv_o= nn.Conv1d(in_channels=tvq_emb_size, out_channels=hyperplane_n + 1, kernel_size=1)
         # # Positional Encoding
-        # self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_length, d_model))
+        self.positional_encoding = nn.Parameter(torch.zeros(1, tvq_latent_size, tvq_emb_size))
         # Transformer Encoder
-        decoder_layer = nn.TransformerDecoderLayer(tvq_emb_size, tvq_head_num, tvq_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
+        # decoder_layer = nn.TransformerDecoderLayer(tvq_emb_size, tvq_head_num, tvq_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
+        decoder_layer = nn.TransformerDecoderLayer(tvq_emb_size, tvq_head_num, tvq_ffn_size, dropout=0.0, batch_first=True)
         self.transformer_decoder = nn.TransformerDecoder(decoder_layer, tvq_tf_layer_num)
         self.bn = nn.BatchNorm1d(tvq_emb_size)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
+        self.p_encoding = PositionalEncoding(tvq_emb_size, self.args['ASC_dropout'], tvq_latent_size)
 
     def forward(self, noise, vq_latent, hidden=None):
         # noise linear transformation
@@ -691,7 +713,7 @@ class ObservationVQTranDecoder(nn.Module):
         h_l = self.conv(h_l) 
         h_l = torch.permute(h_l, (0, 2, 1))
         # transformer decoder 
-        h = self.transformer_decoder(h_n, h_l)
+        h = self.transformer_decoder(h_n, self.p_encoding(h_l))
         h = torch.permute(h, (0, 2, 1))
         h = self.bn(h)
         h = self.relu(h)
@@ -707,23 +729,79 @@ class TranVectorQuantizer(nn.Module):
         super().__init__()
         self.args = args
         self.latent_size = tvq_latent_size
-        self.embedding_size = tvq_embedding_size
+        self.codebook_size = tvq_codebook_size
         self.embedding_dim = tvq_embedding_dim
-        self.codebook = nn.Embedding(self.embedding_size, self.embedding_dim)
-        self.codebook.weight.data.uniform_(-1/self.embedding_size, 1/self.embedding_size)
+        self.codebook = nn.Embedding(self.codebook_size, self.embedding_dim)
+        self.codebook.weight.data.uniform_(-1/self.codebook_size, 1/self.codebook_size)
 
     def forward(self, latent):
         # b_size = latent.size(0)
-        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, embedding_dim]
+        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, codebook_dim]
         distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
                      + torch.sum(self.codebook.weight**2, dim=-1)
                      - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
 
         encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
-        encodings = torch.zeros(encoding_indices.size(0), self.embedding_size, device=latent.device)
+        encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
         encodings.scatter_(1, encoding_indices, 1)
+        # 量子化された潜在ベクトル
         quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
+        # 勾配を回避するための量子化された潜在ベクトル（値は quantized_latent と同じ）
         policy_vq_latent = latent + (quantized_latent - latent).detach()
+        # Transformer decoder の乱数に対応づけるため codebook も batch サイズに拡張して出力する
+        codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
+        return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
+
+## EMA Vector quantizer
+class EMATranVectorQuantizer(nn.Module):
+    def __init__(self, args):
+        # super(TranVectorQuantizer, self).__init__()
+        super().__init__()
+        self.args = args
+        self.latent_size = tvq_latent_size
+        self.codebook_size = tvq_codebook_size
+        self.embedding_dim = tvq_embedding_dim
+        self.codebook = nn.Embedding(self.codebook_size, self.embedding_dim)
+        self.codebook.weight.data.uniform_(-1/self.codebook_size, 1/self.codebook_size)
+
+        self.decay = tvq_decay
+        self.epsilon = tvq_epsilon
+
+        self.register_buffer('ema_cluster_size', torch.zeros(self.codebook_size))
+        self.ema_w = nn.Parameter(torch.Tensor(self.codebook_size, self.embedding_dim))
+        self.ema_w.data.normal_()
+
+    def forward(self, latent):
+        # b_size = latent.size(0)
+        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, codebook_dim]
+        distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
+                     + torch.sum(self.codebook.weight**2, dim=-1)
+                     - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
+
+        encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
+        encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
+        encodings.scatter_(1, encoding_indices, 1)
+        # 量子化された潜在ベクトル
+        quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
+
+        # EMA codebook update
+        if self.training:
+            # batch 内の codebook の各要素の選択回数
+            encodings_sum = encodings.sum(0)
+            # batch 内の lattent をマッピング
+            distance_w = torch.matmul(encodings.t(), latent_flattened)
+            # codebook の各要素の選択回数を更新（過去の batch 毎の選択回数の EMA）
+            self.ema_cluster_size = self.decay * self.ema_cluster_size + (1 - self.decay) * encodings_sum
+            # codebook の各要素の Target となる weight を更新
+            self.ema_w = nn.Parameter(self.decay * self.ema_w + (1 - self.decay) * distance_w)
+            # 正規化と安定化
+            n = torch.sum(self.ema_cluster_size)
+            cluster_size = ((self.ema_cluster_size + self.epsilon) / (n + self.codebook_size * self.epsilon)) * n
+            self.codebook.weight.data = self.ema_w / cluster_size.unsqueeze(1)
+
+        # 勾配を回避するための量子化された潜在ベクトル（値は quantized_latent と同じ）
+        policy_vq_latent = latent + (quantized_latent - latent).detach()
+        # Transformer decoder の乱数に対応づけるため codebook も batch サイズに拡張して出力する
         codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
         return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
 
@@ -745,7 +823,7 @@ class AOVQTranVAE(nn.Module):
         vq_latent = re_q['policy_vq_latent_set'].unsqueeze(1).expand(-1, os_in.size(1), -1)
         memory = re_q['policy_vq_latent_set'].view(-1, tvq_latent_size, tvq_embedding_dim)
 
-        noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_embedding_size, size=(os_in.size(0), tvq_noise_num))).to(torch.float)
+        noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_codebook_size, size=(os_in.size(0), tvq_noise_num))).to(torch.float)
         # Noise generation and Reparametrization Trick (detach)
         noise = torch.bmm(noize_one_hot, re_q['codebook_set']).detach() # codebook から一様乱数で取得した乱数
 
@@ -762,7 +840,7 @@ class VQTranASCModel(nn.Module):
         self.rl_net = rl_net
         ## 生成モデル関係
         self.encoder = VQTranEncoder(args, hyperplane_n)
-        self.quantizer = TranVectorQuantizer(args)
+        self.quantizer = EMATranVectorQuantizer(args)
         self.action_decoder = ActionVQConvDecoder(args, hyperplane_n)
         self.observation_decoder = ObservationVQTranDecoder(args, hyperplane_n)
         self.vae = AOVQTranVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)

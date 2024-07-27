@@ -24,7 +24,7 @@ import torch.optim as optim
 import psutil
 
 from .environment import prepare_env, make_env
-from .util import map_r, bimap_r, trimap_r, rotate, softmax
+from .util import map_r, bimap_r, trimap_r, rotate, softmax, hungarian
 from .model import to_torch, to_gpu, ModelWrapper
 from .losses import compute_target, compute_rnd
 from .connection import MultiProcessJobExecutor
@@ -244,6 +244,8 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     losses = {}
     # data 数みたい
     dcnt = tmasks.sum().item()
+    # 各 loss の重み
+    factor = args.get('loss_factor', {})
 
     # policy loss 
     # total_advantages が既に baseline を引いた advantage になっている
@@ -361,7 +363,12 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         i_distances = -dot/norm
         w_i_distances = (torch.exp(i_distances)/torch.sum(torch.exp(i_distances), dim=-1, keepdim=True))
         mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, i_distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, i_distances.size(-2), -1, -1), reduction='none')
-        losses['re_observation_set'] = torch.mul(w_i_distances.unsqueeze(-1), mse).sum()
+        cos_weighted_mse = torch.mul(w_i_distances.unsqueeze(-1), mse)
+        ### hungarian 法
+        matched_o_re_os, matched_t_re_os = hungarian(o_re_os, t_re_os)
+        hungarian_mse = F.mse_loss(matched_o_re_os, matched_t_re_os)
+        ## weighted observation set
+        losses['re_observation_set'] = factor.get('cos_weighted', 0.1) * cos_weighted_mse.sum() + factor.get('hungarian', 1.0) * hungarian_mse.sum()
         # Reconstruction policy entropy
         entropy_re_ps = dist.Categorical(logits=o_re_ps).entropy().sum()
         # 生成モデルの loss 選択
@@ -383,7 +390,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         if asc_type == 'VQ-SeTranVAE':
             # coodbook loss
             # losses['vq_l_cb'] = F.smooth_l1_loss(outputs['quantized_policy_latent_set'], targets['policy_latent_set']).sum()
-            losses['vq_l_cb'] = (((outputs['quantized_policy_latent_set'] - targets['policy_latent_set']) ** 2) / 2).sum()
+            # losses['vq_l_cb'] = (((outputs['quantized_policy_latent_set'] - targets['policy_latent_set']) ** 2) / 2).sum()
             # commitment loss
             # losses['vq_l_cm'] = F.smooth_l1_loss(targets['quantized_policy_latent_set'], outputs['policy_latent_set']).sum()
             losses['vq_l_cm'] = (((targets['quantized_policy_latent_set'] - outputs['policy_latent_set']) ** 2) / 2).sum()
@@ -402,7 +409,6 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     entropy = dist.Categorical(logits=outputs['policy']).entropy().mul(tmasks.sum(-1))
     losses['ent'] = entropy.sum()
 
-    factor = args.get('loss_factor', {})
     # value と policy の loss の計算
     base_loss = factor.get('rl', 1.0) * (losses['p'] + losses.get('v', 0) + losses.get('r', 0) + losses.get('q', 0) + losses.get('a', 0) + losses.get('c', 0)) + \
         factor.get('rnd', 1.0) * losses.get('rnd', 0) + \
