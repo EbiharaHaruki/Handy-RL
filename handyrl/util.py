@@ -68,10 +68,11 @@ def softmax(x):
 
 def hungarian(predictions, targets):
     # Compute cosine similarity matrix for the entire batch
-    cosine_sim = F.cosine_similarity(predictions.unsqueeze(2), targets.unsqueeze(1), dim=-1)  # Shape: (batch_size, M, N)
+    cosine_sim = F.cosine_similarity(predictions.unsqueeze(2), targets.unsqueeze(1), dim=-1) # Shape: (batch_size, predictions_size, targets_size)
+
     
     # Convert cosine similarity to a cost matrix for the Hungarian algorithm
-    cost_matrix = ((1 - cosine_sim)/2).detach().numpy()  # Shape: (batch_size, M, N)
+    cost_matrix = ((1 - cosine_sim)/2).detach().numpy()  # Shape: (batch_size, predictions_size, targets_size)
 
     # Solve the linear sum assignment problem (Hungarian algorithm)
     index = torch.Tensor([linear_sum_assignment(cost_matrix[i, :, :]) for i in range(predictions.size(0))]).to(torch.long)

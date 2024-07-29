@@ -599,17 +599,17 @@ class TranASCModel(nn.Module):
 
 
 # VQ-VAE + Transformer (VQ-SeTranVAE) パラメータ
-tvq_latent_size= 8 # lattent の個数, lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
+tvq_latent_size= 16 # lattent の個数, lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
 tvq_codebook_size = 128 # codebook の code (embedding vector) の数
-tvq_embedding_dim = 8 # embedding vector 1 つずつの長さ
+tvq_embedding_dim = 16 # embedding vector 1 つずつの長さ
 
 tvq_emb_size = 128 # transformer に入力する潜在変数を線形変換したサイズ
-tvq_ffn_size = 256 # transformer に FFN 中間ユニット数
+tvq_ffn_size = 512 # transformer に FFN 中間ユニット数
 tvq_cnn_size = [128, 256, 128, 64] # action decoder の中間ユニット数 
 tvq_head_num = 2 # ヘッド数
 tvq_tf_layer_num = 3 # transformer のレイヤー数
 tvq_noise_num = 16 # observation decoder の target 入力するノイズ数
-
+## EMA parameter
 tvq_decay = 0.99
 tvq_epsilon = 1e-5
 

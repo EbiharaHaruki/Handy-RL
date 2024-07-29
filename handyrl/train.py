@@ -360,15 +360,17 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         ### 負の cos 類似度
         norm = torch.bmm(torch.norm(o_re_os, p=1, dim=2, keepdim=True), torch.norm(t_re_os, p=1, dim=2, keepdim=True).permute(0,2,1))
         dot = torch.bmm(o_re_os, t_re_os.permute(0,2,1))
-        i_distances = -dot/norm
-        w_i_distances = (torch.exp(i_distances)/torch.sum(torch.exp(i_distances), dim=-1, keepdim=True))
-        mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, i_distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, i_distances.size(-2), -1, -1), reduction='none')
-        cos_weighted_mse = torch.mul(w_i_distances.unsqueeze(-1), mse)
+        distances = torch.exp(dot/norm)
+        w_distances = distances/torch.sum(distances, dim=-1, keepdim=True).detach()
+        mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, distances.size(-2), -1, -1), reduction='none')
+        cos_weighted_mse = torch.mul(w_distances.unsqueeze(-1), mse)
         ### hungarian 法
         matched_o_re_os, matched_t_re_os = hungarian(o_re_os, t_re_os)
-        hungarian_mse = F.mse_loss(matched_o_re_os, matched_t_re_os)
+        hungarian_mse = F.mse_loss(matched_o_re_os, matched_t_re_os, reduction='none')
         ## weighted observation set
-        losses['re_observation_set'] = factor.get('cos_weighted', 0.1) * cos_weighted_mse.sum() + factor.get('hungarian', 1.0) * hungarian_mse.sum()
+        # losses['re_observation_set'] = factor.get('cos_weighted', 0.1) * cos_weighted_mse.sum() + factor.get('hungarian', 1.0) * hungarian_mse.sum()
+        losses['re_observation_set_cos'] = cos_weighted_mse.sum()
+        losses['re_observation_set_hng'] = hungarian_mse.sum()
         # Reconstruction policy entropy
         entropy_re_ps = dist.Categorical(logits=o_re_ps).entropy().sum()
         # 生成モデルの loss 選択
@@ -417,8 +419,9 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         factor.get('codebook', 1.0) * losses.get('vq_l_cb', 0) + \
         factor.get('commitment', 1.0) * losses.get('vq_l_cm', 0) +\
         factor.get('contrast', 1.0) * losses.get('contrast', 0) +\
-        factor.get('recon_p_set', 1.0) * (losses.get('re_policy_set', 0) +\
-        factor.get('recon_o_set', 1.0) *losses.get('re_observation_set', 0)) +\
+        factor.get('recon_p_set', 1.0) * losses.get('re_policy_set', 0) +\
+        factor.get('cos_weighted', 0.1) * factor.get('recon_o_set', 1.0) * losses.get('re_observation_set_cos', 0) +\
+        factor.get('hungarian', 1.0) * factor.get('recon_o_set', 1.0) * losses.get('re_observation_set_hng', 0) +\
         factor.get('vae_kl', 1.0) * losses.get('p_l_KL_set', 0) +\
         factor.get('contrast', 1.0) * losses.get('contrast_set', 0)
     # エントロピー正則化 loss の計算
@@ -878,7 +881,7 @@ class Learner:
                 n, r, r2 = self.generation_results.get(model_id, (0, 0, 0))
                 self.generation_results[model_id] = n + 1, r + outcome, r2 + outcome ** 2
             self.num_returned_episodes += 1
-            if self.num_returned_episodes % 50 == 0:
+            if self.num_returned_episodes % 100 == 0:
                 print(self.num_returned_episodes, end=' ', flush=True)
             if self.uns_bool:
                 if self.num_returned_episodes % self.uns_num == 0:

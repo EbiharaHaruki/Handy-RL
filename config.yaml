@@ -46,7 +46,7 @@ train_args:
     update_episodes: 500
     batch_size: 128 # 256
     minimum_episodes: 10000
-    maximum_episodes: 100000
+    maximum_episodes: 50000
     epochs: 10000
     saving_interval_epochs: 50
     num_batchers: 1
@@ -82,7 +82,7 @@ train_args:
         contrast: 1.0 # default: 1.0  # commitment weight for contrastive learning
         recon_p_set: 1.0 # default: 1.0 # policy reconstruction loss weight for Transformer-VAE
         recon_o_set: 1.0 # default: 1.0 # re_observation reconstruction loss weight for Transformer-VAE
-        cos_weighted: 0.1 # default: 0.1 # re_observation reconstruction cos_weighted loss weight for Transformer-VAE
+        cos_weighted: 0.01 # default: 0.1 # re_observation reconstruction cos_weighted loss weight for Transformer-VAE
         hungarian: 1.0 # default: 0.8 # re_observation reconstruction hungarian loss weight for Transformer-VAE
     metadata:
         name: []
