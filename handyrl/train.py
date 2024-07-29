@@ -361,7 +361,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         norm = torch.bmm(torch.norm(o_re_os, p=1, dim=2, keepdim=True), torch.norm(t_re_os, p=1, dim=2, keepdim=True).permute(0,2,1))
         dot = torch.bmm(o_re_os, t_re_os.permute(0,2,1))
         distances = torch.exp(dot/norm)
-        w_distances = distances/torch.sum(distances, dim=-1, keepdim=True).detach()
+        w_distances = (distances/torch.sum(distances, dim=-1, keepdim=True)).detach()
         mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, distances.size(-2), -1, -1), reduction='none')
         cos_weighted_mse = torch.mul(w_distances.unsqueeze(-1), mse)
         ### hungarian 法
