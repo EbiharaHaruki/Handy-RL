@@ -492,27 +492,12 @@ class Trainer:
         self.model = model
         self.metadataset = metadataset
         self.default_lr = 3e-8
-        self.default_lr_r4d = 3e-8 #r4d だけ一応分離
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
         lr = self.default_lr * self.data_cnt_ema
-        lr_r4d = self.default_lr_r4d * self.data_cnt_ema
-        self.init_lr_r4d = lr_r4d
 
 
-        if self.args['agent']['type'] == 'R4D-RSRS':
-            # パラメータ分離のため
-            self.params_fc1 = list(self.model.fc1.parameters())
-            self.params_p = list(self.model.head_p.parameters())
-            self.params_v = list(self.model.head_v.parameters())
-            self.params_a = list(self.model.head_a.parameters())
-            self.params_b = list(self.model.head_b.parameters())
-            self.params_r4d = list(self.model.fc_c.parameters())
-            self.params_r4d_head = list(self.model.head_c.parameters())
-            self.optimizer = optim.Adam([{'params': self.params_fc1},{'params': self.params_p},{'params': self.params_v},{'params': self.params_a},{'params': self.params_b},
-                                          {'params': self.params_r4d, 'lr': lr_r4d}, {'params': self.params_r4d_head, 'lr': lr_r4d}], lr=lr, weight_decay=1e-5)
-        else:
-            self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
+        self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
         self.steps = 0
         self.batcher = Batcher(self.args, self.episodes)
         self.update_flag = False
@@ -603,17 +588,9 @@ class Trainer:
             writer.writerows([result_dict])"""
 
         self.data_cnt_ema = self.data_cnt_ema * 0.8 + data_cnt / (1e-2 + batch_cnt) * 0.2
-        if self.args['agent']['type'] == 'R4D-RSRS':
-            for param_group in self.optimizer.param_groups:
-                if param_group['lr'] == self.init_lr_r4d:
-                    param_group['lr'] = self.default_lr_r4d * self.data_cnt_ema / (1 + self.steps * 1e-5)
-                    tmp_param = param_group['lr']
-                else:
-                    param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
-            self.init_lr_r4d = tmp_param
-        else:
-            for param_group in self.optimizer.param_groups:
-                param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
+
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
 
         self.model.cpu()
         self.model.eval()
