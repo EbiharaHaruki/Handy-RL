@@ -4,8 +4,8 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 # user setting
-ARG username=vscode
-ARG useruid=1000
+ARG username=docker
+ARG useruid=1001
 ARG usergid=${useruid}
 
 # install package
@@ -27,7 +27,8 @@ RUN apt-get -y update && apt-get upgrade -qqy && apt-get -y install \
     gfortran \
     libopenblas-dev \
     swig \
-    zip
+    zip \
+    vim
 
 RUN pip install --upgrade setuptools
 
@@ -37,7 +38,7 @@ RUN groupadd --gid ${usergid} ${username} && \
     echo ${username}' ALL=NOPASSWD: ALL' >> /etc/sudoers
 
 # Import profile for bash
-COPY .devcontainer/bash_profile /home/${username}/.bash_profile
+COPY calculator/bash_profile /home/${username}/.bash_profile
 RUN chown ${username}:${username} /home/${username}/.bash_profile
 
 # switch to user
@@ -45,4 +46,5 @@ USER ${username}
 WORKDIR /home/${username}
 
 # install formatter
-RUN pip install black
+COPY ./requirements.txt /tmp/requirements.txt
+RUN pip install --user -r /tmp/requirements.txt

@@ -262,12 +262,14 @@ class RSRSAgent(Agent):
                 if b:
                     rsrs[i] = rs_value_plus_eps[i] / np.sum(rs_value_plus_eps[is_satisfied])
         else:
+            # 非達成状態では通常のSRSの計算を行う
             delta = aleph - q
             z = 1.0 / np.sum(1.0 / delta)
             rho = z / delta
             rsrs = (np.max(c / rho) + sys.float_info.epsilon) * rho - c
             if np.min(rsrs) < 0:
                 rsrs -= np.min(rsrs)
+
         if np.any(rsrs == 0.0):
             rsrs += sys.float_info.epsilon
         p = np.log(rsrs)
@@ -304,7 +306,7 @@ class RSRSAgent(Agent):
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg
             action_log['moment']['state_index'][player] = env.observation_index(action,player)
-            # action_log['metadata']['entropy_srs'][player] = entropy_srs
+            action_log['moment']['entropy_srs'][player] = entropy_srs
 
         return action
 

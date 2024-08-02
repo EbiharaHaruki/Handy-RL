@@ -80,6 +80,7 @@ def make_batch(episodes, args):
             c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
             c_nn = np.array([[[replace_none(m['c_nn'][player], 0.0)] for player in players] for m in moments])
             state_index = np.array([[[replace_none(m['state_index'][player], 0.0)] for player in players] for m in moments])
+            entropy_srs = np.array([[[replace_none(m['entropy_srs'][player], 0.0)] for player in players] for m in moments])
 
         # reshape observation
         obs = rotate(rotate(obs))  # (T, P, ..., ...) -> (P, ..., T, ...) -> (..., T, P, ...)
@@ -118,12 +119,14 @@ def make_batch(episodes, args):
             c = np.pad(c, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_reg = np.pad(c_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
             c_nn = np.pad(c_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+            entropy_srs = np.pad(entropy_srs, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
         obss.append(obs)
-        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, state_index))
+        datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs, state_index))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress,c,c_reg,c_nn, state_index = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs, state_index = [to_torch(np.array(val)) for val in zip(*datum)]
+
 
     return {
         'observation': obs,
@@ -139,6 +142,7 @@ def make_batch(episodes, args):
         'c': c,
         'c_reg': c_reg,
         'c_nn': c_nn,
+        'entropy_srs': entropy_srs,
         'state_index': state_index
     }
 
@@ -226,6 +230,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     state_index_tmp = batch['state_index']
     state_index = state_index_tmp[:,0,0,0].tolist()
     state_index = list(map(str,state_index))
+    entropy_srs = batch['entropy_srs']
 
     # loss の箱
     losses = {}
@@ -281,6 +286,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
 
         losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, s_size, 1, 1)).mul(omasks).sum()
         entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.sum(-1))
+        losses['entropy_srs'] = entropy_srs.sum()
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:

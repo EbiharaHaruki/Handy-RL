@@ -2,3 +2,4 @@
 *.pth
 trainlog/*
 !trainlog/.gitkeep
+.vscode
