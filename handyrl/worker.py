@@ -96,9 +96,10 @@ class Worker:
                         self.latest_metadata = metadata_id, metadata_pool[metadata_id]
         return metadata_pool
 
-    def uns_woker(self):
-        print("worker_uns : ")
-        self.env.uns()
+    # TODO: 正しい非定常環境として今後再実装
+    # def uns_woker(self):
+    #     print("worker_uns : ")
+    #     self.env.uns()
 
     def run(self):
         while True:

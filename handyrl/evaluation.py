@@ -193,7 +193,8 @@ def eval_process_mp_child(agents, critic, env_args, index, in_queue, out_queue, 
         print('*** Game %d ***' % g)
         agent_map = {env.players()[p]: agents[ai] for p, ai in enumerate(agent_ids)}
         if isinstance(list(agent_map.values())[0], NetworkAgent):
-            outcome = exec_network_match(env, agent_map, critic, show=show, game_args=game_args)
+            # outcome = exec_network_match(env, agent_map, critic, show=show, game_args=game_args)
+            outcome = exec_match(env, agent_map, critic, show=show, game_args=game_args)
         else:
             outcome = exec_match(env, agent_map, critic, show=show, game_args=game_args)
         out_queue.put((pat_idx, agent_ids, outcome))
@@ -382,7 +383,7 @@ def eval_main(args, argv):
 
     agent1 = build_agent(model_path, env)
     if agent1 is None:
-        model = load_model(model_path, env.net())
+        model = load_model(model_path, env.net(args['train_args']['agent']))
         agent1 = agent_class(args['train_args']['agent'])(model)
     critic = None
 

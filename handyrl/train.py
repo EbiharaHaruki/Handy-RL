@@ -358,18 +358,18 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         o_re_os = outputs['re_observation_set'].squeeze(-2)
         t_re_os = targets['re_observation_set'].squeeze(-2)
         ### 負の cos 類似度
-        norm = torch.bmm(torch.norm(o_re_os, p=1, dim=2, keepdim=True), torch.norm(t_re_os, p=1, dim=2, keepdim=True).permute(0,2,1))
-        dot = torch.bmm(o_re_os, t_re_os.permute(0,2,1))
-        distances = torch.exp(dot/norm)
-        w_distances = (distances/torch.sum(distances, dim=-1, keepdim=True)).detach()
-        mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, distances.size(-2), -1, -1), reduction='none')
-        cos_weighted_mse = torch.mul(w_distances.unsqueeze(-1), mse)
+        # norm = torch.bmm(torch.norm(o_re_os, p=1, dim=2, keepdim=True), torch.norm(t_re_os, p=1, dim=2, keepdim=True).permute(0,2,1))
+        # dot = torch.bmm(o_re_os, t_re_os.permute(0,2,1))
+        # distances = torch.exp(dot/norm)
+        # w_distances = (distances/torch.sum(distances, dim=-1, keepdim=True)).detach()
+        # mse = F.mse_loss(o_re_os.unsqueeze(-2).expand(-1, -1, distances.size(-1), -1), t_re_os.unsqueeze(-3).expand(-1, distances.size(-2), -1, -1), reduction='none')
+        # cos_weighted_mse = torch.mul(w_distances.unsqueeze(-1), mse)
         ### hungarian 法
         matched_o_re_os, matched_t_re_os = hungarian(o_re_os, t_re_os)
         hungarian_mse = F.mse_loss(matched_o_re_os, matched_t_re_os, reduction='none')
         ## weighted observation set
         # losses['re_observation_set'] = factor.get('cos_weighted', 0.1) * cos_weighted_mse.sum() + factor.get('hungarian', 1.0) * hungarian_mse.sum()
-        losses['re_observation_set_cos'] = cos_weighted_mse.sum()
+        # losses['re_observation_set_cos'] = cos_weighted_mse.sum()
         losses['re_observation_set_hng'] = hungarian_mse.sum()
         # Reconstruction policy entropy
         entropy_re_ps = dist.Categorical(logits=o_re_ps).entropy().sum()
@@ -391,10 +391,8 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
             losses['contrast_set'] = (F.cross_entropy(average_logits, average_labels) + F.cross_entropy(log_dev_logits, log_dev_labels))
         if asc_type == 'VQ-SeTranVAE':
             # coodbook loss
-            # losses['vq_l_cb'] = F.smooth_l1_loss(outputs['quantized_policy_latent_set'], targets['policy_latent_set']).sum()
             # losses['vq_l_cb'] = (((outputs['quantized_policy_latent_set'] - targets['policy_latent_set']) ** 2) / 2).sum()
             # commitment loss
-            # losses['vq_l_cm'] = F.smooth_l1_loss(targets['quantized_policy_latent_set'], outputs['policy_latent_set']).sum()
             losses['vq_l_cm'] = (((targets['quantized_policy_latent_set'] - outputs['policy_latent_set']) ** 2) / 2).sum()
             losses['p_l_norm'] = torch.norm(outputs['policy_latent_set'], dim=-1).mean()
             losses['q_p_l_norm'] = torch.norm(outputs['quantized_policy_latent_set'], dim=-1).mean()
@@ -420,10 +418,10 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         factor.get('commitment', 1.0) * losses.get('vq_l_cm', 0) +\
         factor.get('contrast', 1.0) * losses.get('contrast', 0) +\
         factor.get('recon_p_set', 1.0) * losses.get('re_policy_set', 0) +\
-        factor.get('cos_weighted', 0.1) * factor.get('recon_o_set', 1.0) * losses.get('re_observation_set_cos', 0) +\
         factor.get('hungarian', 1.0) * factor.get('recon_o_set', 1.0) * losses.get('re_observation_set_hng', 0) +\
         factor.get('vae_kl', 1.0) * losses.get('p_l_KL_set', 0) +\
         factor.get('contrast', 1.0) * losses.get('contrast_set', 0)
+
     # エントロピー正則化 loss の計算
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
@@ -843,9 +841,9 @@ class Learner:
         # thread connection
         self.trainer = Trainer(args, self.model, self.target_model, self.metadataset)
 
-        # episode count
-        self.uns_bool = env_args['param']['uns_setting']['uns_bool'] # 非定常のフラグ
-        self.uns_num = env_args['param']['uns_setting']['uns_num'] # 非定常の周期
+        # episode count # TODO: 非定常環境の復活
+        # self.uns_bool = env_args['param']['uns_setting']['uns_bool'] # 非定常のフラグ
+        # self.uns_num = env_args['param']['uns_setting']['uns_num'] # 非定常の周期
         #print(self.uns_bool)
         #print(self.uns_num)
 
@@ -883,10 +881,10 @@ class Learner:
             self.num_returned_episodes += 1
             if self.num_returned_episodes % 100 == 0:
                 print(self.num_returned_episodes, end=' ', flush=True)
-            if self.uns_bool:
-                if self.num_returned_episodes % self.uns_num == 0:
-                    print("learner_uns : ")
-                    self.env.uns()
+            # if self.uns_bool:  # TODO: 非定常環境の復活
+            #     if self.num_returned_episodes % self.uns_num == 0:
+            #         print("learner_uns : ")
+            #         self.env.uns()
 
         # store generated episodes
         self.trainer.episodes.extend([e for e in episodes if e is not None])

@@ -18,6 +18,7 @@ class Generator:
     def __init__(self, env, args):
         self.env = env
         self.args = args
+        # RS 関係の処理
         if 'global_aleph' in args['metadata']['name']:
             self.global_v = {}
             self.global_n = {}

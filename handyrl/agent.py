@@ -57,7 +57,7 @@ def print_outputs(env, prob, v):
 
 
 class Agent:
-    def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args=None):
+    def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args=None):
         # model might be a neural net, or some planning algorithm such as game tree search
         self.model = model
         self.metadataset = metadataset
@@ -157,7 +157,7 @@ def softmax_from_value(actions, value, temperature, generating=True):
     return action, selected_prob
 
 class QAgent(Agent):
-    def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args={'meta_policy': None}):
+    def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args={'meta_policy': None}):
         super().__init__(model, metadataset, role, temperature, observation, args)
         if args['meta_policy'] == 'e-greedy':
             self.meta_policy = e_greedy_from_value
@@ -203,7 +203,7 @@ class QAgent(Agent):
 
 
 class RSRSAgent(Agent):
-    def __init__(self, model, metadataset, role='e', temperature=None, observation=True, args=None):
+    def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args=None):
         super().__init__(model, metadataset, role, temperature, observation, args)
         self.metadata_keys = ['rl_latent', 'action']
         # TODO なぜか偶に metadata の key が player になってる問題解決

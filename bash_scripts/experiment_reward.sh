@@ -1,5 +1,5 @@
 #! /bin/bash
-# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数] [environment の ファイル名.py]
+# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数] [environment の ファイル名, .py 除く]
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成

@@ -1,7 +1,7 @@
 # Copyright (c) 2020 DeNA Co., Ltd.
 # Licensed under The MIT License [see LICENSE for details]
 
-# implementation of simpletask
+# implementation of simple pyramid
 
 import copy
 import random
@@ -23,13 +23,13 @@ from ..environment import BaseEnvironment
 
 
 class SimpleModel(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n)
+        self.fc1 = nn.Linear(input_dim, nn_size)
+        self.head_p = nn.Linear(nn_size, action_num)
         self.head_v = nn.Linear(nn_size, 1)
 
     def forward(self, x, hidden=None):
@@ -43,15 +43,15 @@ class SimpleModel(nn.Module):
 
 # Q-Learning
 class PVQModel(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.fc1 = nn.Linear(input_dim, nn_size)
+        self.head_p = nn.Linear(nn_size, action_num) # policy
         self.head_v = nn.Linear(nn_size, 1) # value
-        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_a = nn.Linear(nn_size, action_num) # advantage
         self.head_b = nn.Linear(nn_size, 1) # ベースライン
 
     def forward(self, x, hidden=None):
@@ -70,17 +70,17 @@ class PVQModel(nn.Module):
 
 # RSRS
 class PVQCModel(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
-        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
-        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.fc1 = nn.Linear(input_dim, nn_size)
+        self.head_p = nn.Linear(nn_size, action_num) # policy
         self.head_v = nn.Linear(nn_size, 1) # value
-        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_a = nn.Linear(nn_size, action_num) # advantage
         self.head_b = nn.Linear(nn_size, 1) # ベースライン
-        self.head_c = nn.Linear(nn_size, 2**hyperplane_n) # 信頼度(confidence rate)
+        self.head_c = nn.Linear(nn_size, action_num) # 信頼度(confidence rate)
 
     def forward(self, x, hidden=None):
         o = x.get('o', None)
@@ -99,18 +99,18 @@ class PVQCModel(nn.Module):
 
 # RND
 class RNDModel(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
-        # RND head dim：探索の複雑性
+        # RND head dim : 探索の複雑性
         rnd_head_size = 16
         ## 学習
-        self.fc_rnd = nn.Linear(hyperplane_n + 1, nn_size)
+        self.fc_rnd = nn.Linear(input_dim, nn_size)
         self.head_rnd = nn.Linear(nn_size, rnd_head_size)
         ## 固定
-        self.fc_rnd_fix = nn.Linear(hyperplane_n + 1, nn_size)
+        self.fc_rnd_fix = nn.Linear(input_dim, nn_size)
         self.head_rnd_fix = nn.Linear(nn_size, rnd_head_size)
 
     def forward(self, o_in, hidden=None):
@@ -123,12 +123,12 @@ class RNDModel(nn.Module):
 
 # RL with RND wrapper model
 class RLwithRNDModel(nn.Module):
-    def __init__(self, args, hyperplane_n, rl_net):
+    def __init__(self, args, input_dim, action_num, rl_net):
         super().__init__()
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.rnd_net = RNDModel(args, hyperplane_n)
+        self.rnd_net = RNDModel(args, input_dim, action_num)
 
     def forward(self, x, hidden=None):
         o_in = x.get('o', None)
@@ -139,7 +139,7 @@ class RLwithRNDModel(nn.Module):
         out = {**out, **out_rnd}
         return out
 
-
+# Positional Encoding
 class PositionalEncoding(nn.Module):
     def __init__(self, latent_dim, dropout = 0.1, max_len = 50):
         super().__init__()
@@ -164,11 +164,11 @@ vae_nn_size = [258, 128]
 # VAE
 ## Encoder
 class Encoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
-        self.action_num = 2**hyperplane_n
-        self.fc1 = nn.Linear(hyperplane_n + 1 + self.action_num, vae_nn_size[0])
+        self.action_num = action_num
+        self.fc1 = nn.Linear(input_dim + self.action_num, vae_nn_size[0])
         self.fc2 = nn.Linear(vae_nn_size[0], vae_nn_size[1])
         self.fc_ave = nn.Linear(vae_nn_size[1], vae_latent_dim) # 平均
         self.fc_dev = nn.Linear(vae_nn_size[1], vae_latent_dim) # 標準偏差
@@ -194,12 +194,12 @@ class Encoder(nn.Module):
 
 ## Action decoder
 class ActionDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
-        self.fc1 = nn.Linear(vae_latent_dim + hyperplane_n + 1, vae_nn_size[1])
+        self.fc1 = nn.Linear(vae_latent_dim + input_dim, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_p = nn.Linear(vae_nn_size[0], 2**hyperplane_n)
+        self.fc_p = nn.Linear(vae_nn_size[0], action_num)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
@@ -216,12 +216,12 @@ class ActionDecoder(nn.Module):
 
 ## Observation decoder
 class ObservationDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
         self.fc1 = nn.Linear(vae_latent_dim, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_o = nn.Linear(vae_nn_size[0], hyperplane_n + 1)
+        self.fc_o = nn.Linear(vae_nn_size[0], input_dim)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
@@ -252,15 +252,15 @@ class AOVAE(nn.Module):
 
 # RL with VAE wrapper model (ASC)
 class ASCModel(nn.Module):
-    def __init__(self, args, hyperplane_n, rl_net):
+    def __init__(self, args, input_dim, action_num, rl_net):
         super().__init__()
         self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = Encoder(args, hyperplane_n)
-        self.action_decoder = ActionDecoder(args, hyperplane_n)
-        self.observation_decoder = ObservationDecoder(args, hyperplane_n)
+        self.encoder = Encoder(args, input_dim, action_num)
+        self.action_decoder = ActionDecoder(args, input_dim, action_num)
+        self.observation_decoder = ObservationDecoder(args, input_dim, action_num)
         self.vae = AOVAE(args, self.encoder, self.action_decoder, self.observation_decoder)
 
     def forward(self, x, hidden=None):
@@ -288,11 +288,11 @@ vq_nn_size = [258, 128]
 # VQ-VAE
 ## Encoder (VQ)
 class VQEncoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
-        self.action_num = 2**hyperplane_n
-        self.fc1 = nn.Linear(hyperplane_n + 1 + self.action_num, vae_nn_size[0])
+        self.action_num = action_num
+        self.fc1 = nn.Linear(input_dim + self.action_num, vae_nn_size[0])
         self.fc2 = nn.Linear(vae_nn_size[0], vae_nn_size[1])
         self.fc_latent = nn.Linear(vae_nn_size[1], vq_latent_size * vq_embedding_dim) # 潜在変数
         self.relu = nn.ReLU()
@@ -313,12 +313,12 @@ class VQEncoder(nn.Module):
 
 ## Action decoder (VQ)
 class ActionVQDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
-        self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim + hyperplane_n + 1, vae_nn_size[1])
+        self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim + input_dim, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_p = nn.Linear(vae_nn_size[0], 2**hyperplane_n)
+        self.fc_p = nn.Linear(vae_nn_size[0], action_num)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
@@ -337,12 +337,12 @@ class ActionVQDecoder(nn.Module):
 
 ## Observation decoder (VQ)
 class ObservationVQDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
         self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim, vae_nn_size[1])
         self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_o = nn.Linear(vae_nn_size[0], hyperplane_n + 1)
+        self.fc_o = nn.Linear(vae_nn_size[0], input_dim)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(self.args['ASC_dropout'])
 
@@ -401,16 +401,16 @@ class AOVQVAE(nn.Module):
 
 # RL with VAE wrapper model (ASC)
 class ASCVQModel(nn.Module):
-    def __init__(self, args, hyperplane_n, rl_net):
+    def __init__(self, args, input_dim, action_num, rl_net):
         super().__init__()
         self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = VQEncoder(args, hyperplane_n)
+        self.encoder = VQEncoder(args, input_dim, action_num)
         self.quantizer = VectorQuantizer(args)
-        self.action_decoder = ActionVQDecoder(args, hyperplane_n)
-        self.observation_decoder = ObservationVQDecoder(args, hyperplane_n)
+        self.action_decoder = ActionVQDecoder(args, input_dim, action_num)
+        self.observation_decoder = ObservationVQDecoder(args, input_dim, action_num)
         self.vqvae = AOVQVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
 
     def forward(self, x, hidden=None):
@@ -442,11 +442,11 @@ tvae_noise_num = 9 # observation decoder の target 入力するノイズ数
 # VAE + Transformer
 ## Encoder
 class TranEncoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
-        self.action_num = 2**hyperplane_n
-        self.feature_num = hyperplane_n + 1 + self.action_num
+        self.action_num = action_num
+        self.feature_num = input_dim + self.action_num
         # 1D Convolution
         self.conv = nn.Conv1d(in_channels=(self.feature_num), out_channels=tvae_emb_size, kernel_size=1)
         # Transformer Encoder
@@ -474,15 +474,15 @@ class TranEncoder(nn.Module):
 
 ## Action decoder
 class ActionConvDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
         # 1D Convolution
-        self.conv1 = nn.Conv1d(in_channels=(tvae_latent_dim + hyperplane_n + 1), out_channels=tvae_cnn_size[0], kernel_size=1)
+        self.conv1 = nn.Conv1d(in_channels=(tvae_latent_dim + input_dim), out_channels=tvae_cnn_size[0], kernel_size=1)
         self.conv2 = nn.Conv1d(in_channels=tvae_cnn_size[0], out_channels=tvae_cnn_size[1], kernel_size=1)
         self.conv3 = nn.Conv1d(in_channels=tvae_cnn_size[1], out_channels=tvae_cnn_size[2], kernel_size=1)
         self.conv4 = nn.Conv1d(in_channels=tvae_cnn_size[2], out_channels=tvae_cnn_size[3], kernel_size=1)
-        self.conv_p = nn.Conv1d(in_channels=tvae_cnn_size[3], out_channels=2**hyperplane_n, kernel_size=1)
+        self.conv_p = nn.Conv1d(in_channels=tvae_cnn_size[3], out_channels=action_num, kernel_size=1)
         self.bn1 = nn.BatchNorm1d(tvae_cnn_size[0])
         self.bn2 = nn.BatchNorm1d(tvae_cnn_size[1])
         self.bn3 = nn.BatchNorm1d(tvae_cnn_size[2])
@@ -511,12 +511,12 @@ class ActionConvDecoder(nn.Module):
 
 ## Observation decoder
 class ObservationTranDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
         # 1D Convolution
         self.conv = nn.Conv1d(in_channels=(tvae_latent_dim), out_channels=tvae_emb_size, kernel_size=1)
-        self.conv_o= nn.Conv1d(in_channels=tvae_emb_size, out_channels=hyperplane_n + 1, kernel_size=1)
+        self.conv_o= nn.Conv1d(in_channels=tvae_emb_size, out_channels=input_dim, kernel_size=1)
         # Transformer Encoder
         decoder_layer = nn.TransformerDecoderLayer(tvae_emb_size, tvae_head_num, tvae_ffn_size, dropout=self.args['ASC_dropout'], batch_first=True)
         self.transformer_decoder = nn.TransformerDecoder(decoder_layer, tvae_tf_layer_num)
@@ -570,15 +570,15 @@ class AOTranVAE(nn.Module):
 
 # RL with VAE wrapper model (ASC)
 class TranASCModel(nn.Module):
-    def __init__(self, args, hyperplane_n, rl_net):
+    def __init__(self, args, input_dim, action_num, rl_net):
         super().__init__()
         self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = TranEncoder(args, hyperplane_n)
-        self.action_decoder = ActionConvDecoder(args, hyperplane_n)
-        self.observation_decoder = ObservationTranDecoder(args, hyperplane_n)
+        self.encoder = TranEncoder(args, input_dim, action_num)
+        self.action_decoder = ActionConvDecoder(args, input_dim, action_num)
+        self.observation_decoder = ObservationTranDecoder(args, input_dim, action_num)
         self.vae = AOTranVAE(args, self.encoder, self.action_decoder, self.observation_decoder)
 
     def forward(self, x, hidden=None):
@@ -603,8 +603,8 @@ tvq_latent_size= 8 # lattent の個数, lattent の次元数そのものは vq_l
 tvq_codebook_size = 128 # codebook の code (embedding vector) のエントリ数
 tvq_embedding_dim = 32 # embedding vector 1 つずつの長さ
 
-tvq_emb_size = 128 # transformer に入力する潜在変数を線形変換したサイズ
-tvq_ffn_size = 512 # transformer に FFN 中間ユニット数
+tvq_emb_size = 64 # transformer に入力する潜在変数を線形変換したサイズ
+tvq_ffn_size = 256 # transformer に FFN 中間ユニット数
 tvq_cnn_size = [128, 256, 128, 64] # action decoder の中間ユニット数 
 tvq_head_num = 2 # ヘッド数
 tvq_tf_layer_num = 2 # transformer のレイヤー数
@@ -616,11 +616,11 @@ tvq_epsilon = 1e-5
 # VQ-VAE + Transformer
 ## Encoder
 class VQTranEncoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
-        self.action_num = 2**hyperplane_n
-        self.feature_num = hyperplane_n + 1 + self.action_num
+        self.action_num = action_num
+        self.feature_num = input_dim + self.action_num
         # 1D Convolution
         self.conv = nn.Conv1d(in_channels=(self.feature_num), out_channels=tvq_emb_size, kernel_size=1)
         # # Positional Encoding
@@ -648,15 +648,15 @@ class VQTranEncoder(nn.Module):
 
 ## Action decoder
 class ActionVQConvDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
         # 1D Convolution
-        self.conv1 = nn.Conv1d(in_channels=(tvq_latent_size * tvq_embedding_dim + hyperplane_n + 1), out_channels=tvq_cnn_size[0], kernel_size=1)
+        self.conv1 = nn.Conv1d(in_channels=(tvq_latent_size * tvq_embedding_dim + input_dim), out_channels=tvq_cnn_size[0], kernel_size=1)
         self.conv2 = nn.Conv1d(in_channels=tvq_cnn_size[0], out_channels=tvq_cnn_size[1], kernel_size=1)
         self.conv3 = nn.Conv1d(in_channels=tvq_cnn_size[1], out_channels=tvq_cnn_size[2], kernel_size=1)
         self.conv4 = nn.Conv1d(in_channels=tvq_cnn_size[2], out_channels=tvq_cnn_size[3], kernel_size=1)
-        self.conv_p = nn.Conv1d(in_channels=tvq_cnn_size[3], out_channels=2**hyperplane_n, kernel_size=1)
+        self.conv_p = nn.Conv1d(in_channels=tvq_cnn_size[3], out_channels=action_num, kernel_size=1)
         self.bn1 = nn.BatchNorm1d(tvq_cnn_size[0])
         self.bn2 = nn.BatchNorm1d(tvq_cnn_size[1])
         self.bn3 = nn.BatchNorm1d(tvq_cnn_size[2])
@@ -687,12 +687,12 @@ class ActionVQConvDecoder(nn.Module):
 
 ## Observation decoder
 class ObservationVQTranDecoder(nn.Module):
-    def __init__(self, args, hyperplane_n):
+    def __init__(self, args, input_dim, action_num):
         super().__init__()
         self.args = args
         # 1D Convolution
         self.conv = nn.Conv1d(in_channels=(tvq_embedding_dim), out_channels=tvq_emb_size, kernel_size=1)
-        self.conv_o= nn.Conv1d(in_channels=tvq_emb_size, out_channels=hyperplane_n + 1, kernel_size=1)
+        self.conv_o= nn.Conv1d(in_channels=tvq_emb_size, out_channels=input_dim, kernel_size=1)
         # # Positional Encoding
         self.positional_encoding = nn.Parameter(torch.zeros(1, tvq_latent_size, tvq_emb_size))
         # Transformer Encoder
@@ -834,16 +834,16 @@ class AOVQTranVAE(nn.Module):
 
 # RL with VQ-VAE wrapper model (ASC)
 class VQTranASCModel(nn.Module):
-    def __init__(self, args, hyperplane_n, rl_net):
+    def __init__(self, args, input_dim, action_num, rl_net):
         super().__init__()
         self.args = args
         # RL モデル関連
         self.rl_net = rl_net
         ## 生成モデル関係
-        self.encoder = VQTranEncoder(args, hyperplane_n)
+        self.encoder = VQTranEncoder(args, input_dim, action_num)
         self.quantizer = EMATranVectorQuantizer(args)
-        self.action_decoder = ActionVQConvDecoder(args, hyperplane_n)
-        self.observation_decoder = ObservationVQTranDecoder(args, hyperplane_n)
+        self.action_decoder = ActionVQConvDecoder(args, input_dim, action_num)
+        self.observation_decoder = ObservationVQTranDecoder(args, input_dim, action_num)
         self.vae = AOVQTranVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
 
     def forward(self, x, hidden=None):
@@ -862,238 +862,340 @@ class VQTranASCModel(nn.Module):
             out = {**out, **out_g_p}
         return out
 
+# Pyramid nodes
+class Node():
+    def __init__(self, depth=0, hyperplane_coordinates=np.array([0]), center=None, features=None, obs_var=0.0, rng=np.random.default_rng(), reward_func=(lambda a, b, c, d: 0), pomdp=False):
+        self.depth = depth
+        self.coordinates = np.append(hyperplane_coordinates, depth)
+        # 状態特徴量の設定
+        self.features = self.coordinates if features is None else center + features
+        self.features_dim = self.features.size
+        self.action_num = 2**hyperplane_coordinates.size
+        self.obs_var = obs_var # 観測ノイズの分散
+        # 報酬関係
+        self.reward_func = reward_func
+        self.r_type = None
+        self.r_p = 0.0
+        self.r_m = 0.0
+        self.r_v = 0.0
+        self.rng = rng
+        # e.g. hyperplane_dim == 2 -> children is [[0,1], [2,3]]
+        self.children = np.empty(self.action_num, dtype=object)
+        self.is_terminal = False
+        self.is_key = False
+        self.is_pomdp = pomdp
 
+    # action index に対して次状態ノードを結合
+    def connect_node(self, child, action_index):
+        self.children[action_index] = child
 
-# base class of Environment
+    # 報酬関数の設置
+    def set_reward_func(self, reward_func):
+        self.reward_func = reward_func
+
+    # 報酬パラメータの設置
+    def set_reward_param(self, reward_param):
+        self.r_type = reward_param.get('type', None)
+        self.r_m = reward_param.get('mu', 0.0)
+        self.r_v = reward_param.get('var', 0.0)
+
+    # POMDP における報酬の鍵になる状態として設定
+    def set_key(self):
+        self.is_key = True        
+    
+    # 終端格納
+    def set_terminal(self):
+        self.is_terminal = True
+
+    # ノイズを乗せた状態観測
+    def observed(self):
+        if self.obs_var == 0:
+            return self.features
+        else:
+            noise = self.rng.normal(0, self.obs_var, self.features.size)
+            return self.features + noise
+
+    # 状態遷移
+    def transit(self, action_index):
+        return self.children[action_index]
+
+    # 報酬観測
+    def reward(self, lock_open = True):
+        if lock_open or self.is_pomdp:
+            return self.reward_func(self.rng, self.r_type, self.r_m, self.r_v)
+        else:
+            return 0
+
 
 class Environment(BaseEnvironment):
     def __init__(self, args={}):
         super().__init__()
         self.param = args['param'] #env_argsにparamを置いた場合
         self.depth = self.param['depth'] #深度(変更可能)
-        self.hyperplane_n = self.param['hyperplane_n'] #超平面次元数(変更可能)
-        self.treasure = np.array(self.param['treasure']) #報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
-        self.set_reward = self.param['set_reward'] #報酬の値(変更可能)
-        self.other_reward = self.param['other_reward'] #treasure以外に到達した時の報酬設定
+        self.hyperplane_dim = self.param['hyperplane_dim'] #超平面次元数(変更可能)
+
+        # 報酬やノイズなどに使用する乱数発生器
+        dt_now = datetime.datetime.now()
+        self.general_seed = dt_now.minute
+        self.general_rng = np.random.default_rng(self.general_seed)
+        self.save_rng_seed(self.general_seed, 'general', filename="feature_rng_seed.txt") # 乱数保存ファイルに日時と共に末尾に追加
+
+        # 特徴量設定
+        self.feature_seed = self.param['features']['seed'] # 特徴量関係の乱数 seed（保存対象）
+        if self.feature_seed < 0: # seed が 0 未満なら時間乱数から取る
+            dt_now = datetime.datetime.now()
+            self.feature_seed = dt_now.second # 特徴量関係の乱数 seed（保存対象）
+        self.feature_rng = np.random.default_rng(self.feature_seed) # 読み込み再現可能な状態特徴量初期化用の乱数発生器
+        self.save_rng_seed(self.feature_seed, 'feature', filename="feature_rng_seed.txt") # 乱数保存ファイルに日時と共に末尾に追加
+        self.feature_dim = self.param['features']['dim'] # 0 だと特徴量が座標そのものになる, 1 以上なら任意の次元数の座標とは異なる特徴量が設定される
+        self.feature_f = self.feature_func if self.feature_dim != 0 else None # 特徴量関係の乱数発生器
+        self.obs_var = self.param['features']['obs_var'] # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
+
+        # 報酬設定
+        self.reward_params = []
+        for i in range(len(self.param['rewards']['depth'])):
+            reward_param = {
+                'depth': self.param['rewards']['depth'][i],
+                'coordinates': tuple(self.param['rewards']['coordinates'][i]),
+                'type': self.param['rewards']['type'][i],
+                'mu': self.param['rewards']['mu'][i],
+                'var': self.param['rewards']['var'][i]
+            }
+            self.reward_params.append(reward_param)
+        self.reward_params = self.set_reward_coordinates(self.hyperplane_dim, self.reward_params, self.feature_rng)
+
+        # 報酬の鍵設定 (POMDP)
+        self.is_pomdp = (len(self.param['keys']['depth']) != 0) # POMDP 環境下かどうか
+        self.key_params = []
+        for i in range(len(self.param['keys']['depth'])):
+            key_param = {
+                'depth': self.param['keys']['depth'][i],
+                'coordinates': tuple(self.param['keys']['coordinates'][i]),
+            }
+            self.key_params.append(key_param)
+        self.key_num = len(self.key_params) # 報酬の鍵の鍵の数
+
+        # 非定常環境設定
+        self.shift_type = self.param['shift']['type']
+        self.is_shit_env = False if self.shift_type == 'none' else True
+        self.shift_param = {
+            'intercept': self.param['shift'].get('intercept', 0.0), # 環境変異の特徴量変換の際の切片
+            'slope': self.param['shift'].get('slope', 1.0), # 環境変異の特徴量変換の際の傾き
+            'interval_episodes': self.param['shift'].get('interval_episodes', -1) # 環境変異の間隔
+        }
+        self.shift_count = 0
+
+        # node 生成
+        self.nodes = self.create_tree(self.depth, self.hyperplane_dim, self.reward_params, \
+                                      self.general_rng, self.feature_rng, \
+                                      self.obs_var, self.feature_f, \
+                                      self.is_pomdp, self.key_params)
+
+        # 現在 node 初期化
         self.start_random = self.param['start_random'] #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
-        self.pom_bool = self.param['pomdp_setting']['pom_bool'] #POMDPを導入するか / True: 導入する, False: 導入しない
-        self.pom_state = self.param['pomdp_setting']['pom_state'] #途中報酬の座標
-        self.pom_flag = 0 #途中報酬の座標を通ったら1, 通らなかったら0のまま．0だと報酬が得られない
-        self.tree_s = []
-        self.action_list = []
-        self.goal_depth_all = [] #最大深度の状態を全て抽出
-        self.goal_depth_place = [] #最大深度の状態をスタートがランダムでも到達できる座標のみ抽出
-        self.place_list = []
-        self.tree_make() #state_randomは使える
-        self.place_list_make()#報酬が置ける位置の作成
-        self.random_trasures_bool = self.param['random_trasures_setting']['random_trasures_bool'] #報酬の場所をランダムに設定するか / True: 設定する, False: 設定しない
-        self.random_trasures_num = self.param['random_trasures_setting']['random_trasures_num'] #報酬の場所の個数
-        self.random_reward_bool = self.param['random_reward_setting']['random_reward_bool']
-        self.random_reward = self.param['random_reward_setting']['random_reward']
-        self.random_reward_p = self.param['random_reward_setting']['random_reward_p']
-        if self.start_random: #初期位置の確認
-            self.treasure_error() #報酬が正しい場所に置けてるかの確認
-        if self.random_trasures_bool:
-            self.random_trasures()
-        self.uns_bool = self.param['uns_setting']['uns_bool'] #非定常の有無
-        self.uns_num = self.param['uns_setting']['uns_num'] #非定常の周期
-        self.uns_count = 0
-        if self.uns_bool:
-            self.uns_make()
-        # [(7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7)]
-        # print(self.goal_depth_place)
-        self.observation_noise = self.param['observation_noise']
-        self.true_state = [] # 真の状態（ランダムな状態量を導入するとoutcomeの条件式がおかしくなる応急処置）
-        self.jyotai_boolkari = self.param['jyotai_boolkari'] #ランダムな状態量を使用する場合の仮の変数
-        if self.jyotai_boolkari | self.observation_noise > 0:
-            self.state_qnp=[] # ランダムな状態量のnumpy配列
-            self.state_quantity() # ランダムな状態量を生成
-            self.tree_list = self.tree_np.tolist() # 通常の状態をリスト型にしたもの（理由は上記と同様, ランダムな状態量との対応付けに使用）
-            #print(self.tree_np) # デバッグ用
-            #print(self.state_qnp) # デバッグ用
+        self.initial_node = self.nodes[0][self.feature_rng.integers(self.nodes[0].size)]
+        self.current_node = self.initial_node
 
-    def Transition(self, action, state):
-        """行動、状態を引数に次状態を返す"""
-        if self.jyotai_boolkari: # ランダムな状態量を通常の状態に変換
-            state = self.tree_np[self.state_qlist.index(state.tolist())]
-        action = self.action_list_np[action]
-        new_state_tmp = [state[i+1]+ action[0][i] for i in range(self.hyperplane_n)]
-        new_state = (state[0]+1,) + tuple(new_state_tmp)
-        new_state = np.array(new_state)
-        self.true_state = new_state
-        if self.jyotai_boolkari: # 通常の状態量をランダムな状態に変換
-            new_state = self.state_qnp[self.tree_list.index(new_state.tolist())]
-        return  new_state #新しい状態を返す
+        # 入力特徴次元数
+        self.input_dim = self.current_node.features_dim
+        # action 数
+        self.action_num = self.current_node.action_num
 
-    def tree_make(self):
-        for i in range(2,2+self.depth):
-            coord_seed = list(range(0,i))
-            coord = list(itertools.product(coord_seed, repeat = self.hyperplane_n))
-            coordinate = [(i-2,) + t for t in coord]
-            self.tree_s += coordinate
-            if i == 2:
-                self.action_list = coord #行動のリスト
-            if i == 1+self.depth: #最大深度の状態を抽出
-                self.goal_depth_all += coordinate
-        if not self.start_random: #初期位置固定
-            start = (-1,) + (0,) * self.hyperplane_n
-            self.tree_s = np.insert(self.tree_s, 0, start, axis=0)
-        self.tree_np = np.array(self.tree_s)
-        self.action_list_np = np.array(self.action_list)
+        # 報酬の鍵の鍵の入手数の初期化
+        self.got_key_num = 0
+        # 報酬入手可能かの初期化
+        self.lock_open = False
 
-    def state_quantity(self):
-        dt_now = datetime.datetime.now() # 時刻取得
-        np.random.seed(dt_now.minute) # シード固定
-        if self.jyotai_boolkari:
-            self.state_qnp = np.random.randn(len(self.tree_np),self.hyperplane_n+1) # ランダムな状態量を生成
-        if self.observation_noise == 1: # ノイズ小
-            self.state_qnp = np.random.normal(0, 1, (len(self.tree_np),self.hyperplane_n+1))
-            self.state_qnp += self.tree_np
-        if self.observation_noise == 2: # ノイズ大
-            self.state_qnp = np.random.normal(0, 5, (len(self.tree_np),self.hyperplane_n+1))
-            self.state_qnp += self.tree_np
-        #print(self.state_qnp) # デバッグ用
-        self.state_qlist = self.state_qnp.tolist() # ランダムな状態量の配列をlist型に変換したもの（状態のインデックス取得するにはリスト型の方が都合がいい）
+    ## 状態特徴量生成器
+    def feature_func(self):
+        return self.feature_rng.uniform(-1, 1, self.feature_dim)
 
-    def place_list_make(self):
-        count = 0
-        for i in range(self.depth):
-            for j in range((2 + i)**(self.hyperplane_n)):
-                if (((((2 + i)**(self.hyperplane_n)-i**self.hyperplane_n)/2)) <= j <  ((((2 + i)**(self.hyperplane_n)-i**self.hyperplane_n)/2) + i**self.hyperplane_n )) & (i != 0):
-                    self.place_list.append(self.tree_np[count]) #報酬が置ける位置の配列の作成
-                    if i == self.depth - 1:
-                        self.goal_depth_place.append(self.tree_s[count])
-                count = count + 1
-
-    def treasure_error(self):
-        for _ in range(len(self.treasure)):
-            if not (self.treasure[_]==self.place_list).all(axis=1).any():#報酬が置けるかの判定
-                print("Error: Treasure cannot be placed in that location.")
-                print("Treasure is ",self.treasure[_],".")
-                print("place_list",list(map(list,self.place_list ))) #報酬がおける位置の確認
-                sys.exit("SystemExit: Treasure Error")
-
-    def random_trasures(self):
-        dt_now = datetime.datetime.now()
-        random.seed(dt_now.minute)
-        if self.start_random:
-            self.treasure = np.array(random.sample(self.goal_depth_place,self.random_trasures_num))
+    # 報酬関数
+    def reward_func(self, _rng, _r_type, _mu, _var):
+        if _r_type == 'binominal':
+            return _rng.binomial(1, _mu, 1)[0]
+        elif _r_type == 'normal':
+            return _rng.normal(_mu, _var, 1)[0]
+        elif _r_type == 'fix':
+            return _mu
         else:
-            self.treasure = np.array(random.sample(self.goal_depth_all,self.random_trasures_num))
-        print("new treasure random generation: ", self.treasure)
+            return 1
 
-    def reset(self, args={}): #タスクリセット
-        if self.start_random: #初期位置をランダムにする場合 (True)
-            start = np.random.randint(len(self.action_list_np)) #初期座標ランダム選択    #start: 2*超平面次元通りある
-            self.state = self.tree_np[start] #初期座標にリセット  #[0, x, y], start = 4;
-            self.true_state = self.state
-            if self.jyotai_boolkari:
-                self.state = self.state_qnp[self.tree_list.index(self.state.tolist())]
-            #print(self.state)
-        else: #初期位置を固定にする場合 (False)
-            self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
-        if self.observation_noise > 0: # 観測ノイズの生成
-            self.state_quantity()
+    # 報酬設置関数
+    def set_reward_coordinates(self, hyperplane_dim, reward_params, feature_rng):
+        for i, r in enumerate(reward_params):
+            coor = r['coordinates']
+            if  coor == (): # 報酬箇所が空 tuple () の場合はランダム設置する
 
-    def play(self, action, player):
-        #print("state :", self.state) # デバッグ用（現状態）
-        #print("true_state :", self.true_state) # デバッグ用（真の現状態）
-        a = np.array([action], )
-        #print("action :", a) # デバッグ用（行動）
-        next_s = self.Transition(a, self.state)
-        self.state = next_s
-        #print("next_state :", self.state) # デバッグ用（次状態）
-        #print("next_true_state :", self.true_state) # デバッグ用（真の次状態）
-        if self.pom_bool and np.array_equal(self.state, self.pom_state):
-            self.pom_flag = 1
+                count = 0
+                while count < 100: 
+                    count += 1
+                    c = tuple(feature_rng.integers(1, r['depth']-1, (hyperplane_dim,)))
+                    is_original = True
+                    # 報酬箇所が重複していない事(is_original = True)を確かめる
+                    for j in range(i):
+                        if c == reward_params[j]['coordinates']:
+                            is_original = False #重複している
+                            break;
+                    if is_original:
+                        reward_params[i]['coordinates'] = c
+                        break;
+        return reward_params
 
-    def terminal(self):
-        return self.true_state[0] == self.depth-1
+    # 超平面の結合関数
+    def create_nd_grid(self, arrays):
+        grids = np.meshgrid(*arrays)
+        return np.stack(grids, axis=-1)
 
-    def uns_make(self):
-        dt_now = datetime.datetime.now()
-        random.seed(dt_now.minute)
-        self.uns_trasures_list = np.array(random.choices(self.goal_depth_place, k = 10))
-        print("uns_list : ", self.uns_trasures_list)
+    # 格子空間の等分割中心座標を抽出する関数
+    def grid_centers_specific(self, n, m):
+        # 各次元を等しく分割するための最適なサイズを計算
+        divisions_per_dim = int(np.ceil(m ** (1 / n)))
+        
+        # 全ての次元で等しい分割を行い、格子の中心座標を計算
+        linspace = np.linspace(-1 + 1 / divisions_per_dim, 1 - 1 / divisions_per_dim, divisions_per_dim)
+        
+        # 各次元の格子の組み合わせを取得
+        grids = np.meshgrid(*[linspace] * n)
+        
+        # 格子中心座標を整形
+        grid_centers = np.vstack([np.ravel(grid) for grid in grids]).T
+        return grid_centers
 
-    def uns(self):
-        print("tresure_before : ",self.treasure)
-        self.treasure = np.array([self.uns_trasures_list[self.uns_count]])
-        self.uns_count += 1
-        print("new_tresure : ",self.treasure)
-
-    def outcome(self):
-        # 終端状態に到達した時に報酬を与える関数
-        outcomes = [self.other_reward]
-        #print(self.n)
-        #self.n = self.n + 1
-        #if self.n % 20000 == 0:
-            #print("!!!n=",self.n)
-        if self.pom_bool: #True
-            if self.pom_flag and (self.state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
-                outcomes = [self.set_reward]
-            self.pom_flag = 0
-        else: #False
-            if self.random_reward_bool: #確率的な報酬
-                if (self.state == self.treasure).all(axis=1).any():
-                    treasure_num = np.where((self.treasure == self.state).all(axis=1))[0][0]
-                    reward_choice = np.random.choice(self.random_reward[treasure_num], p=self.random_reward_p[treasure_num])
-                    outcomes = [reward_choice]
+    # ノード構築
+    def create_tree(self, depth, hyperplane_dim, reward_params, general_rng, feature_rng, obs_var=0.0, f=None, is_pomdp=True, key_params=[]):
+        nodes = np.empty(depth, dtype=object)
+        grid_nodes = np.empty(depth, dtype=object)
+        
+        # ランダム特徴量を使う場合は depth ごとの中心座標を決めていく (depth 情報を暗黙的に含むように)
+        if f is not None:
+            test_feature = f()
+            # 格子空間を等分割した中心座標
+            grid_centers = self.grid_centers_specific(test_feature.size, depth)
+            # 中心座標から depth の数だけ非復元抽出
+            centers = feature_rng.choice(grid_centers, size=depth, replace=False)*2
+        
+        for d in range(depth):
+            _d = d+1
+            flat_length = (_d+1)**hyperplane_dim
+        
+            # 等差数列をリストにまとめる
+            arrays = [np.linspace(-_d/2, _d/2, _d+1) for _ in range(hyperplane_dim)]
+            # hyperplane_dim 次元の格子空間座標を作成
+            grid_coordinates = self.create_nd_grid(arrays)
+            # flat 化
+            flat_coordinates = grid_coordinates.reshape(flat_length, hyperplane_dim)
+            
+            # node 生成
+            if f is None:
+                # 状態特徴量は格子空間座標そのまま
+                tmp_nodes = np.array([Node(depth=d, hyperplane_coordinates=coordinates, obs_var=obs_var, rng=general_rng, pomdp=is_pomdp) for coordinates in flat_coordinates])
             else:
-                if (self.true_state == self.treasure).all(axis=1).any(): #treasureが2次元配列じゃないと動かない #(a==b)で同じshapeか，all(axis=1)で列方向に一致しているか，any()でどれか一つにでも当てはまるか，True・Falseを返す
-                    treasure_num = np.where((self.treasure == self.true_state).all(axis=1))[0][0]
-                    outcomes = [self.set_reward[treasure_num]]
-        #if self.uns_bool:
-            #if self.n % self.uns_num == 0:
-                #print("n=",self.n)
-                #print("tresure_before = ",self.treasure)
-                #dt_now = datetime.datetime.now()
-                #random.seed(dt_now.minute)
-                #self.treasure = np.array(random.sample(self.goal_depth_place,self.random_trasures_num))
-                #print("new_tresure= ",self.treasure)
-        #print("now_goal:",self.state)
-        #print("goal:",self.treasure)
-        #print("return:",outcomes)
-        #print("n =",self.n)
+                # ランダムかつ好きな長さの状態特徴量
+                tmp_nodes = np.array([Node(depth=d, hyperplane_coordinates=coordinates, obs_var=obs_var, rng=general_rng, pomdp=is_pomdp, center=centers[d], features=f()) for i, coordinates in enumerate(flat_coordinates)])
+            # flat に展開したノード
+            nodes[d] = tmp_nodes
+            # 超平面上に展開したノード
+            grid_nodes[d] = tmp_nodes.reshape(grid_coordinates.shape[0:-1])
+            # 報酬設置
+            for r in reward_params:
+                if (d+1) == r['depth']:
+                    grid_nodes[d][r['coordinates']].set_reward_func(self.reward_func)
+                    grid_nodes[d][r['coordinates']].set_reward_param(r)
+            # 報酬の鍵を設置 (POMDP)
+            for k in key_params:
+                if (d+1) == k['depth']:
+                    grid_nodes[d][k['coordinates']].set_key()
+            # ノード接続
+            if d != 0:
+                for i, n in enumerate(nodes[d-1]):
+                    i_indices = np.array(np.unravel_index(i, grid_nodes[d-1].shape))
+                    for j in range(n.action_num):
+                        j_indices = np.array(np.unravel_index(j, grid_nodes[0].shape))
+                        indices = tuple(i_indices + j_indices) 
+                        n.connect_node(grid_nodes[d][indices], j) 
+                        if d == depth - 1:
+                            grid_nodes[d][indices].set_terminal()
+        return nodes
+
+    # seed を保存する関数
+    def save_rng_seed(self, seed, rng_type, filename="rng_seed.txt"):        
+        # 現在の日時を取得
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # シードと日時をファイルに追記（ファイルがなければ作成）
+        with open(filename, "a") as file:
+            file.write(f"{current_time} - {rng_type} Seed: {seed}\n")
+
+    # タスクリセット
+    def reset(self, args={}): 
+        if self.start_random: #初期位置をランダムにする場合 (True)
+            self.initial_node = self.nodes[0][self.feature_rng.integers(self.nodes[0].size)]
+        # 現在 node 初期化
+        self.current_node = self.initial_node
+        # 報酬の鍵の鍵の入手数の初期化
+        self.got_key_num = 0
+        # 報酬入手可能かの初期化
+        self.lock_open = False
+
+    # 行動の実行
+    def play(self, action, player):
+        self.current_node = self.current_node.transit(action)
+        self.got_key_num += self.current_node.is_key
+
+    # 終端状態チェック
+    def terminal(self):
+        return self.current_node.is_terminal
+
+    # 終端報酬
+    def outcome(self):
+        outcomes = [self.current_node.reward()]
         return {p: outcomes[idx] for idx, p in enumerate(self.players())}
 
+    # 状態観測
+    def observation(self, player=None):
+        return (self.current_node.observed()).astype(np.float32)
+
+    # 合法手出力
+    def legal_actions(self, player):
+        return np.arange(self.action_num)
+
+    # 現在 Prayer => 常に Player 0  
     def players(self):
         return [0]
 
+    # 非定常環境における環境遷移
+    def shift_env(self, num_episodes):
+        self.shift_count += 1
+        return False
+
+    # Neural network 構築
     def net(self, args):
         agent_type = args['type']
 
         if agent_type == 'BASE':
-            rl_model = SimpleModel(args, self.hyperplane_n)
+            rl_model = SimpleModel(args, self.input_dim, self.action_num)
         elif agent_type == 'QL' or agent_type == 'SAC':
-            rl_model = PVQModel(args, self.hyperplane_n)
+            rl_model = PVQModel(args, self.input_dim, self.action_num)
         elif agent_type == 'RSRS':
-            rl_model = PVQCModel(args, self.hyperplane_n)
+            rl_model = PVQCModel(args, self.input_dim, self.action_num)
         else:
-            rl_model = SimpleModel(args, self.hyperplane_n)
+            rl_model = SimpleModel(args, self.input_dim, self.action_num)
         # RND を任意の RL model に付随させる
         if args.get('use_RND', False):
-            rl_model = RLwithRNDModel(args, self.hyperplane_n, rl_model)
+            rl_model = RLwithRNDModel(args, self.input_dim, self.action_num, rl_model)
         # ASC model
         asc_type = args.get('ASC_type', False)
         if asc_type == 'VAE':
-            rl_model = ASCModel(args, self.hyperplane_n, rl_model)
+            rl_model = ASCModel(args, self.input_dim, self.action_num, rl_model)
         elif asc_type == 'VQ-VAE':
-            rl_model = ASCVQModel(args, self.hyperplane_n, rl_model)
+            rl_model = ASCVQModel(args, self.input_dim, self.action_num, rl_model)
         elif asc_type == 'SeTranVAE':
-            rl_model = TranASCModel(args, self.hyperplane_n, rl_model)
+            rl_model = TranASCModel(args, self.input_dim, self.action_num, rl_model)
         elif asc_type == 'VQ-SeTranVAE':
-            rl_model = VQTranASCModel(args, self.hyperplane_n, rl_model)
+            rl_model = VQTranASCModel(args, self.input_dim, self.action_num, rl_model)
         
         return rl_model
-
-
-    def observation(self, player=None):
-        return self.state.astype(np.float32)
-
-    def legal_actions(self, player):
-        legal_actions = np.arange(2**self.hyperplane_n)
-        return legal_actions
 
 if __name__ == '__main__':
     e = Environment()

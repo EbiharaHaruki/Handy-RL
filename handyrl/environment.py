@@ -12,6 +12,7 @@ ENVS = {
     'ParallelTicTacToe': 'handyrl.envs.parallel_tictactoe',
     'HungryGeese':       'handyrl.envs.kaggle.hungry_geese',
     'simpletask':        'handyrl.envs.simpletask',
+    'simple_pyramid':    'handyrl.envs.simple_pyramid',
 }
 
 
@@ -144,3 +145,9 @@ class BaseEnvironment:
     #
     def update(self, info, reset):
         raise NotImplementedError()
+
+    #
+    # Should be defined if you want to make the environment non-stationary
+    #
+    def shift_env(self, num_episodes):
+        raise False
