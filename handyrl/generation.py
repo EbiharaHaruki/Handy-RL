@@ -45,6 +45,7 @@ class Generator:
             return None
         for player in self.env.players():
             # hidden[player] = models[player].init_hidden() # Reccurent model のための隠れ状態
+            self.args['agent']['play_subagent_prob'] = args['play_subagent_prob']
             agents[player] = agent_class(self.args['agent'])(models[player], metadataset[player], role='g', args=self.args['agent'])
             metadata_keys += agents[player].reset(self.env) ## init_hidden() も行われる
             if hasattr(self, 'global_v'):

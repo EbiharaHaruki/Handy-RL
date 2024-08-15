@@ -735,23 +735,30 @@ class TranVectorQuantizer(nn.Module):
         self.codebook = nn.Embedding(self.codebook_size, self.embedding_dim)
         self.codebook.weight.data.uniform_(-1/self.codebook_size, 1/self.codebook_size)
 
-    def forward(self, latent):
-        # b_size = latent.size(0)
-        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, codebook_dim]
-        distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
-                     + torch.sum(self.codebook.weight**2, dim=-1)
-                     - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
+    def forward(self, latent, generating_from_uniform=False):
+        if generating_from_uniform:
+            # ランダムにコードブックから生成する
+            noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_codebook_size, size=(1, tvq_latent_size))).to(torch.float)
+            quantized_latent = torch.bmm(noize_one_hot, self.codebook.weight).view(1, 1, -1).detach()
 
-        encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
-        encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
-        encodings.scatter_(1, encoding_indices, 1)
-        # 量子化された潜在ベクトル
-        quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
-        # 勾配を回避するための量子化された潜在ベクトル（値は quantized_latent と同じ）
-        policy_vq_latent = latent + (quantized_latent - latent).detach()
-        # Transformer decoder の乱数に対応づけるため codebook も batch サイズに拡張して出力する
-        codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
-        return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
+            return {'policy_vq_latent_set': None, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': self.codebook.weight}    
+        else:
+            # b_size = latent.size(0)
+            latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, codebook_dim]
+            distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
+                        + torch.sum(self.codebook.weight**2, dim=-1)
+                        - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
+
+            encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
+            encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
+            encodings.scatter_(1, encoding_indices, 1)
+            # 量子化された潜在ベクトル
+            quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
+            # 勾配を回避するための量子化された潜在ベクトル（値は quantized_latent と同じ）
+            policy_vq_latent = latent + (quantized_latent - latent).detach()
+            # Transformer decoder の乱数に対応づけるため codebook も batch サイズに拡張して出力する
+            codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
+            return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
 
 ## EMA Vector quantizer
 class EMATranVectorQuantizer(nn.Module):
@@ -772,39 +779,48 @@ class EMATranVectorQuantizer(nn.Module):
         self.ema_w = nn.Parameter(torch.Tensor(self.codebook_size, self.embedding_dim))
         self.ema_w.data.normal_()
 
-    def forward(self, latent):
-        # b_size = latent.size(0)
-        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, codebook_dim]
-        distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
-                     + torch.sum(self.codebook.weight**2, dim=-1)
-                     - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
+    def forward(self, latent, generating_from_uniform=False):
+        if generating_from_uniform:
+            # ランダムにコードブックから生成する
+            noize_one_hot = F.one_hot(torch.randint(low=0, high=self.codebook_size, size=(1, self.latent_size)), num_classes=self.codebook_size).to(torch.float)
+            # print(f'<><><> noize_one_hot.size(): {noize_one_hot.size()}')
+            # print(f'<><><> self.codebook.weight.size(): {self.codebook.weight.size()}')
+            quantized_latent = torch.bmm(noize_one_hot, self.codebook.weight.unsqueeze(0)).view(1, 1, -1).detach()
 
-        encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
-        encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
-        encodings.scatter_(1, encoding_indices, 1)
-        # 量子化された潜在ベクトル
-        quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
+            return {'policy_vq_latent_set': None, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': self.codebook.weight}    
+        else:
+            # b_size = latent.size(0)
+            latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, codebook_dim]
+            distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
+                        + torch.sum(self.codebook.weight**2, dim=-1)
+                        - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
 
-        # EMA codebook update
-        if self.training:
-            # batch 内の codebook の各要素の選択回数
-            encodings_sum = encodings.sum(0)
-            # batch 内の lattent をマッピング
-            distance_w = torch.matmul(encodings.t(), latent_flattened)
-            # codebook の各要素の選択回数を更新（過去の batch 毎の選択回数の EMA）
-            self.ema_cluster_size = self.decay * self.ema_cluster_size + (1 - self.decay) * encodings_sum
-            # codebook の各要素の Target となる weight を更新
-            self.ema_w = nn.Parameter(self.decay * self.ema_w + (1 - self.decay) * distance_w)
-            # 正規化と安定化
-            n = torch.sum(self.ema_cluster_size)
-            cluster_size = ((self.ema_cluster_size + self.epsilon) / (n + self.codebook_size * self.epsilon)) * n
-            self.codebook.weight.data = self.ema_w / cluster_size.unsqueeze(1)
+            encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
+            encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
+            encodings.scatter_(1, encoding_indices, 1)
+            # 量子化された潜在ベクトル
+            quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
 
-        # 勾配を回避するための量子化された潜在ベクトル（値は quantized_latent と同じ）
-        policy_vq_latent = latent + (quantized_latent - latent).detach()
-        # Transformer decoder の乱数に対応づけるため codebook も batch サイズに拡張して出力する
-        codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
-        return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
+            # EMA codebook update
+            if self.training:
+                # batch 内の codebook の各要素の選択回数
+                encodings_sum = encodings.sum(0)
+                # batch 内の lattent をマッピング
+                distance_w = torch.matmul(encodings.t(), latent_flattened)
+                # codebook の各要素の選択回数を更新（過去の batch 毎の選択回数の EMA）
+                self.ema_cluster_size = self.decay * self.ema_cluster_size + (1 - self.decay) * encodings_sum
+                # codebook の各要素の Target となる weight を更新
+                self.ema_w = nn.Parameter(self.decay * self.ema_w + (1 - self.decay) * distance_w)
+                # 正規化と安定化
+                n = torch.sum(self.ema_cluster_size)
+                cluster_size = ((self.ema_cluster_size + self.epsilon) / (n + self.codebook_size * self.epsilon)) * n
+                self.codebook.weight.data = self.ema_w / cluster_size.unsqueeze(1)
+
+            # 勾配を回避するための量子化された潜在ベクトル（値は quantized_latent と同じ）
+            policy_vq_latent = latent + (quantized_latent - latent).detach()
+            # Transformer decoder の乱数に対応づけるため codebook も batch サイズに拡張して出力する
+            codebook_weight = self.codebook.weight.unsqueeze(0).expand(latent.size(0), -1, -1)
+            return {'policy_vq_latent_set': policy_vq_latent, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': codebook_weight}
 
 ## Action-Observation VQ-VAE
 class AOVQTranVAE(nn.Module):
@@ -824,7 +840,7 @@ class AOVQTranVAE(nn.Module):
         vq_latent = re_q['policy_vq_latent_set'].unsqueeze(1).expand(-1, os_in.size(1), -1)
         memory = re_q['policy_vq_latent_set'].view(-1, tvq_latent_size, tvq_embedding_dim)
 
-        noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_codebook_size, size=(os_in.size(0), tvq_noise_num))).to(torch.float)
+        noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_codebook_size, size=(os_in.size(0), tvq_noise_num)), num_classes=tvq_codebook_size).to(torch.float)
         # Noise generation and Reparametrization Trick (detach)
         noise = torch.bmm(noize_one_hot, re_q['codebook_set']).detach() # codebook から一様乱数で取得した乱数
 
@@ -850,6 +866,7 @@ class VQTranASCModel(nn.Module):
         os_in = x.get('os', None)
         as_in = x.get('as', None)
         latent = x.get('latent', None)
+        generating = x.get('generating', False)
         # RL model
         out = self.rl_net(x)
         # State-Action VAE
@@ -860,7 +877,13 @@ class VQTranASCModel(nn.Module):
         out_g_p = self.action_decoder(os_in, latent) if latent!=None else None
         if out_g_p is not None:
             out = {**out, **out_g_p}
+        if generating:
+            o_in = (x.get('o', None)).unsqueeze(1)
+            vq_l = self.quantizer(None, True)
+            re_policy = self.action_decoder(vq_l['quantized_policy_latent_set'], o_in)
+            out = {**out, **re_policy}
         return out
+
 
 # Pyramid nodes
 class Node():
@@ -884,6 +907,9 @@ class Node():
         self.is_terminal = False
         self.is_key = False
         self.is_pomdp = pomdp
+        # 訪問カウント
+        self.visit_count = 0
+
 
     # action index に対して次状態ノードを結合
     def connect_node(self, child, action_index):
@@ -915,6 +941,10 @@ class Node():
             noise = self.rng.normal(0, self.obs_var, self.features.size)
             return self.features + noise
 
+    # 状態の訪問回数を更新    
+    def count(self):
+        self.visit_count += 1
+
     # 状態遷移
     def transit(self, action_index):
         return self.children[action_index]
@@ -935,18 +965,20 @@ class Environment(BaseEnvironment):
         self.hyperplane_dim = self.param['hyperplane_dim'] #超平面次元数(変更可能)
 
         # 報酬やノイズなどに使用する乱数発生器
-        dt_now = datetime.datetime.now()
-        self.general_seed = dt_now.minute
+        self.general_seed = self.param['general_seed'] # 特徴量関係の乱数 seed（保存対象）
+        if self.general_seed < 0: # seed が 0 未満なら時間乱数から取る
+            dt_now = datetime.datetime.now()
+            self.general_seed =  (dt_now.hour * 60 * 60) + (dt_now.minute * 60) + dt_now.second # 非保存対象の乱数 seed
         self.general_rng = np.random.default_rng(self.general_seed)
-        self.save_rng_seed(self.general_seed, 'general', filename="feature_rng_seed.txt") # 乱数保存ファイルに日時と共に末尾に追加
+        self.save_rng_seed(self.general_seed, 'general', filename='feature_rng_seed.txt') # 乱数保存ファイルに日時と共に末尾に追加
 
         # 特徴量設定
         self.feature_seed = self.param['features']['seed'] # 特徴量関係の乱数 seed（保存対象）
         if self.feature_seed < 0: # seed が 0 未満なら時間乱数から取る
             dt_now = datetime.datetime.now()
-            self.feature_seed = dt_now.second # 特徴量関係の乱数 seed（保存対象）
+            self.feature_seed = dt_now.microsecond # 特徴量関係の乱数 seed（保存対象）
         self.feature_rng = np.random.default_rng(self.feature_seed) # 読み込み再現可能な状態特徴量初期化用の乱数発生器
-        self.save_rng_seed(self.feature_seed, 'feature', filename="feature_rng_seed.txt") # 乱数保存ファイルに日時と共に末尾に追加
+        self.save_rng_seed(self.feature_seed, 'feature', filename='feature_rng_seed.txt') # 乱数保存ファイルに日時と共に末尾に追加
         self.feature_dim = self.param['features']['dim'] # 0 だと特徴量が座標そのものになる, 1 以上なら任意の次元数の座標とは異なる特徴量が設定される
         self.feature_f = self.feature_func if self.feature_dim != 0 else None # 特徴量関係の乱数発生器
         self.obs_var = self.param['features']['obs_var'] # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
@@ -995,6 +1027,7 @@ class Environment(BaseEnvironment):
         self.start_random = self.param['start_random'] #初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         self.initial_node = self.nodes[0][self.feature_rng.integers(self.nodes[0].size)]
         self.current_node = self.initial_node
+        self.current_node.count()
 
         # 入力特徴次元数
         self.input_dim = self.current_node.features_dim
@@ -1119,13 +1152,13 @@ class Environment(BaseEnvironment):
         return nodes
 
     # seed を保存する関数
-    def save_rng_seed(self, seed, rng_type, filename="rng_seed.txt"):        
+    def save_rng_seed(self, seed, rng_type, filename='rng_seed.txt'):        
         # 現在の日時を取得
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # シードと日時をファイルに追記（ファイルがなければ作成）
-        with open(filename, "a") as file:
-            file.write(f"{current_time} - {rng_type} Seed: {seed}\n")
+        with open(filename, 'a') as file:
+            file.write(f'{current_time} - {rng_type} Seed: {seed}\n')
 
     # タスクリセット
     def reset(self, args={}): 
@@ -1133,6 +1166,7 @@ class Environment(BaseEnvironment):
             self.initial_node = self.nodes[0][self.feature_rng.integers(self.nodes[0].size)]
         # 現在 node 初期化
         self.current_node = self.initial_node
+        self.current_node.count()
         # 報酬の鍵の鍵の入手数の初期化
         self.got_key_num = 0
         # 報酬入手可能かの初期化
@@ -1141,6 +1175,7 @@ class Environment(BaseEnvironment):
     # 行動の実行
     def play(self, action, player):
         self.current_node = self.current_node.transit(action)
+        self.current_node.count()
         self.got_key_num += self.current_node.is_key
 
     # 終端状態チェック
@@ -1169,9 +1204,38 @@ class Environment(BaseEnvironment):
         self.shift_count += 1
         return False
 
+    def fprint_env_status(self, role):
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        if role == 't':
+            role_str = 'train_'
+        elif role == 'g':
+            role_str = 'generation_'
+        elif role == 'e':
+            role_str = 'evaluation_'
+        else:
+            role_str = ''
+        filename = './env_status_log/simple_pyramid_' + role_str + current_time + '.txt'
+
+        with open(filename, 'a') as file:
+            file.write(f'general_seed:{self.general_seed}\n')
+            file.write(f'feature_seed:{self.feature_seed}\n')
+
+        for d in range(self.depth):
+            _d = d+1
+            for i, node in enumerate(self.nodes[d]):
+                # 全てのノードの訪問回数を depth と共に保存
+                reward = '-' if node.r_type is None else node.r_m
+                with open(filename, 'a') as file:
+                    file.write(f'depth:{_d} - index:{i} - coordinates:{node.coordinates} - features:{node.features} - reward:{reward}, visit_count:{node.visit_count}\n')
+        return True
+
+    # seed の出力
+    def get_seed(self):
+        return {'general_seed': self.general_seed, 'feature_seed': self.feature_seed}
+
     # Neural network 構築
     def net(self, args):
-        agent_type = args['type']
+        agent_type = args['subtype'] if args['type'] == 'ASC' else args['type']
 
         if agent_type == 'BASE':
             rl_model = SimpleModel(args, self.input_dim, self.action_num)
@@ -1185,7 +1249,7 @@ class Environment(BaseEnvironment):
         if args.get('use_RND', False):
             rl_model = RLwithRNDModel(args, self.input_dim, self.action_num, rl_model)
         # ASC model
-        asc_type = args.get('ASC_type', False)
+        asc_type = args.get('ASC_type', '')
         if asc_type == 'VAE':
             rl_model = ASCModel(args, self.input_dim, self.action_num, rl_model)
         elif asc_type == 'VQ-VAE':

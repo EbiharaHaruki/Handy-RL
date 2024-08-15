@@ -7,9 +7,10 @@ env_args:
     param:
         depth: 6 # 深度(変更可能)
         hyperplane_dim: 2 # 超平面次元数(変更可能)
+        general_seed: -1 # 初期状態や報酬に関する乱数発生器の seed 
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         features:
-            seed: -1 # 特徴量関係の乱数 seed（保存対象）
+            seed: 731810 # 特徴量関係の乱数 seed（保存対象）
             dim: 2 # 0 だと特徴量が座標そのものになる, 1 以上なら任意の次元数の座標とは異なる特徴量が設定される
             obs_var: 0.01 # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
         rewards: 
@@ -46,11 +47,12 @@ train_args:
     update_episodes: 500
     batch_size: 128 # 256
     minimum_episodes: 10000
-    maximum_episodes: 10000
+    maximum_episodes: 20000
     epochs: 10000
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
+    saving_env_status_interval_episodes: 10000
     worker:
         num_parallel: 1
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
@@ -61,11 +63,15 @@ train_args:
     seed: 0
     restart_epoch: 0
     agent:
-        type: 'QL' # 'BASE' 'QL' 'RSRS',
+        type: 'ASC' # 'BASE' 'QL' 'RSRS' 'ASC'
         use_RND: True
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
         mp_param: [0.8] # [0.1]
-        ASC_type: 'VQ-SeTranVAE' # False, 'VAE', 'VQ-VAE', 'SeTranVAE', 'VQ-SeTranVAE'
+        subtype: 'QL' # 'BASE' 'QL' 'RSRS'
+        play_subagent_base_prob: 1.0
+        play_subagent_lower_prob: 0.5
+        play_subagent_decay_per_ep: 0.000001
+        ASC_type: 'VQ-SeTranVAE' # '', 'VAE', 'VQ-VAE', 'SeTranVAE', 'VQ-SeTranVAE'
         ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
         ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
         ASC_dropout: 0.2 # ASC model の dropout 率

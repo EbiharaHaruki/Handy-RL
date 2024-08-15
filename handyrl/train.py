@@ -797,6 +797,11 @@ class Learner:
         random.seed(args['seed'])
 
         self.env = make_env(env_args)
+        seeds = self.env.get_seed()
+        if (seeds != {}) and ('general_seed' in train_args['env']['param'].keys()):
+           train_args['env']['param']['general_seed'] = seeds['general_seed'] # train で作った環境の状態特徴の乱数に書き換える
+        if (seeds != {}) and ('features' in train_args['env']['param'].keys()):
+           train_args['env']['param']['features']['seed'] = seeds['feature_seed'] # train で作った環境の状態特徴の乱数に書き換える
         eval_modify_rate = (args['update_episodes'] ** 0.85) / args['update_episodes']
         self.eval_rate = max(args['eval_rate'], eval_modify_rate)
         self.shutdown_flag = False
@@ -1071,6 +1076,7 @@ class Learner:
                     self.shutdown_flag = True
         print('finished server')
         self.time_end = time.perf_counter()
+        self.env.fprint_env_status('t') # 環境の状態ログを出力
         print('time :',self.time_end - self.time_start)
 
     def run(self):

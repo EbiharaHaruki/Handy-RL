@@ -12,16 +12,27 @@ import numpy as np
 from .util import softmax
 
 def agent_class(args):
-    if args['type'] == 'BASE' or args['type'] == 'RND':
+    if args['type'] == 'BASE':
         return Agent
-    elif args['type'] == 'QL' or args['type'] == 'QL-RND' or args['type'] == 'QL-G-RND':
+    elif args['type'] == 'QL':
         return QAgent
-    elif args['type'] == 'RSRS' or args['type'] == 'RSRS-RND':
+    elif args['type'] == 'RSRS':
         return RSRSAgent
-    # elif args['type'] == 'SRS' or args['type'] == 'SRS-RND':
-    #     return SRSAgent
+    elif args['type'] == 'ASC':
+        return ASCAgent
     else:
         print('No agent named %s' % args['agent'])
+
+def subagent_class(args):
+    if args['subtype'] == 'BASE':
+        return Agent
+    elif args['subtype'] == 'QL':
+        return QAgent
+    elif args['subtype'] == 'RSRS':
+        return RSRSAgent
+    else:
+        print('No agent named %s' % args['agent'])
+
 
 class RandomAgent:
     def reset(self, env, show=False):
@@ -46,7 +57,7 @@ class RuleBasedAgent(RandomAgent):
             return random.choice(env.legal_actions(player))
 
 
-def print_outputs(env, prob, v):
+def print_outputs(env, prob, v, q=None):
     if hasattr(env, 'print_outputs'):
         env.print_outputs(prob, v)
     else:
@@ -135,7 +146,7 @@ def greedy_from_value(actions, value, dummy, generating=True):
 
 def e_greedy_from_value(actions, value, epsilon, generating=True):
     e = epsilon[0] if generating else 0.0
-    if e > np.random.rand():
+    if e > random.random():
         action = random.choices(np.arange(len(actions)))[0]
         selected_prob = e/len(actions)
     else:
@@ -155,6 +166,7 @@ def softmax_from_value(actions, value, temperature, generating=True):
         action = ap_list[0][0]
         selected_prob = 1.0
     return action, selected_prob
+
 
 class QAgent(Agent):
     def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args={'meta_policy': None}):
@@ -190,7 +202,7 @@ class QAgent(Agent):
         action, selected_prob = self.meta_policy(actions, q, self.param, self.generating)
 
         if show:
-            print_outputs(env, softmax(p), v)
+            print_outputs(env, None, None, q)
 
         # action log は action 決定過程の情報
         if self.generating:
@@ -203,12 +215,13 @@ class QAgent(Agent):
 
 
 class RSRSAgent(Agent):
-    def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args=None):
+    def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args={}):
         super().__init__(model, metadataset, role, temperature, observation, args)
         self.metadata_keys = ['rl_latent', 'action']
         # TODO なぜか偶に metadata の key が player になってる問題解決
         self.global_aleph = metadataset.get('global_aleph', 1.0)
         self.rw = metadataset.get('regional_weight', 0.0)
+
 
     def reset(self, env, show=False):
         self.hidden = self.model.init_hidden()
@@ -302,6 +315,60 @@ class RSRSAgent(Agent):
 
         return action
 
+
+class ASCAgent(Agent):
+    def __init__(self, model, metadataset={}, role='e', temperature=None, observation=True, args={}):
+        super().__init__(model, metadataset, role, temperature, observation, args)
+        # 初期の軌跡生成用のサブエージェント関係のパラメータ
+        self.sub_agent = subagent_class(args)(model, metadataset, role, temperature, observation, args) if 'subtype' in args.keys() else None
+        self.play_subagent_prob = args['play_subagent_prob'] if 'play_subagent_prob' in args.keys() else 0.0
+
+    def reset(self, env, show=False):
+        if self.sub_agent is not None:
+            return self.sub_agent.reset(env, show)
+        else:
+            return []
+
+    def plan(self, obs):
+        outputs = self.model.inference({'o': obs, 'generating': True}, self.hidden)
+        self.hidden = outputs.pop('hidden', None)
+        return outputs
+
+    def action(self, env, player, show=False, action_log=None):
+        if (self.sub_agent is not None) and (self.play_subagent_prob > random.random()):
+            return self.sub_agent.action(env, player, show, action_log)
+        else:
+            # learning = (action_log is not None)
+            obs = env.observation(player)
+            outputs = self.plan(obs) # reccurent model 対応
+            actions = env.legal_actions(player)
+            v = outputs.get('value', None)
+            p = outputs.get('re_policy_set', outputs['policy']).squeeze() # 再構成 policy を policy に使う
+            action_mask = np.ones_like(p) * 1e32
+            action_mask[actions] = 0
+            p = p - action_mask
+
+            if self.generating or self.temperature != 0.0:
+                policy = softmax(p) if self.temperature is None else softmax(p / self.temperature)
+                action = random.choices(np.arange(len(p)), weights=policy)[0]
+                selected_prob = policy[action]
+                if show:
+                    print_outputs(env, policy, v)
+            else:
+                ap_list = sorted([(a, p[a]) for a in actions], key=lambda x: -x[1])
+                action = ap_list[0][0]
+                selected_prob = 1.0
+                if show:
+                    print_outputs(env, softmax(p), v)
+
+            # action log は action 決定過程の情報
+            if self.generating:
+                action_log['moment']['observation'][player] = obs
+                action_log['moment']['value'][player] = v
+                action_log['moment']['selected_prob'][player] = selected_prob
+                action_log['moment']['action_mask'][player] = action_mask
+
+            return action
 
 
 class EnsembleAgent(Agent):

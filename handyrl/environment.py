@@ -151,3 +151,15 @@ class BaseEnvironment:
     #
     def shift_env(self, num_episodes):
         raise False
+
+    #
+    # Should be defined if you want to display the environment's status
+    #
+    def fprint_env_status(self, role):
+        return False
+
+    #
+    # Should be defined if you want to retrieve the seed set for the environment
+    #
+    def get_seed(self, role):
+        return {}
