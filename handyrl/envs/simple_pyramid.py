@@ -1226,7 +1226,7 @@ class Environment(BaseEnvironment):
                 # 全てのノードの訪問回数を depth と共に保存
                 reward = '-' if node.r_type is None else node.r_m
                 with open(filename, 'a') as file:
-                    file.write(f'depth:{_d} - index:{i} - coordinates:{node.coordinates} - features:{node.features} - reward:{reward}, visit_count:{node.visit_count}\n')
+                    file.write(f'depth:{_d}, index:{i}, coordinates:{node.coordinates}, features:{node.features}, reward:{reward}, visit_count:{node.visit_count}\n')
         return True
 
     # seed の出力
