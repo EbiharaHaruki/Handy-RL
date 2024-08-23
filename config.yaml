@@ -10,7 +10,7 @@ env_args:
         general_seed: -1 # 初期状態や報酬に関する乱数発生器の seed 
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         features:
-            seed: 731810 # 特徴量関係の乱数 seed（保存対象）
+            seed: -1 # 特徴量関係の乱数 seed（保存対象）
             dim: 2 # 0 だと特徴量が座標そのものになる, 1 以上なら任意の次元数の座標とは異なる特徴量が設定される
             obs_var: 0.01 # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
         rewards: 
@@ -68,28 +68,28 @@ train_args:
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
         mp_param: [0.8] # [0.1]
         subtype: 'QL' # 'BASE' 'QL' 'RSRS'
-        play_subagent_base_prob: 1.0
-        play_subagent_lower_prob: 0.5
-        play_subagent_decay_per_ep: 0.000001
+        play_subagent_base_prob: 1.0 # サブエージェントが軌跡を生成する確率の初期値
+        play_subagent_lower_prob: 0.5 # サブエージェントが軌跡を生成する確率の下限
+        play_subagent_decay_per_ep: 0.000001 # サブエージェントが軌跡を生成する確率のエピソードごとの減少値
         ASC_type: 'VQ-SeTranVAE' # '', 'VAE', 'VQ-VAE', 'SeTranVAE', 'VQ-SeTranVAE'
         ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
         ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
         ASC_dropout: 0.2 # ASC model の dropout 率
     contrastive_learning: 
-        use: True
-        temperature: 0.5
-    loss_factor:
-        rl: 1.0 # default: 1.0 # RL loss weight
-        rnd: 1.0 # default: 1.0 # RND loss weight
-        recon: 1.0 # default: 1.0 # reconstruction loss weight for VAE and VQ-VAE
-        vae_kl: 1.0 # default: 1.0 # KL loss weight for VAE
-        codebook: 1.0 # default: 1.0 # reconstruction loss for VQ-VAE
-        commitment: 0.25 # default: 0.25 # commitment weight for VQ-VAE
-        contrast: 1.0 # default: 1.0  # commitment weight for contrastive learning
-        recon_p_set: 1.0 # default: 1.0 # policy reconstruction loss weight for Transformer-VAE
-        recon_o_set: 1.0 # default: 1.0 # re_observation reconstruction loss weight for Transformer-VAE
-        cos_weighted: 0.01 # default: 0.1 # re_observation reconstruction cos_weighted loss weight for Transformer-VAE
-        hungarian: 1.0 # default: 0.8 # re_observation reconstruction hungarian loss weight for Transformer-VAE
+        use: True # Whether to perform contrastive learning
+        temperature: 0.5 # The temperature parameter in contrastive learning
+    loss_coefficient:
+        rl: 1.0 # default: 1.0 # RL loss coefficient
+        rnd: 1.0 # default: 1.0 # RND loss coefficient
+        recon: 1.0 # default: 1.0 # reconstruction loss coefficient for VAE and VQ-VAE
+        vae_kl: 1.0 # default: 1.0 # KL loss coefficient for VAE
+        codebook: 1.0 # default: 1.0 # reconstruction loss coefficient for VQ-VAE
+        commitment: 0.25 # default: 0.25 # commitment coefficient for VQ-VAE
+        contrast: 1.0 # default: 1.0  # commitment coefficient for contrastive learning
+        recon_p_set: 1.0 # default: 1.0 # policy reconstruction loss coefficient for SeTranVAE and VQ-SeTranVAE
+        recon_o_set: 1.0 # default: 1.0 # re_observation reconstruction loss coefficient for SeTranVAE and VQ-SeTranVAE
+        cos_weighted: 0.01 # default: 0.1 # re_observation reconstruction cos_weighted loss coefficient for SeTranVAE and VQ-SeTranVAE
+        hungarian: 1.0 # default: 0.8 # re_observation reconstruction hungarian loss coefficient for SeTranVAE and VQ-SeTranVAE
     metadata:
         name: []
         # name: ['rnd_weight'] # Unimplemented

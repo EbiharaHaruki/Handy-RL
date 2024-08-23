@@ -245,7 +245,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     # data 数みたい
     dcnt = tmasks.sum().item()
     # 各 loss の重み
-    factor = args.get('loss_factor', {})
+    factor = args.get('loss_coefficient', {})
 
     # policy loss 
     # total_advantages が既に baseline を引いた advantage になっている

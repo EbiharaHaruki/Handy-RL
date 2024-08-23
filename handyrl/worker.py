@@ -140,12 +140,12 @@ class Worker:
                 episode, return_metadata = self.generator.execute(models, metadataset, args)
                 send_recv(self.conn, ('episode', episode))
                 send_recv(self.conn, ('return_metadata', return_metadata))
+                self.play_subagent_prob = max(self.play_subagent_prob - self.play_subagent_decay_per_ep, self.play_subagent_lower_prob)
             elif role == 'e':
                 result, return_metadata = self.evaluator.execute(models, metadataset, args)
                 send_recv(self.conn, ('result', result))
                 # send_recv(self.conn, ('metadata', return_metadata))
 
-            self.play_subagent_prob = max(self.play_subagent_prob - self.play_subagent_decay_per_ep, self.play_subagent_lower_prob)
 
 
 def make_worker_args(args, n_ga, gaid, base_wid, wid, conn):

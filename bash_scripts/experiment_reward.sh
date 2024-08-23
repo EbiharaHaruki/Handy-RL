@@ -22,7 +22,7 @@ done
 
 # echo @kumejun $DATE の実験 $N 回やったよ！！ | bash_scripts/slack_alarm.sh #slackに実験が終わったら通知を送る機能（別途で設定する必要あり）
 
-plot_now="timeout 10 python3 scripts/reward_average_plot.py 0 simpletask $DATE" #回数分のログの可視化
+plot_now="timeout 10 python3 scripts/reward_average_plot.py $N $ENV $DATE" #回数分のログの可視化
 eval $plot_now
 cd trainlog
 zip -r $DATE.zip $DATE
