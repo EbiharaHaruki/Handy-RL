@@ -97,6 +97,46 @@ class PVQCModel(nn.Module):
             'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l, 'confidence': c}
 
 
+# RSRS with R4D
+class R4DPVQCModel(nn.Module):
+    def __init__(self, args, input_dim, action_num):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        confidence_size = 32
+        self.fc1 = nn.Linear(input_dim, nn_size)
+        self.head_p = nn.Linear(nn_size, action_num) # policy
+        self.head_v = nn.Linear(nn_size, 1) # value
+        self.head_a = nn.Linear(nn_size, action_num) # advantage
+        self.head_b = nn.Linear(nn_size, 1) # ベースライン
+        # 信頼度
+        ## 学習
+        self.fc_c = nn.Linear(input_dim, nn_size)
+        self.head_c = nn.Linear(nn_size, action_num * confidence_size)
+        ## 固定
+        self.fc_c_fix = nn.Linear(input_dim, nn_size)
+        self.head_c_fix = nn.Linear(nn_size, action_num * confidence_size)
+
+    def forward(self, x, hidden=None):
+        o = x.get('o', None)
+        h_l = self.fc1(o)
+        h = F.relu(h_l)
+        p = self.head_p(h)
+        v = self.head_v(h)
+        a = self.head_a(h)
+        b = self.head_b(h)
+        q = b + a - a.sum(-1).unsqueeze(-1)
+        h_c = F.relu(self.fc_c(o))
+        c = self.head_c(h_c)
+        h_c_fix = F.relu(self.fc_c_fix(o))
+        c_fix = self.head_c_fix(h_c_fix)
+        return {
+            'policy': p, 'value': v, 
+            'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l, 
+            'confidence_57': c, 'confidence_57_fix': c_fix}
+
+
 # RND
 class RNDModel(nn.Module):
     def __init__(self, args, input_dim, action_num):
@@ -138,6 +178,7 @@ class RLwithRNDModel(nn.Module):
         out_rnd = self.rnd_net(o_in)
         out = {**out, **out_rnd}
         return out
+
 
 # Positional Encoding
 class PositionalEncoding(nn.Module):
@@ -1243,6 +1284,8 @@ class Environment(BaseEnvironment):
             rl_model = PVQModel(args, self.input_dim, self.action_num)
         elif agent_type == 'RSRS':
             rl_model = PVQCModel(args, self.input_dim, self.action_num)
+        elif agent_type == 'R4D-RSRS':
+            rl_model = R4DPVQCModel(args, self.input_dim, self.action_num)
         else:
             rl_model = SimpleModel(args, self.input_dim, self.action_num)
         # RND を任意の RL model に付随させる

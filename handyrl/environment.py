@@ -161,5 +161,5 @@ class BaseEnvironment:
     #
     # Should be defined if you want to retrieve the seed set for the environment
     #
-    def get_seed(self, role):
+    def get_seed(self):
         return {}

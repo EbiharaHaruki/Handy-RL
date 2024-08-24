@@ -13,6 +13,8 @@ import pickle
 import warnings
 import queue
 from collections import deque
+import collections
+import csv
 # import faiss
 
 import numpy as np
@@ -81,6 +83,8 @@ def make_batch(episodes, step_init, step_length, args,
                 amask = np.array([[replace_none(m['action_mask'][player], amask_zeros + 1e32) for player in players] for m in moments])
                 c = np.array([[[replace_none(m['c'][player], 0.0)] for player in players] for m in moments])
                 c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
+                c_nn = np.array([[[replace_none(m['c_nn'][player], 0.0)] for player in players] for m in moments])
+                state_index = np.array([[[replace_none(m['state_index'][player], 0.0)] for player in players] for m in moments])
                 entropy_srs = np.array([[[replace_none(m['entropy_srs'][player], 0.0)] for player in players] for m in moments])
 
             # reshape observation
@@ -119,13 +123,15 @@ def make_batch(episodes, step_init, step_length, args,
                 progress = np.pad(progress, [(pad_len_b, pad_len_a), (0, 0)], 'constant', constant_values=1)
                 c = np.pad(c, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
                 c_reg = np.pad(c_reg, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
+                c_nn = np.pad(c_nn, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
                 entropy_srs = np.pad(entropy_srs, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
             obss.append(obs)
-            datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, entropy_srs))
+            datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs, state_index))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, entropy_srs = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs, state_index = [to_torch(np.array(val)) for val in zip(*datum)]
+
 
     return {
         'observation': obs,
@@ -140,7 +146,9 @@ def make_batch(episodes, step_init, step_length, args,
         'progress': progress,
         'c': c,
         'c_reg': c_reg,
+        'c_nn': c_nn,
         'entropy_srs': entropy_srs,
+        'state_index': state_index
     }
 
 
@@ -159,7 +167,7 @@ def forward_prediction(model, hidden, batch, args):
     observations = batch['observation']  # (..., B, T, P or 1, ...)
     actions = batch['action']  # (..., B, T, P or 1, ...)
     batch_shape = batch['action'].size()[:3]  # (B, T, P or 1)
-    if args['agent']['ASC_trajectory_length'] > 0:
+    if ('ASC_trajectory_length' in args['agent']) and (args['agent']['ASC_trajectory_length'] > 0):
         observations_set = batch['set']['observation']  # (..., B, T, P or 1, ...)
         actions_set = batch['set']['action']  # (..., B, T, P or 1, ...)
 
@@ -168,7 +176,7 @@ def forward_prediction(model, hidden, batch, args):
         obs = map_r(observations, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         act = map_r(actions, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         inputs = {'o':obs, 'a':act}
-        if args['agent']['ASC_trajectory_length'] > 0:
+        if ('ASC_trajectory_length' in args['agent']) and (args['agent']['ASC_trajectory_length'] > 0):
             obs_set = observations_set.squeeze(dim=2) 
             act_set = actions_set.squeeze(dim=2) 
             inputs = {** inputs, **{'os': obs_set, 'as': act_set}}
@@ -238,6 +246,10 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     omasks = batch['observation_mask']
     mixed_c = batch['c']
     c_reg = batch['c_reg']
+    c_nn = batch['c_nn']
+    state_index_tmp = batch['state_index']
+    state_index = state_index_tmp[:,0,0,0].tolist()
+    state_index = list(map(str,state_index))
     entropy_srs = batch['entropy_srs']
 
     # loss の箱
@@ -269,7 +281,25 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     # rnd embed state loss
     if 'loss_rnd' in outputs:
         losses['rnd'] = outputs['loss_rnd'].mul(tmasks).sum()
+    
+    # RS の c loss
+    if 'selected_confidence_loss' in outputs:
+        losses['c'] = outputs['selected_confidence_loss'].mul(omasks).sum()
+        entropy_c_nn = -torch.sum(c_nn * torch.log(c_nn),4)
+        entropy_c_nn = entropy_c_nn.mul(tmasks)
+        losses['ent_c_nn'] = entropy_c_nn.sum()
 
+        if 'knn' in metadataset:
+            entropy_c_reg = -torch.sum(c_reg * torch.log(c_reg),4)
+            entropy_c_reg = torch.nan_to_num(entropy_c_reg)
+            entropy_c_reg = entropy_c_reg.mul(tmasks)
+            losses['ent_c_reg'] = entropy_c_reg.sum()
+
+            entropy_c_mixed = -torch.sum(mixed_c * torch.log(mixed_c),4)
+            entropy_c_mixed = entropy_c_mixed.mul(tmasks)
+            losses['entropy_c_mixed'] = entropy_c_mixed.sum()
+
+    # R4D-RS の c loss
     if 'confidence' in outputs:
     # 信頼度の cross_entropy loss
         b_size = outputs['confidence'].shape[0]
@@ -277,9 +307,10 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
         a_size = outputs['confidence'].shape[-1]
         o_c = torch.reshape(outputs['confidence'], (b_size * o_size, a_size))
         t_c = torch.reshape(targets['confidence'], (b_size * o_size, 1)).squeeze_()
-        # losses['c'] = F.cross_entropy(outputs['confidence'].squeeze(), targets['confidence'].squeeze(), reduction='none').mul(omasks.squeeze()).sum()
+
         losses['c'] = torch.reshape(F.cross_entropy(o_c, t_c, reduction='none'), (b_size, o_size, 1, 1)).mul(omasks).sum()
         entropy_c_nn = dist.Categorical(logits=outputs['confidence']).entropy().mul(tmasks.mean(-1))
+        losses['entropy_srs'] = entropy_srs.sum()
         # 信頼度割合に関する各種監視変数を追加
         losses['ent_c_nn'] = entropy_c_nn.sum()
         if 'knn' in metadataset:
@@ -426,7 +457,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
 
-    return losses, dcnt
+    return losses, dcnt, state_index
 
 
 def compute_loss(batch, model, target_model, metadataset, hidden, args):
@@ -445,7 +476,7 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
     if args['burn_in_steps'] > 0:
         batch = map_r(batch, lambda v: v[:, args['burn_in_steps']:] if v.size(1) > 1 else v)
         outputs = map_r(outputs, lambda v: v[:, args['burn_in_steps']:])
-    # action とを取り出す
+    # action を取り出す
     actions = batch['action']
     # episode masks (2 人対戦ゲームなどで自分 episode だけに限定するなど？) を取り出す
     emasks = batch['episode_mask']
@@ -510,8 +541,15 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
             outputs['bonus'] = intrinsic_reward
 
     if 'confidence' in outputs:
-        # 信頼度の学習
+        # CE 信頼度の学習
         targets['confidence'] = (actions * emasks).to(torch.long)
+
+    if 'confidence_57' in outputs:
+        # R4D 信頼度の学習
+        c_loss = ((outputs['confidence_57'] - outputs_nograd['confidence_57_fix']) **2)
+        c_loss = c_loss.reshape(outputs['policy'].size(0), outputs['policy'].size(1), outputs['policy'].size(2), outputs['policy'].size(-1), -1)
+        c_sumloss = torch.sum(c_loss, axis=4)
+        outputs['selected_confidence_loss'] = c_sumloss.gather(-1,actions) *emasks #学習用
 
     if 'rl_latent' in outputs_nograd:
         # 学習はしないが latent を抜き出しておく
@@ -583,7 +621,7 @@ class Batcher:
         while True:
             episodes = conn.recv()
             batch = make_batch(episodes, self.args['burn_in_steps'], self.args['forward_steps'], self.args)
-            if self.args['agent']['ASC_trajectory_length'] > 0:
+            if ('ASC_trajectory_length' in self.args['agent']) and (self.args['agent']['ASC_trajectory_length'] > 0):
                 batch['set'] = make_batch(episodes, 0, self.args['agent']['ASC_trajectory_length'], self.args,
                         {'moment': 'moment_set', 'start':'start_set', 'end':'end_set', 'base':'base_set', 'train_start':'train_start_set'})
             conn.send(batch)
@@ -629,7 +667,7 @@ class Batcher:
             'base': st_block * self.args['compress_steps'],
             'start': st, 'end': ed, 'train_start': train_st, 'total': ep['steps'],
         }
-        if self.args['agent']['ASC_trajectory_length'] > 0:
+        if ('ASC_trajectory_length' in self.args['agent']) and (self.args['agent']['ASC_trajectory_length'] > 0):
             train_st_set, st_set, ed_set, st_block_set, ed_block_set = self._rand_step_for_set(ep['steps'], self.args['agent']['ASC_trajectory_length'])
             ep_minimum = {**ep_minimum, **{
                 'moment_set': ep['moment'][st_block_set:ed_block_set],
@@ -637,7 +675,7 @@ class Batcher:
                 'start_set': st_set, 'end_set': ed_set, 'train_start_set': train_st_set,
             }}
         ep_contrast = None
-        if self.args['contrastive_learning']['use']:
+        if ('contrastive_learning' in self.args) and self.args['contrastive_learning']['use']:
             contrast_st = random.randrange(turn_candidates)
             c_st, c_ed, c_st_block, c_ed_block = self._rand_step(contrast_st, ep['steps'])
             ep_contrast = {
@@ -685,6 +723,8 @@ class Trainer:
         self.data_cnt_ema = self.args['batch_size'] * self.args['forward_steps']
         self.params = list(self.model.parameters())
         lr = self.default_lr * self.data_cnt_ema
+
+
         self.optimizer = optim.Adam(self.params, lr=lr, weight_decay=1e-5) if len(self.params) > 0 else None
         self.steps = 0
         self.batcher = Batcher(self.args, self.episodes)
@@ -721,7 +761,7 @@ class Trainer:
             time.sleep(0.1)
             return self.model
 
-        batch_cnt, data_cnt, loss_sum = 0, 0, {}
+        batch_cnt, data_cnt, loss_sum, result_dict = 0, 0, {}, {}
         if self.gpu > 0:
             self.trained_model.cuda()
         self.trained_model.train()
@@ -736,8 +776,15 @@ class Trainer:
                 batch = to_gpu(batch)
                 hidden = to_gpu(hidden)
 
+            losses, dcnt, state_index = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
+            # 訪問回数の集計
+            """dict_state_index = dict(collections.Counter(state_index))
+            for i in (result_dict.keys() | dict_state_index.keys()):
+                num1 = int(result_dict.get(i) or 0)
+                num2 = int(dict_state_index.get(i) or 0)
+                total = num1 + num2
+                result_dict[i] = total"""
             # loss の計算
-            losses, dcnt = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
             self.optimizer.zero_grad()
             losses['total'].backward()
             nn.utils.clip_grad_norm_(self.params, 4.0)
@@ -761,12 +808,18 @@ class Trainer:
                 loss_sum[k] = loss_sum.get(k, 0.0) + l.item()
 
             self.steps += 1
-
         print('loss = %s' % ' '.join([k + ':' + '%.3f' % (l / data_cnt) for k, l in loss_sum.items()]))
+        # 集計結果の保存
+        """with open('state_index_result.csv', 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames = list(result_dict.keys()))
+            writer.writeheader()
+            writer.writerows([result_dict])"""
 
         self.data_cnt_ema = self.data_cnt_ema * 0.8 + data_cnt / (1e-2 + batch_cnt) * 0.2
+
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = self.default_lr * self.data_cnt_ema / (1 + self.steps * 1e-5)
+
         self.model.cpu()
         self.model.eval()
         return copy.deepcopy(self.model)
