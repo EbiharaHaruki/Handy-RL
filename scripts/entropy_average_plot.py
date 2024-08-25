@@ -108,9 +108,9 @@ mix_mean = mix_mean / a
 if nn_flag == True and reg_flag == True:
     averaged_loss_lists = {"entropy_c_mixed" : mix_mean, "ent_c_nn" : nn_mean, "ent_c_reg" : reg_mean} #dict型に変換
 elif nn_flag == True and reg_flag == False:
-    averaged_loss_lists = {"ent_c_mixed" : mix_mean, "ent_c_nn" : nn_mean}
+    averaged_loss_lists = {"ent_c_nn" : nn_mean}
 elif nn_flag == False and reg_flag == True:
-    averaged_loss_lists = {"ent_c_mixed" : mix_mean, "ent_c_reg" : reg_mean}
+    averaged_loss_lists = {"ent_c_reg" : reg_mean}
 else:
     print("Not Regional!")
     sys.exit()

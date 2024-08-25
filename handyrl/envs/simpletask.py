@@ -97,6 +97,46 @@ class PVQCModel(nn.Module):
             'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l, 'confidence': c}
 
 
+# RSRS with R4D
+class R4DPVQCModel(nn.Module):
+    def __init__(self, args, hyperplane_n):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        confidence_size = 32
+        self.fc1 = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_p = nn.Linear(nn_size, 2**hyperplane_n) # policy
+        self.head_v = nn.Linear(nn_size, 1) # value
+        self.head_a = nn.Linear(nn_size, 2**hyperplane_n) # advantage
+        self.head_b = nn.Linear(nn_size, 1) # ベースライン
+        # 信頼度
+        ## 学習
+        self.fc_c = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_c = nn.Linear(nn_size, (2**hyperplane_n)*confidence_size)
+        ## 固定
+        self.fc_c_fix = nn.Linear(hyperplane_n + 1, nn_size)
+        self.head_c_fix = nn.Linear(nn_size, (2**hyperplane_n)*confidence_size)
+
+    def forward(self, x, hidden=None):
+        o = x.get('o', None)
+        h_l = self.fc1(o)
+        h = F.relu(h_l)
+        p = self.head_p(h)
+        v = self.head_v(h)
+        a = self.head_a(h)
+        b = self.head_b(h)
+        q = b + a - a.sum(-1).unsqueeze(-1)
+        h_c = F.relu(self.fc_c(o))
+        c = self.head_c(h_c)
+        h_c_fix = F.relu(self.fc_c_fix(o))
+        c_fix = self.head_c_fix(h_c_fix)
+        return {
+            'policy': p, 'value': v, 
+            'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l, 
+            'confidence_57': c, 'confidence_57_fix': c_fix}
+
+
 # RND
 class RNDModel(nn.Module):
     def __init__(self, args, hyperplane_n):
@@ -989,9 +1029,11 @@ class Environment(BaseEnvironment):
             self.true_state = self.state
             if self.jyotai_boolkari:
                 self.state = self.state_qnp[self.tree_list.index(self.state.tolist())]
-            #print(self.state)
         else: #初期位置を固定にする場合 (False)
             self.state = self.tree_np[0] #[-1, 0], [-1, 0, 0]を最初に入れる
+            self.true_state = self.state
+            if self.jyotai_boolkari:
+                self.state = self.state_qnp[self.tree_list.index(self.state.tolist())]
         if self.observation_noise > 0: # 観測ノイズの生成
             self.state_quantity()
 
@@ -1030,13 +1072,14 @@ class Environment(BaseEnvironment):
         #if self.n % 20000 == 0:
             #print("!!!n=",self.n)
         if self.pom_bool: #True
-            if self.pom_flag and (self.state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
+            if self.pom_flag and (self.true_state == self.treasure).all(axis=1).any(): #途中報酬の座標を通る && treasureの中にあるか
                 outcomes = [self.set_reward]
             self.pom_flag = 0
         else: #False
             if self.random_reward_bool: #確率的な報酬
-                if (self.state == self.treasure).all(axis=1).any():
-                    treasure_num = np.where((self.treasure == self.state).all(axis=1))[0][0]
+                #ここまで通るから下が通ってない
+                if (self.true_state == self.treasure).all(axis=1).any(): # ここはtrue
+                    treasure_num = np.where((self.treasure == self.true_state).all(axis=1))[0][0]
                     reward_choice = np.random.choice(self.random_reward[treasure_num], p=self.random_reward_p[treasure_num])
                     outcomes = [reward_choice]
             else:
@@ -1069,6 +1112,8 @@ class Environment(BaseEnvironment):
             rl_model = PVQModel(args, self.hyperplane_n)
         elif agent_type == 'RSRS':
             rl_model = PVQCModel(args, self.hyperplane_n)
+        elif agent_type == 'R4D-RSRS':
+            rl_model = R4DPVQCModel(args, self.hyperplane_n)
         else:
             rl_model = SimpleModel(args, self.hyperplane_n)
         # RND を任意の RL model に付随させる
@@ -1090,6 +1135,18 @@ class Environment(BaseEnvironment):
 
     def observation(self, player=None):
         return self.state.astype(np.float32)
+    
+    def observation_index(self,  a, player=None):
+         # action から次状態を取得してその index を返す
+        action = np.array([a], )
+        if self.jyotai_boolkari: # ランダムな状態量を通常の状態に変換
+            state = self.tree_np[self.state_qlist.index(self.state.tolist())]
+        action = self.action_list_np[action]
+        new_state_tmp = [state[i+1]+ action[0][i] for i in range(self.hyperplane_n)]
+        new_state = (state[0]+1,) + tuple(new_state_tmp)
+        new_state = np.array(new_state)
+
+        return self.tree_list.index(new_state.tolist())
 
     def legal_actions(self, player):
         legal_actions = np.arange(2**self.hyperplane_n)
