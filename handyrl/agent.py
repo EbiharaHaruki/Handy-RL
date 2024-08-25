@@ -127,7 +127,6 @@ class Agent:
             action_log['moment']['value'][player] = v
             action_log['moment']['selected_prob'][player] = selected_prob
             action_log['moment']['action_mask'][player] = action_mask
-            action_log['moment']['state_index'][player] = env.observation_index(action, player) # agent の軌跡可視化時に必要
 
         return action
 
@@ -319,7 +318,6 @@ class RSRSAgent(Agent):
             action_log['metadata']['action'][player] = one_hot_action
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg
-            action_log['moment']['state_index'][player] = env.observation_index(action,player)
             action_log['moment']['entropy_srs'][player] = entropy_srs
 
         return action
@@ -429,7 +427,6 @@ class R4DRSRSAgent(Agent):
             action_log['moment']['c'][player] = c
             action_log['moment']['c_reg'][player] = c_reg
             action_log['moment']['c_nn'][player] = c_nn
-            action_log['moment']['state_index'][player] = env.observation_index(action,player)
             # action_log['metadata']['entropy_srs'][player] = entropy_srs
 
         return action

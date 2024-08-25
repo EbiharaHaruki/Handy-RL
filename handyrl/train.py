@@ -84,7 +84,6 @@ def make_batch(episodes, step_init, step_length, args,
                 c = np.array([[[replace_none(m['c'][player], 0.0)] for player in players] for m in moments])
                 c_reg = np.array([[[replace_none(m['c_reg'][player], 0.0)] for player in players] for m in moments])
                 c_nn = np.array([[[replace_none(m['c_nn'][player], 0.0)] for player in players] for m in moments])
-                state_index = np.array([[[replace_none(m['state_index'][player], 0.0)] for player in players] for m in moments])
                 entropy_srs = np.array([[[replace_none(m['entropy_srs'][player], 0.0)] for player in players] for m in moments])
 
             # reshape observation
@@ -127,10 +126,10 @@ def make_batch(episodes, step_init, step_length, args,
                 entropy_srs = np.pad(entropy_srs, [(pad_len_b, pad_len_a), (0, 0), (0, 0)], 'constant', constant_values=0)
 
             obss.append(obs)
-            datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs, state_index))
+            datum.append((prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs))
 
     obs = to_torch(bimap_r(obs_zeros, rotate(obss), lambda _, o: np.array(o)))
-    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs, state_index = [to_torch(np.array(val)) for val in zip(*datum)]
+    prob, v, act, oc, rew, ret, ter, emask, tmask, omask, amask, progress, c, c_reg, c_nn, entropy_srs = [to_torch(np.array(val)) for val in zip(*datum)]
 
 
     return {
@@ -148,7 +147,6 @@ def make_batch(episodes, step_init, step_length, args,
         'c_reg': c_reg,
         'c_nn': c_nn,
         'entropy_srs': entropy_srs,
-        'state_index': state_index
     }
 
 
@@ -247,9 +245,6 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     mixed_c = batch['c']
     c_reg = batch['c_reg']
     c_nn = batch['c_nn']
-    state_index_tmp = batch['state_index']
-    state_index = state_index_tmp[:,0,0,0].tolist()
-    state_index = list(map(str,state_index))
     entropy_srs = batch['entropy_srs']
 
     # loss の箱
@@ -457,7 +452,7 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     entropy_loss = entropy.mul(1 - batch['progress'] * (1 - args['entropy_regularization_decay'])).sum() * -args['entropy_regularization']
     losses['total'] = base_loss + entropy_loss
 
-    return losses, dcnt, state_index
+    return losses, dcnt
 
 
 def compute_loss(batch, model, target_model, metadataset, hidden, args):
@@ -776,14 +771,7 @@ class Trainer:
                 batch = to_gpu(batch)
                 hidden = to_gpu(hidden)
 
-            losses, dcnt, state_index = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
-            # 訪問回数の集計
-            """dict_state_index = dict(collections.Counter(state_index))
-            for i in (result_dict.keys() | dict_state_index.keys()):
-                num1 = int(result_dict.get(i) or 0)
-                num2 = int(dict_state_index.get(i) or 0)
-                total = num1 + num2
-                result_dict[i] = total"""
+            losses, dcnt = compute_loss(batch, self.trained_model, self.target_model, self.metadataset, hidden, self.args)
             # loss の計算
             self.optimizer.zero_grad()
             losses['total'].backward()
@@ -809,11 +797,6 @@ class Trainer:
 
             self.steps += 1
         print('loss = %s' % ' '.join([k + ':' + '%.3f' % (l / data_cnt) for k, l in loss_sum.items()]))
-        # 集計結果の保存
-        """with open('state_index_result.csv', 'a', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames = list(result_dict.keys()))
-            writer.writeheader()
-            writer.writerows([result_dict])"""
 
         self.data_cnt_ema = self.data_cnt_ema * 0.8 + data_cnt / (1e-2 + batch_cnt) * 0.2
 
