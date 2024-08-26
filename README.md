@@ -288,7 +288,7 @@ python main.py --eval models/1.pth 100 4
         play_subagent_base_prob: 1.0 # サブエージェントが軌跡を生成する確率の初期値
         play_subagent_lower_prob: 0.5 # サブエージェントが軌跡を生成する確率の下限
         play_subagent_decay_per_ep: 0.000001 # サブエージェントが軌跡を生成する確率のエピソードごとの減少値
-        ASC_type: 使わない場合は '', 使う場合は次のいずれか 'VQ-SeTranVAE' or 'VAE' or 'VQ-VAE' or 'SeTranVAE' or 'VQ-SeTranVAE'
+        ASC_type: 使わない場合は '', 使う場合は次のいずれか 'SeTranVAE' or 'VQ-SeTranVAE'
         ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
         ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
         ASC_dropout: 0.2 # ASC model の dropout 率

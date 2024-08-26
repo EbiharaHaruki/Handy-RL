@@ -165,7 +165,8 @@ def forward_prediction(model, hidden, batch, args):
     observations = batch['observation']  # (..., B, T, P or 1, ...)
     actions = batch['action']  # (..., B, T, P or 1, ...)
     batch_shape = batch['action'].size()[:3]  # (B, T, P or 1)
-    if ('ASC_trajectory_length' in args['agent']) and (args['agent']['ASC_trajectory_length'] > 0):
+    use_ASC = ('ASC_trajectory_length' in args['agent']) and (args['agent']['ASC_trajectory_length'] > 0)
+    if use_ASC:
         observations_set = batch['set']['observation']  # (..., B, T, P or 1, ...)
         actions_set = batch['set']['action']  # (..., B, T, P or 1, ...)
 
@@ -174,12 +175,22 @@ def forward_prediction(model, hidden, batch, args):
         obs = map_r(observations, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         act = map_r(actions, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         inputs = {'o':obs, 'a':act}
-        if ('ASC_trajectory_length' in args['agent']) and (args['agent']['ASC_trajectory_length'] > 0):
-            obs_set = observations_set.squeeze(dim=2) 
-            act_set = actions_set.squeeze(dim=2) 
+        if use_ASC:
+            # obs_set = observations_set.squeeze(dim=2) 
+            # act_set = actions_set.squeeze(dim=2) 
+            obs_set = observations_set.transpose(1,2) 
+            act_set = actions_set.transpose(1,2)
+            set_batch_shape = act_set.size()[:2]  # (B, T, P or 1)
+            obs_set = map_r(obs_set, lambda o: o.flatten(0, 1))  # (..., B * T * P or 1, ...)
+            act_set = map_r(act_set, lambda o: o.flatten(0, 1))  # (..., B * T * P or 1, ...)
             inputs = {** inputs, **{'os': obs_set, 'as': act_set}}
         outputs = model(inputs)
-        outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape) if o.size(0) != batch_shape[0] else o)  # (..., B, T, P or 1, ...)
+        if use_ASC:
+            outputs_asc = outputs.pop('ASC') # TODO: ASC 飲みを取り出す強引な対応
+            outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape))  # (..., B, T, P or 1, ...)
+            outputs = {**outputs, **outputs_asc}
+        else:
+            outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape))  # (..., B, T, P or 1, ...)
     else:
         # sequential computation with RNN
         outputs = {}
@@ -475,8 +486,9 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
     actions = batch['action']
     # episode masks (2 人対戦ゲームなどで自分 episode だけに限定するなど？) を取り出す
     emasks = batch['episode_mask']
-    # vtrace で使う全体に対する係数（ハードコードで良いのか？）
-    clip_rho_threshold, clip_c_threshold = 1.0, 1.0
+    # vtrace で使う全体に対する係数
+    clip_rho_threshold = args.get('rho_threshold', 1.0)
+    clip_c_threshold = args.get('c_threshold', 1.0)
     # 挙動方策の確率を log したやつ 
     log_selected_b_policies = torch.log(torch.clamp(batch['selected_prob'], 1e-16, 1)) * emasks
     # 推定方策の確率を log したやつ 
@@ -510,6 +522,7 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
 
     if 'value' in outputs_nograd:
         values_nograd = outputs_nograd['value']
+        values = outputs['value']
         if args['turn_based_training'] and values_nograd.size(2) == 2:  # two player zerosum game
             # 2 人対戦ゲームで相手から見た value なので負に符号反転している
             values_nograd_opponent = -torch.stack([values_nograd[:, :, 1], values_nograd[:, :, 0]], dim=2)
@@ -581,8 +594,6 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
 
     # policy 用の advantage 計算が異なる場合，そのアルゴリズムに応じて target value を計算する
     if args['policy_target'] != args['value_target']:
-        # _, advantages['value'] = compute_target(args['policy_target'], *value_args)
-        # _, advantages['return'] = compute_target(args['policy_target'], *return_args)
         results = compute_target(args['policy_target'], *value_args)
         advantages['value'] = results['advantages']
         # results = compute_target(args['policy_target'], *return_args)

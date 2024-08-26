@@ -3,31 +3,30 @@ env_args:
     # env: 'Geister'
     # env: 'HungryGeese'
     # env: 'handyrl.envs.parallel_tictactoe'  # specify by path
-    env: 'simpletask'
+    env: 'simple_pyramid'
     param:
         depth: 6 # 深度(変更可能)
-        hyperplane_n: 2 # 超平面次元数(変更可能)
-        treasure: [[5, 2, 2]] # 報酬の場所(変更可能) #0番目は必ず(深度-1)になるように
-        set_reward: [1] # 報酬の値(変更可能)
-        other_reward: 0 # treasure以外に到達した時の報酬設定
+        hyperplane_dim: 2 # 超平面次元数(変更可能)
+        general_seed: -1 # 初期状態や報酬に関する乱数発生器の seed 
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
-        pomdp_setting: # 途中報酬への対応(POMDP)
-            pom_bool: False # 途中報酬を導入するか否か
-            pom_state: [1, 1] # 途中報酬の座標(ここを通らないと報酬が得られない)
-        random_trasures_setting: # 報酬の場所をランダムに設定
-            random_trasures_bool: False # 報酬の場所をランダムに設定するか / True: 設定する, False: 設定しない
-            random_trasures_num: 1 # 報酬の場所の個数
-        random_reward_setting: # 確率的な報酬設定 ※現在はPOMDPとの併用不可
-            random_reward_bool: False # 確率的な報酬で設定するか / True: 設定する, False: 設定しない
-            # random_reward: [[1], [1, 100]] # 報酬の量, 各要素は報酬の位置に対応
-            # random_reward_p: [[1], [0.9, 0.1]] # 報酬の確率 , 各要素の合計値は1になるように設定
-            random_reward: [[0, 1],[0, 1]]
-            random_reward_p: [[0.1, 0.9],[0.3, 0.7]]
-        uns_setting:
-            uns_bool: False # 非定常の導入するか否か
-            uns_num: 1000 # 非定常の周期（報酬位置をどの程度の間隔で変更するか）
-        observation_noise: 0 # 観測時にノイズがあるか（ 0:なし, 1:ノイズ小, 2;ノイズ大）
-        jyotai_boolkari: True # ランダムな状態量の有無
+        features:
+            seed: -1 # 特徴量関係の乱数 seed（保存対象）
+            dim: 2 # 0 だと特徴量が座標そのものになる, 1 以上なら任意の次元数の座標とは異なる特徴量が設定される
+            obs_var: 0.01 # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
+        rewards: 
+            depth: [6] # 報酬の深度(変更可能)，深度は内部で 1 から数える, depth と同値なら終端報酬 list 形式で複数設置可能
+            coordinates: [[1, 1]] # 報酬の超平面座標(変更可能), () ならランダムな超平面座標に設置
+            type: ['fix'] # 報酬関数の種類, binominal（二項分布）/ normal（正規分布）/ fix（固定値）
+            mu: [1.0] # 報酬平均, binominal（二項分布）では報酬確率 / normal（正規分布）では平均 / fix（固定値）では固定値
+            var: [0.0] # 報酬分散, normal（正規分布）では分散 / 他は使わない
+        keys: # POMDP 関係の設定, 報酬源が一つの時に適切に機能
+            depth: [] # 報酬の鍵の深度(変更可能), [] なら POMDP は使わない, 深度は内部で 1 から数える, depth と同値なら終端報酬 list 形式で複数設置可能
+            coordinates: [] # 報酬の鍵の超平面座標(変更可能), () ならランダムな超平面座標に設置
+        shift: # 環境の変異設定（非定常にできるのは座標ではなく特徴量を別設定している時のみ）
+            type: 'none' # 環境の変異パターン, none（しない）/ reset（完全変更）/ linear (線形変換)
+            intercept: 0.0 # 環境変異の特徴量変換の際の切片
+            slope: 1.0 # 環境変異の特徴量変換の際の傾き
+            interval_episodes: -1 # 環境変異の間隔
 
 
 train_args:
@@ -36,6 +35,8 @@ train_args:
     observation: False
     return_buckup: False # QL or AC or SAC => True, PG => False
     gamma: 1.0
+    rho_threshold: 1.0
+    c_threshold: 1.0
     forward_steps: 1 # QL => 2
     burn_in_steps: 0  # for RNNs
     compress_steps: 4
@@ -57,15 +58,15 @@ train_args:
     worker:
         num_parallel: 4
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
-    policy_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
-    value_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    policy_target: 'VTRACE' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    value_target: 'VTRACE' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
     agent:
-        type: 'R4D-RSRS' # 'BASE' 'QL' 'RSRS' 'RND' 'QL-RND' 'RSRS-RND', 'R4D-RSRS'
-        # use_RND: True
+        type: 'BASE' # 'BASE' 'QL' 'RSRS' 'RND' 'QL-RND' 'RSRS-RND', 'R4D-RSRS'
+        use_RND: True
         # meta_policy: '' # '' 'e-greedy' 'e-greedy' 'softmax'
         # mp_param: [] # [0.1]
         # subtype: '' # 'BASE' 'QL' 'RSRS'
@@ -92,20 +93,20 @@ train_args:
         cos_weighted: 0.01 # default: 0.1 # re_observation reconstruction cos_weighted loss coefficient for SeTranVAE and VQ-SeTranVAE
         hungarian: 1.0 # default: 0.8 # re_observation reconstruction hungarian loss coefficient for SeTranVAE and VQ-SeTranVAE
     metadata:
-        # name: []
-        # name: ['rnd_weight'] # Unimplemented
-        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
-        # name: ['global_aleph', 'regional_weight', 'global_return_size']
-        #knn:
-            #size: 10000
-            #k: 64
-        knn:
-            size: 4000
-            k: 24
-        regional_weight: 0.3
-        global_aleph: 1.0
-        global_return_size: 100
-        # rnd_weight: 2.0 # Unimplemented
+        name: []
+    #     # name: ['rnd_weight'] # Unimplemented
+    #     name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+    #     # name: ['global_aleph', 'regional_weight', 'global_return_size']
+    #     #knn:
+    #         #size: 10000
+    #         #k: 64
+    #     knn:
+    #         size: 4000
+    #         k: 24
+    #     regional_weight: 0.3
+    #     global_aleph: 1.0
+    #     global_return_size: 100
+    #     # rnd_weight: 2.0 # Unimplemented
 
 worker_args:
     server_address: '192.168.2.24'
