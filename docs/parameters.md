@@ -129,10 +129,8 @@ This parameters are used for training (`python main.py --train`, `python main.py
     * `ASC_type`, 
         * type = enum, The generative model architecture used in A-S-C.
         * `''`: Not using A-S-C.
-        * `VAE` 
-        * `VQ-VAE`
-        * `SeTranVAE`
-        * `VQ-SeTranVAE`
+        * `SeTranVAE`: VAE + Transformer(Set)
+        * `VQ-SeTranVAE`: VQ-VAE + Transformer(Set)
     * `ASC_trajectory_length`, type = int, The trajectory length for training with A-S-C (if 0, A-S-C is not used).
     * `ASC_mask_probabirity`, type = float, The probability of masking state-action pairs during training with A-S-C (currently not implemented).
     * `ASC_dropout`, type = float, The dropout rate for the A-S-C architecture.

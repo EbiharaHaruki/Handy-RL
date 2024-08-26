@@ -198,278 +198,6 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-# VAE パラメータ
-vae_latent_dim = 32
-vae_nn_size = [258, 128]
-
-# VAE
-## Encoder
-class Encoder(nn.Module):
-    def __init__(self, args, input_dim, action_num):
-        super().__init__()
-        self.args = args
-        self.action_num = action_num
-        self.fc1 = nn.Linear(input_dim + self.action_num, vae_nn_size[0])
-        self.fc2 = nn.Linear(vae_nn_size[0], vae_nn_size[1])
-        self.fc_ave = nn.Linear(vae_nn_size[1], vae_latent_dim) # 平均
-        self.fc_dev = nn.Linear(vae_nn_size[1], vae_latent_dim) # 標準偏差
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(self.args['ASC_dropout'])
-
-    def forward(self, o_in, a_in, hidden=None):
-        a_hot = F.one_hot(torch.squeeze(a_in), num_classes=self.action_num)
-        x = torch.cat((o_in, a_hot), 1)
-        h = self.fc1(x)
-        h = self.relu(h)
-        h = self.dropout(h)
-        h = self.fc2(h)
-        h = self.relu(h)
-        h = self.dropout(h)
-        ave = self.fc_ave(h)
-        log_dev = self.fc_dev(h)
-
-        # Reparametrization Trick
-        epsilon = torch.randn_like(ave)  # 平均0分散1の正規分布に従い生成されるz_dim次元の乱数ε
-        policy_latent = ave + torch.exp(log_dev / 2) * epsilon  # ζ = μ + σε
-        return {'policy_latent': policy_latent, 'average': ave, 'log_dev': log_dev}
-
-## Action decoder
-class ActionDecoder(nn.Module):
-    def __init__(self, args, input_dim, action_num):
-        super().__init__()
-        self.args = args
-        self.fc1 = nn.Linear(vae_latent_dim + input_dim, vae_nn_size[1])
-        self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_p = nn.Linear(vae_nn_size[0], action_num)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(self.args['ASC_dropout'])
-
-    def forward(self, latent, o_in, hidden=None):
-        x = torch.cat((latent, o_in), 1)
-        h = self.fc1(x)
-        h = self.relu(h)
-        h = self.dropout(h)
-        h = self.fc2(h)
-        h = self.relu(h)
-        h = self.dropout(h)
-        re_p = self.fc_p(h)
-        return {'re_policy': re_p}
-
-## Observation decoder
-class ObservationDecoder(nn.Module):
-    def __init__(self, args, input_dim, action_num):
-        super().__init__()
-        self.args = args
-        self.fc1 = nn.Linear(vae_latent_dim, vae_nn_size[1])
-        self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_o = nn.Linear(vae_nn_size[0], input_dim)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(self.args['ASC_dropout'])
-
-    def forward(self, latent, hidden=None):
-        h = self.fc1(latent)
-        h = self.relu(h)
-        h = self.dropout(h)
-        h = self.fc2(h)
-        h = self.relu(h)
-        h = self.dropout(h)
-        re_o = self.fc_o(h)
-        return {'re_observation': re_o}
-
-## Action-Observation VAE
-class AOVAE(nn.Module):
-    def __init__(self, args, encoder, a_decoder, o_decoder):
-        super().__init__()
-        self.args = args
-        self.encoder = encoder
-        self.a_decoder = a_decoder
-        self.o_decoder = o_decoder
-
-    def forward(self, o_in, a_in, hidden=None):
-        h_l = self.encoder(o_in, a_in)
-        re_p = self.a_decoder(h_l['policy_latent'], o_in)
-        re_s = self.o_decoder(h_l['policy_latent'])
-        return {**re_p, **re_s, **h_l}
-
-# RL with VAE wrapper model (ASC)
-class ASCModel(nn.Module):
-    def __init__(self, args, input_dim, action_num, rl_net):
-        super().__init__()
-        self.args = args
-        # RL モデル関連
-        self.rl_net = rl_net
-        ## 生成モデル関係
-        self.encoder = Encoder(args, input_dim, action_num)
-        self.action_decoder = ActionDecoder(args, input_dim, action_num)
-        self.observation_decoder = ObservationDecoder(args, input_dim, action_num)
-        self.vae = AOVAE(args, self.encoder, self.action_decoder, self.observation_decoder)
-
-    def forward(self, x, hidden=None):
-        o_in = x.get('o', None)
-        a_in = x.get('a', None)
-        latent = x.get('latent', None)
-        # RL model
-        out = self.rl_net(x)
-        # State-Action VAE
-        out_g = self.vae(o_in, a_in) if a_in!=None else None
-        if out_g is not None:
-            out = {**out, **out_g}
-        # VAE action decoder
-        out_g_p = self.action_decoder(o_in, latent) if latent!=None else None
-        if out_g_p is not None:
-            out = {**out, **out_g_p}
-        return out
-
-# VQ-VAE パラメータ
-vq_latent_size= 4 # lattent の個数，lattent の次元数そのものは vq_latent_dim * vq_embedding_dim
-vq_codebook_size = 8 # codebook の code　(embedding vector) の数
-vq_embedding_dim = 4 # embedding vector 1 つずつの長さ
-vq_nn_size = [258, 128]
-
-# VQ-VAE
-## Encoder (VQ)
-class VQEncoder(nn.Module):
-    def __init__(self, args, input_dim, action_num):
-        super().__init__()
-        self.args = args
-        self.action_num = action_num
-        self.fc1 = nn.Linear(input_dim + self.action_num, vae_nn_size[0])
-        self.fc2 = nn.Linear(vae_nn_size[0], vae_nn_size[1])
-        self.fc_latent = nn.Linear(vae_nn_size[1], vq_latent_size * vq_embedding_dim) # 潜在変数
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(self.args['ASC_dropout'])
-
-    def forward(self, o_in, a_in, hidden=None):
-        a_hot = F.one_hot(torch.squeeze(a_in), num_classes=self.action_num)
-        x = torch.cat((o_in, a_hot), 1)
-        h = self.fc1(x)
-        h = self.relu(h)
-        h = self.dropout(h)
-        h = self.fc2(h)
-        h = self.relu(h)
-        h = self.dropout(h)
-        policy_latent = self.fc_latent(h)
-        # policy_latent = policy_latent.view((policy_latent.size(0), vq_latent_dim, vq_embedding_dim))
-        return {'policy_latent': policy_latent}
-
-## Action decoder (VQ)
-class ActionVQDecoder(nn.Module):
-    def __init__(self, args, input_dim, action_num):
-        super().__init__()
-        self.args = args
-        self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim + input_dim, vae_nn_size[1])
-        self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_p = nn.Linear(vae_nn_size[0], action_num)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(self.args['ASC_dropout'])
-
-    def forward(self, latent, o_in, hidden=None):
-        # latent_flattened = latent.view((latent.size(0), vq_latent_dim * vq_embedding_dim))
-        latent_flattened = latent
-        x = torch.cat((latent_flattened, o_in), 1)
-        h = self.fc1(x)
-        h = self.relu(h)
-        h = self.dropout(h)
-        h = self.fc2(h)
-        h = self.relu(h)
-        h = self.dropout(h)
-        re_p = self.fc_p(h)
-        return {'re_policy': re_p}
-
-## Observation decoder (VQ)
-class ObservationVQDecoder(nn.Module):
-    def __init__(self, args, input_dim, action_num):
-        super().__init__()
-        self.args = args
-        self.fc1 = nn.Linear(vq_latent_size * vq_embedding_dim, vae_nn_size[1])
-        self.fc2 = nn.Linear(vae_nn_size[1], vae_nn_size[0])
-        self.fc_o = nn.Linear(vae_nn_size[0], input_dim)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(self.args['ASC_dropout'])
-
-    def forward(self, latent, hidden=None):
-        # latent_flattened = latent.view((latent.size(0), vq_latent_dim * vq_embedding_dim))
-        latent_flattened = latent
-        h = self.fc1(latent_flattened)
-        h = self.relu(h)
-        h = self.dropout(h)
-        h = self.fc2(h)
-        h = self.relu(h)
-        h = self.dropout(h)
-        re_o = self.fc_o(h)
-        return {'re_observation': re_o}
-
-## Vector quantizer
-class VectorQuantizer(nn.Module):
-    def __init__(self, args):
-        super().__init__()
-        self.args = args
-        self.latent_size = vq_latent_size
-        self.codebook_size = vq_codebook_size
-        self.embedding_dim = vq_embedding_dim
-        self.codebook = nn.Embedding(self.codebook_size, self.embedding_dim)
-        self.codebook.weight.data.uniform_(-1/self.codebook_size, 1/self.codebook_size)
-
-    def forward(self, latent):
-        latent_flattened = latent.contiguous().view(-1, self.embedding_dim) # [batch_size * forward_steps * player_num * latent_dim, embedding_dim]
-        distances = (torch.sum(latent_flattened**2, dim=-1, keepdim=True)
-                     + torch.sum(self.codebook.weight**2, dim=-1)
-                     - 2 * torch.matmul(latent_flattened, self.codebook.weight.t()))
-
-        encoding_indices = torch.argmin(distances, dim=-1).unsqueeze(1)
-        encodings = torch.zeros(encoding_indices.size(0), self.codebook_size, device=latent.device)
-        encodings.scatter_(1, encoding_indices, 1)
-        quantized_latent = torch.matmul(encodings, self.codebook.weight).view(latent.size())
-        policy_vq_latent = latent + (quantized_latent - latent).detach()
-        return {'policy_vq_latent': policy_vq_latent, 'quantized_policy_latent': quantized_latent}
-
-## Action-Observation VQ-VAE
-class AOVQVAE(nn.Module):
-    def __init__(self, args, encoder, a_decoder, o_decoder, quantizer):
-        super().__init__()
-        self.args = args
-        self.encoder = encoder
-        self.quantizer = quantizer
-        self.a_decoder = a_decoder
-        self.o_decoder = o_decoder
-
-    def forward(self, o_in, a_in, hidden=None):
-        h_l = self.encoder(o_in, a_in)
-        re_q = self.quantizer(h_l['policy_latent'])
-        re_p = self.a_decoder(re_q['policy_vq_latent'], o_in)
-        re_s = self.o_decoder(re_q['policy_vq_latent'])
-        return {**re_p, **re_s, **h_l, **re_q}
-
-# RL with VAE wrapper model (ASC)
-class ASCVQModel(nn.Module):
-    def __init__(self, args, input_dim, action_num, rl_net):
-        super().__init__()
-        self.args = args
-        # RL モデル関連
-        self.rl_net = rl_net
-        ## 生成モデル関係
-        self.encoder = VQEncoder(args, input_dim, action_num)
-        self.quantizer = VectorQuantizer(args)
-        self.action_decoder = ActionVQDecoder(args, input_dim, action_num)
-        self.observation_decoder = ObservationVQDecoder(args, input_dim, action_num)
-        self.vqvae = AOVQVAE(args, self.encoder, self.action_decoder, self.observation_decoder, self.quantizer)
-
-    def forward(self, x, hidden=None):
-        o_in = x.get('o', None)
-        a_in = x.get('a', None)
-        latent = x.get('latent', None)
-        # RL model
-        out = self.rl_net(x)
-        # State-Action VQ-VAE
-        out_g = self.vqvae(o_in, a_in) if a_in!=None else None
-        if out_g is not None:
-            out = {**out, **out_g}
-        # VQ-VAE action decoder
-        out_g_p = self.action_decoder(o_in, latent) if latent!=None else None
-        if out_g_p is not None:
-            out = {**out, **out_g_p}
-        return out
-
 
 # VAE + Transformer (SeTranVAE) パラメータ 
 tvae_latent_dim = 32 # 潜在変数の次元数
@@ -631,7 +359,7 @@ class TranASCModel(nn.Module):
         # State-Action VAE
         out_g = self.vae(os_in, as_in) if as_in!=None else None
         if out_g is not None:
-            out = {**out, **out_g}
+            out['ASC'] = out_g
         # VAE action decoder
         out_g_p = self.action_decoder(os_in, latent) if latent!=None else None
         if out_g_p is not None:
@@ -824,8 +552,6 @@ class EMATranVectorQuantizer(nn.Module):
         if generating_from_uniform:
             # ランダムにコードブックから生成する
             noize_one_hot = F.one_hot(torch.randint(low=0, high=self.codebook_size, size=(1, self.latent_size)), num_classes=self.codebook_size).to(torch.float)
-            # print(f'<><><> noize_one_hot.size(): {noize_one_hot.size()}')
-            # print(f'<><><> self.codebook.weight.size(): {self.codebook.weight.size()}')
             quantized_latent = torch.bmm(noize_one_hot, self.codebook.weight.unsqueeze(0)).view(1, 1, -1).detach()
 
             return {'policy_vq_latent_set': None, 'quantized_policy_latent_set': quantized_latent, 'codebook_set': self.codebook.weight}    
@@ -913,7 +639,7 @@ class VQTranASCModel(nn.Module):
         # State-Action VAE
         out_g = self.vae(os_in, as_in) if as_in!=None else None
         if out_g is not None:
-            out = {**out, **out_g}
+            out['ASC'] = out_g
         # VAE action decoder
         out_g_p = self.action_decoder(os_in, latent) if latent!=None else None
         if out_g_p is not None:
@@ -1293,11 +1019,7 @@ class Environment(BaseEnvironment):
             rl_model = RLwithRNDModel(args, self.input_dim, self.action_num, rl_model)
         # ASC model
         asc_type = args.get('ASC_type', '')
-        if asc_type == 'VAE':
-            rl_model = ASCModel(args, self.input_dim, self.action_num, rl_model)
-        elif asc_type == 'VQ-VAE':
-            rl_model = ASCVQModel(args, self.input_dim, self.action_num, rl_model)
-        elif asc_type == 'SeTranVAE':
+        if asc_type == 'SeTranVAE':
             rl_model = TranASCModel(args, self.input_dim, self.action_num, rl_model)
         elif asc_type == 'VQ-SeTranVAE':
             rl_model = VQTranASCModel(args, self.input_dim, self.action_num, rl_model)

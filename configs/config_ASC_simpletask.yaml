@@ -65,7 +65,7 @@ train_args:
         use_RND: True
         meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
         mp_param: [0.8] # [0.1]
-        ASC_type: 'VQ-SeTranVAE' # False, 'VAE', 'VQ-VAE', 'SeTranVAE', 'VQ-SeTranVAE'
+        ASC_type: 'VQ-SeTranVAE' # False, 'SeTranVAE', 'VQ-SeTranVAE'
         ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
         ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
         ASC_dropout: 0.2 # ASC model の dropout 率
