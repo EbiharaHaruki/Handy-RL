@@ -15,6 +15,7 @@ import itertools
 import sys
 import datetime
 import math
+import os
 
 from torch.nn import init
 import torch.optim as optim
@@ -737,7 +738,6 @@ class Environment(BaseEnvironment):
             dt_now = datetime.datetime.now()
             self.general_seed =  (dt_now.hour * 60 * 60) + (dt_now.minute * 60) + dt_now.second # 非保存対象の乱数 seed
         self.general_rng = np.random.default_rng(self.general_seed)
-        self.save_rng_seed(self.general_seed, 'general', filename='feature_rng_seed.txt') # 乱数保存ファイルに日時と共に末尾に追加
 
         # 特徴量設定
         self.feature_seed = self.param['features']['seed'] # 特徴量関係の乱数 seed（保存対象）
@@ -745,7 +745,6 @@ class Environment(BaseEnvironment):
             dt_now = datetime.datetime.now()
             self.feature_seed = dt_now.microsecond # 特徴量関係の乱数 seed（保存対象）
         self.feature_rng = np.random.default_rng(self.feature_seed) # 読み込み再現可能な状態特徴量初期化用の乱数発生器
-        self.save_rng_seed(self.feature_seed, 'feature', filename='feature_rng_seed.txt') # 乱数保存ファイルに日時と共に末尾に追加
         self.feature_dim = self.param['features']['dim'] # 0 だと特徴量が座標そのものになる, 1 以上なら任意の次元数の座標とは異なる特徴量が設定される
         self.feature_f = self.feature_func if self.feature_dim != 0 else None # 特徴量関係の乱数発生器
         self.obs_var = self.param['features']['obs_var'] # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
@@ -918,15 +917,6 @@ class Environment(BaseEnvironment):
                             grid_nodes[d][indices].set_terminal()
         return nodes
 
-    # seed を保存する関数
-    def save_rng_seed(self, seed, rng_type, filename='rng_seed.txt'):        
-        # 現在の日時を取得
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        # シードと日時をファイルに追記（ファイルがなければ作成）
-        with open(filename, 'a') as file:
-            file.write(f'{current_time} - {rng_type} Seed: {seed}\n')
-
     # タスクリセット
     def reset(self, args={}): 
         if self.start_random: #初期位置をランダムにする場合 (True)
@@ -971,7 +961,10 @@ class Environment(BaseEnvironment):
         self.shift_count += 1
         return False
 
-    def fprint_env_status(self, role):
+    def fprint_env_status(self, role, worker_id=None):
+        dirname = 'env_status_log'
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if role == 't':
             role_str = 'train_'
@@ -981,11 +974,13 @@ class Environment(BaseEnvironment):
             role_str = 'evaluation_'
         else:
             role_str = ''
-        filename = './env_status_log/simple_pyramid_' + role_str + current_time + '.txt'
+        logname = 'simple_pyramid_' + role_str + ('' if worker_id is None else 'wid' + str(worker_id) + '_') + current_time + '.csv'
+        filename = os.path.join(dirname, logname)
 
         with open(filename, 'a') as file:
-            file.write(f'general_seed:{self.general_seed}\n')
-            file.write(f'feature_seed:{self.feature_seed}\n')
+            file.write(f'general_seed, feature_seed\n')
+            file.write(f'{self.general_seed}, {self.feature_seed}\n')
+            file.write(f'depth, index, coordinates, features, reward, visit_count\n')
 
         for d in range(self.depth):
             _d = d+1
@@ -993,7 +988,7 @@ class Environment(BaseEnvironment):
                 # 全てのノードの訪問回数を depth と共に保存
                 reward = '-' if node.r_type is None else node.r_m
                 with open(filename, 'a') as file:
-                    file.write(f'depth:{_d}, index:{i}, coordinates:{node.coordinates}, features:{node.features}, reward:{reward}, visit_count:{node.visit_count}\n')
+                    file.write(f'{_d}, {i}, {node.coordinates}, {node.features}, {reward}, {node.visit_count}\n')
         return True
 
     # seed の出力

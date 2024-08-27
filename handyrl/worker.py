@@ -115,7 +115,7 @@ class Worker:
 
             self.episode_count += 1
             if self.episode_count % self.args['saving_env_status_interval_episodes'] == 0:
-                self.env.fprint_env_status(role) # 環境の状態ログを出力            
+                self.env.fprint_env_status(role, self.worker_id) # 環境の状態ログを出力            
 
             models = {}
             if 'model_id' in args:

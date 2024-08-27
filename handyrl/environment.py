@@ -155,7 +155,7 @@ class BaseEnvironment:
     #
     # Should be defined if you want to display the environment's status
     #
-    def fprint_env_status(self, role):
+    def fprint_env_status(self, role, worker_id):
         return False
 
     #
