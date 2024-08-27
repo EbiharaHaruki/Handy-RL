@@ -69,20 +69,24 @@ python main.py --train
 ```
 python main.py --eval models/1.pth 100 4
 ```
-注意: デフォルトの対戦相手AIは`evaluation.py`で実装されたランダムなエージェントです．また，自分で任意のエージェントに変更することができます．
+
+#### 注意
+- デフォルトの対戦相手AIは`evaluation.py`で実装されたランダムなエージェントです．また，自分で任意のエージェントに変更することができます．
+- 環境の状態特徴量が実行の度ランダムに設定される (e.g. `simple_pyramid.py`) 場合，feature に関する seed を学習時と合わせないと正しく評価できません．
+    - 報酬や初期状態，観測ノイズ等の乱数 seed はもちろん合わせなくて OK
 
 
+### Extra 1: n回平均報酬グラフをプロット
+任意の実行回数分データを `trainlog` 内に日付名のディレクトリを生成して収集し，平均報酬をプロットします．以下のコマンドは `simple_pyramid.py` 環境を 10回分の報酬データを平均してグラフを生成します．
 
-### Extra 1: n回平均勝率グラフをプロット
-任意の実行回数分データを収集し，平均勝率をプロットします．以下のコマンドは10回分の勝率データを平均してグラフを生成します．
+#### 注意
+- `config.yaml`の `env_args` の `env` パラメータで決まる環境名と以下 bash コマンドの環境名は同じである必要があります（違ってもエラーは出ない）
+- bash 環境名はグラフの出力時のタイトルになります．
+- 実行時に `環境名.py` と `config.yaml` が日付名ディレクトリにコピーされ保存されます
+    - ハイパーパラメータとモデル構造を保存するため
+
 ```
-. bash_scripts/experiment.sh 10
-```
-
-### Extra 2: n回平均報酬グラフをプロット
-任意の実行回数分データを収集し，平均報酬をプロットします．以下のコマンドは10回分の報酬データを平均してグラフを生成します．ここで，`config.yaml`のパラメータset_rewardで報酬の値を変更できます．
-```
-. bash_scripts/experiment_reward.sh 10
+. bash_scripts/experiment_reward.sh 10 simple_pyramid
 ```
 
 ## アルゴリズムの指定方法
@@ -107,7 +111,8 @@ python main.py --eval models/1.pth 100 4
     policy_target: 'UPGO', 'VTRACE','TD', or 'MC'
     value_target: 'UPGO', 'VTRACE','TD', or 'MC'
     agent: 
-        type: 'BASE' or `RND` # RND を利用する場合は後者
+        type: 'BASE'
+        use_RND: True # RND を利用する場合
         # meta_policy: 記載しない 
     metadata:
         name: [] # 使わない
@@ -129,7 +134,8 @@ python main.py --eval models/1.pth 100 4
     policy_target: 'TD-Q-HARDMAX'
     value_target: 'TD-Q-HARDMAX'
     agent: 
-        type: 'QL' or 'QL-RND' # RND を利用する場合は後者
+        type: 'QL'
+        use_RND: True # RND を利用する場合
         meta_policy: 'e-greedy' or 'softmax'
         param: [0.1] # 'e-greedy' ならランダム選択確率，'softmax' なら温度パラメータの数値（list にしているのは今後アルゴリズムが増えた場合を見据えて）
     metadata:
@@ -154,7 +160,8 @@ python main.py --eval models/1.pth 100 4
     policy_target: 'UPGO', 'VTRACE','TD', or 'MC'
     value_target: 'UPGO', 'VTRACE','TD', or 'MC'
     agent: 
-        type: 'BASE' or `RND` # RND を利用する場合は後者
+        type: 'BASE'
+        use_RND: True # RND を利用する場合は後者
         # meta_policy: 記載しない 
     metadata:
         name: []
@@ -177,7 +184,8 @@ python main.py --eval models/1.pth 100 4
     policy_target: 'TD-Q'
     value_target: 'TD-Q'
     agent: 
-        type: 'RSRS' or `RSRS-RND` # RND を利用する場合は後者
+        type: 'RSRS'
+        use_RND: True # RND を利用する場合は後者
         # meta_policy: 記載しない 
     metadata:
         # name: ['global_aleph', 'global_return_size'] # K 近傍法を使わない場合
@@ -210,7 +218,8 @@ python main.py --eval models/1.pth 100 4
     policy_target: 'TD-Q-HARDMAX'
     value_target: 'TD-Q-HARDMAX'
     agent: 
-        type: 'RSRS' or `RSRS-RND` # RND を利用する場合は後者
+        type: 'RSRS'
+        use_RND: True # RND を利用する場合
         # meta_policy: 記載しない 
     metadata:
         # name: ['global_aleph', 'global_return_size'] # K 近傍法を使わない場合
@@ -244,7 +253,8 @@ python main.py --eval models/1.pth 100 4
     policy_target: 'UPGO', 'VTRACE','TD', or 'MC'
     value_target: 'UPGO', 'VTRACE','TD', or 'MC'
     agent: 
-        type: 'RSRS' or `RSRS-RND` # RND を利用する場合は後者
+        type: 'RSRS'
+        use_RND: True # RND を利用する場合
         # meta_policy: 記載しない 
     metadata:
         # name: ['global_aleph', 'global_return_size'] # K 近傍法を使わない場合
@@ -261,6 +271,47 @@ python main.py --eval models/1.pth 100 4
 - Global Value の更新法は現在ハードコードされている
 - Policy は IS のためにしか使用していない
 
+
+## A-S-C 系アルゴリズム
+以下の特徴を持つアルゴリズムを指定する場合
+- 方策の表現学習 (A-S-C) を行う
+- `subtype` で指定された行動で軌跡生成する（設定値はそれらのエージェント参照）
+- RND (Random Network Distillation) も併用可能
+
+以下の `config.yaml` の該当箇所を変更
+その他のパラメータは `subtype` エージェントの設定に依存する
+```
+    agent: 
+        type: 'A-S-C'
+        use_RND: True # RND を利用する場合
+        subtype: 任意のエージェント
+        play_subagent_base_prob: 1.0 # サブエージェントが軌跡を生成する確率の初期値
+        play_subagent_lower_prob: 0.5 # サブエージェントが軌跡を生成する確率の下限
+        play_subagent_decay_per_ep: 0.000001 # サブエージェントが軌跡を生成する確率のエピソードごとの減少値
+        ASC_type: 使わない場合は '', 使う場合は次のいずれか 'SeTranVAE' or 'VQ-SeTranVAE'
+        ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
+        ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
+        ASC_dropout: 0.2 # ASC model の dropout 率
+    contrastive_learning: 
+        use: True # Whether to perform contrastive learning
+        temperature: 0.5 # The temperature parameter in contrastive learning 
+    loss_coefficient:
+        rl: 1.0 # default: 1.0 # RL loss coefficient
+        rnd: 1.0 # default: 1.0 # RND loss coefficient
+        recon: 1.0 # default: 1.0 # reconstruction loss coefficient for VAE and VQ-VAE
+        vae_kl: 1.0 # default: 1.0 # KL loss coefficient for VAE
+        codebook: 1.0 # default: 1.0 # reconstruction loss coefficient for VQ-VAE
+        commitment: 0.25 # default: 0.25 # commitment coefficient for VQ-VAE
+        contrast: 1.0 # default: 1.0  # commitment coefficient for contrastive learning
+        recon_p_set: 1.0 # default: 1.0 # policy reconstruction loss coefficient for SeTranVAE and VQ-SeTranVAE
+        recon_o_set: 1.0 # default: 1.0 # re_observation reconstruction loss coefficient for SeTranVAE and VQ-SeTranVAE
+        cos_weighted: 0.01 # default: 0.1 # re_observation reconstruction cos_weighted loss coefficient for SeTranVAE and VQ-SeTranVAE
+        hungarian: 1.0 # default: 0.8 # re_observation reconstruction hungarian loss coefficient for SeTranVAE and VQ-SeTranVAE
+```
+- metadata は model 更新（update_episodes の間隔）と同じタイミングで Learner から Generator に転送される
+- ただし model と異なり list として Generator に保存されず上書き更新される
+- Global Value の更新法は現在ハードコードされている
+- Policy は IS のためにしか使用していない
 
 
 

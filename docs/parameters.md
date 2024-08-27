@@ -105,19 +105,52 @@ This parameters are used for training (`python main.py --train`, `python main.py
     * `type`, type = enum
         * agent type and corresponding model type.
         * `BASE`, agent that selects based on the policy distribution
-        * `RND`, agent that selects based on the policy distribution, with RND (Random Network Distillation)
         * `QL`, agent that selects based on the Q-value
-        * `QL-RND`, agent that selects based on the Q-value, with RND (Random Network Distillation)
-            * **NOTE** for Q-value based selection, both `QL` and `QL-RND` require setting a `meta_policy` and its parameters (`param`).
+            * **NOTE** for Q-value based selection, both `QL` require setting a `meta_policy` and its parameters (`param`).
         * `RSRS`, agent that selects based on the RS^2 policy
-        * `RSRS-RND`, agent that selects based on the RS^2 policy, with RND (Random Network Distillation)
+        * `A-S-C`, agent that selects based on the A-S-C agent
+    * `use_RND`, type = boolean, The choice of whether to use RND (Random Network Distillation).
     * `meta_policy`, type = enum 
         * `greedy`
-        * `e-greedy`, epsilon-greedy 
-        * `softmax`
-    * `param`, type = list
+        * `e-greedy`, $\varepsilon$-greedy 
+        * `softmax`, softmax
+    * `mp_param`, type = list
         * if using e-greedy, the parameter becomes the random search probability (epsilon: 1D), and if using softmax, it becomes the temperature parameter (tau: 1D)
         * **NOTE** in the future, it is set as a List type in case of introducing decay algorithms, etc.
+    * `subtype`, type enum
+        * agent type and corresponding model type in A-S-C.
+        * `BASE`, agent that selects based on the policy distribution
+        * `QL`, agent that selects based on the Q-value
+            * **NOTE** for Q-value based selection, both `QL` require setting a `meta_policy` and its parameters (`param`).
+        * `RSRS`, agent that selects based on the RS^2 policy, The minimum probability that sub-agents generate trajectories in A-S-C.
+    * `play_subagent_base_prob`, type = float, The initial probability that sub-agents generate trajectories in A-S-C.
+    * `play_subagent_lower_prob`, type = float, The minimum probability that sub-agents generate trajectories in A-S-C.
+    * `play_subagent_decay_per_ep`, type = float, The per-episode decrease in the probability that sub-agents generate trajectories in A-S-C.
+    * `ASC_type`, 
+        * type = enum, The generative model architecture used in A-S-C.
+        * `''`: Not using A-S-C.
+        * `SeTranVAE`: VAE + Transformer(Set)
+        * `VQ-SeTranVAE`: VQ-VAE + Transformer(Set)
+    * `ASC_trajectory_length`, type = int, The trajectory length for training with A-S-C (if 0, A-S-C is not used).
+    * `ASC_mask_probabirity`, type = float, The probability of masking state-action pairs during training with A-S-C (currently not implemented).
+    * `ASC_dropout`, type = float, The dropout rate for the A-S-C architecture.
+    * `loss_coefficient`
+        * The coefficient of each loss.
+        * `rl`, type = float, RL loss coefficient (default: 1.0).
+        * `rnd`, type = float, RND loss coefficient (default: 1.0).
+        * `recon`, type = float, reconstruction loss coefficient for VAE and VQ-VAE (default: 1.0).
+        * `vae_kl`, type = float, KL loss coefficient for VAE (default: 1.0).
+        * `codebook`, type = float, reconstruction loss for VQ-VAE (default: 1.0).
+        * `commitment`, type = float, commitment coefficient for VQ-VAE (default: 0.25).
+        * `contrast`, type = float, commitment coefficient for contrastive learning (default: 1.0).
+        * `recon_p_set`, type = float, policy reconstruction loss coefficient for SeTranVAE and VQ-SeTranVAE (default: 1.0).
+        * `recon_o_set`, type = float, re_observation reconstruction loss coefficient for SeTranVAE and VQ-SeTranVAE (default: 1.0).
+        * `cos_weighted`, type = float, re_observation reconstruction cos_weighted loss coefficient for SeTranVAE and VQ-SeTranVAE (default: 0.1).
+        * `hungarian`, type = float 1.0, re_observation reconstruction hungarian loss coefficient for SeTranVAE and VQ-SeTranVAE (default: 0.8).
+    * contrastive_learning: 
+        * The parameter for contrastive learning with identical trajectories and latent variables in A-S-C.
+        * `use`, type = boolean, Whether to perform contrastive learning.
+        * `temperature`, type = float, The temperature parameter in contrastive learning.
     * `metadata`
         * setting of metadata transferred from Learner to Generator at the same interval as the model update 
         * however, unlike the model list, it is not accumulated in the Generator and is updated by replacement every time

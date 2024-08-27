@@ -56,7 +56,7 @@ class ModelWrapper(nn.Module):
         with torch.no_grad():
             xt = map_r(x, lambda x: torch.from_numpy(np.array(x)).contiguous().unsqueeze(0) if x is not None else None)
             ht = map_r(hidden, lambda h: torch.from_numpy(np.array(h)).contiguous().unsqueeze(0) if h is not None else None)
-            outputs = self.forward(xt, ht, **kwargs)
+            outputs = self.forward(xt, hidden=ht, **kwargs)
         return map_r(outputs, lambda o: o.detach().numpy().squeeze(0) if o is not None else None)
 
 
@@ -67,7 +67,7 @@ class RandomModel(nn.Module):
         super().__init__()
         wrapped_model = ModelWrapper(model)
         hidden = wrapped_model.init_hidden()
-        outputs = wrapped_model.inference(x, hidden)
+        outputs = wrapped_model.inference(x, hidden=hidden)
         self.output_dict = {key: np.zeros_like(value) for key, value in outputs.items() if key != 'hidden'}
 
     def inference(self, *args):

@@ -104,6 +104,7 @@ def exec_match(env, agents, critic=None, show=False, game_args={}):
     outcome = env.outcome()
     if show:
         print('final outcome = %s' % outcome)
+        env.fprint_env_status('e') # 環境の状態ログを出力
     return outcome
 
 
@@ -117,6 +118,7 @@ def exec_network_match(env, network_agents, critic=None, show=False, game_args={
     while not env.terminal():
         if show:
             view(env)
+            env.fprint_env_status('e') # 環境の状態ログを出力
         if show and critic is not None:
             print('cv = ', critic.observe(env, None, show=False)[0])
         turn_players = env.turns()
@@ -165,7 +167,7 @@ class Evaluator:
             if model is None:
                 agents[p] = build_agent(opponent, self.env)
             else:
-                agents[p] = agent_class(self.args['agent'])(model, metadataset)
+                agents[p] = agent_class(self.args['agent'])(model, metadataset, role='e')
 
         outcome = exec_match(self.env, agents)
         if outcome is None:
@@ -193,7 +195,8 @@ def eval_process_mp_child(agents, critic, env_args, index, in_queue, out_queue, 
         print('*** Game %d ***' % g)
         agent_map = {env.players()[p]: agents[ai] for p, ai in enumerate(agent_ids)}
         if isinstance(list(agent_map.values())[0], NetworkAgent):
-            outcome = exec_network_match(env, agent_map, critic, show=show, game_args=game_args)
+            # outcome = exec_network_match(env, agent_map, critic, show=show, game_args=game_args)
+            outcome = exec_match(env, agent_map, critic, show=show, game_args=game_args)
         else:
             outcome = exec_match(env, agent_map, critic, show=show, game_args=game_args)
         out_queue.put((pat_idx, agent_ids, outcome))
@@ -367,7 +370,7 @@ def client_mp_child(agent_args, env_args, model_path, conn):
     agent = build_agent(model_path, env)
     if agent is None:
         model = load_model(model_path, env.net())
-        agent = agent_class(agent_args['agent'])(model)
+        agent = agent_class(agent_args['agent'])(model, role='e')
     NetworkAgentClient(agent, env, conn).run()
 
 
@@ -382,8 +385,8 @@ def eval_main(args, argv):
 
     agent1 = build_agent(model_path, env)
     if agent1 is None:
-        model = load_model(model_path, env.net(args['train_args']['agent']['type']))
-        agent1 = agent_class(args['train_args']['agent'])(model, args['train_args']['metadata'])
+        model = load_model(model_path, env.net(args['train_args']['agent']))
+        agent1 = agent_class(args['train_args']['agent'])(model, metadataset=args['train_args']['metadata'], role='e')
     critic = None
 
     print('%d process, %d games' % (num_process, num_games))

@@ -18,6 +18,7 @@ class Generator:
     def __init__(self, env, args):
         self.env = env
         self.args = args
+        # RS 関係の処理
         if 'global_aleph' in args['metadata']['name']:
             self.global_v = {}
             self.global_n = {}
@@ -44,6 +45,7 @@ class Generator:
             return None
         for player in self.env.players():
             # hidden[player] = models[player].init_hidden() # Reccurent model のための隠れ状態
+            self.args['agent']['play_subagent_prob'] = args['play_subagent_prob']
             agents[player] = agent_class(self.args['agent'])(models[player], metadataset[player], role='g', args=self.args['agent'])
             metadata_keys += agents[player].reset(self.env) ## init_hidden() も行われる
             if hasattr(self, 'global_v'):
@@ -139,7 +141,7 @@ class Generator:
         # forward_steps で終端まで見なかったり MC 法を使わない場合には終端の buck up 用のダミー状態を入力
         # Q 学習等のためには終端の後にもう一つ state などの情報を格納する必要がある
         # post terminal state(summy)
-        if not self.args['return_buckup']:
+        if self.args['return_buckup']:
             last_moment = copy.deepcopy(moments[len_episode-1])
             last_moment['reward'][player] = 0.0 # reward を 0 に
             last_moment['terminal'][player] = 1 # dummy

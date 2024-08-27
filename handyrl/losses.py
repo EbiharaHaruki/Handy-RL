@@ -93,23 +93,24 @@ def upgo(values, returns, rewards, teaminals, bonuses, lmb, gamma):
     return {'target_values': target_values, 'advantages': target_values - values}
 
 
-def vtrace(values, returns, rewards, teaminals, lmb, gamma, rhos, cs):
+def vtrace(values, returns, rewards, teaminals, bonuses, lmb, gamma, rhos, cs):
     rewards = rewards if rewards is not None else 0
-    values_t_plus_1 = torch.cat([values[:, 1:], returns[:, -1:]], dim=1)
-    deltas = rhos * (rewards + gamma * values_t_plus_1 - values)
+    bonuses = bonuses if bonuses is not None else 0
+    values_t_plus_1 = torch.cat([values[:, 1:], returns[:, -1:]], dim=1) # value of next obs
+    deltas = rhos * (rewards + bonuses + gamma * values_t_plus_1 - values) # TD-error
 
     # compute Vtrace value target recursively
-    vs_minus_v_xs = deque([deltas[:, -1]])
+    multi_step_deltas = deque([deltas[:, -1]])
     for i in range(values.size(1) - 2, -1, -1):
         not_teaminals = (1.0 - teaminals[:, i+1]) if teaminals is not None else 1
-        vs_minus_v_xs.appendleft(deltas[:, i] + not_teaminals * gamma * lmb * cs[:, i] * vs_minus_v_xs[0])
+        multi_step_deltas.appendleft(deltas[:, i] + not_teaminals * gamma * lmb * cs[:, i] * multi_step_deltas[0])
 
-    vs_minus_v_xs = torch.stack(tuple(vs_minus_v_xs), dim=1)
-    vs = vs_minus_v_xs + values
-    vs_t_plus_1 = torch.cat([vs[:, 1:], returns[:, -1:]], dim=1)
-    advantages = rewards + gamma * vs_t_plus_1 - values
+    multi_step_deltas = torch.stack(tuple(multi_step_deltas), dim=1)
+    target_values = multi_step_deltas + values
+    target_values_t_plus_1 = torch.cat([target_values[:, 1:], returns[:, -1:]], dim=1)
+    advantages = rewards + bonuses + gamma * target_values_t_plus_1 - values
 
-    return {'target_values': vs, 'advantages': advantages}
+    return {'target_values': target_values, 'advantages': advantages}
 
 
 def compute_rnd(embed_state, embed_state_fix):
@@ -132,6 +133,6 @@ def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, r
     elif algorithm == 'UPGO':
         return upgo(values, returns, rewards, teaminals, bonuses, lmb, gamma)
     elif algorithm == 'VTRACE':
-        return vtrace(values, returns, rewards, teaminals, lmb, gamma, rhos, cs)
+        return vtrace(values, returns, rewards, teaminals, bonuses, lmb, gamma, rhos, cs)
     else:
         print('No algorithm named %s' % algorithm)

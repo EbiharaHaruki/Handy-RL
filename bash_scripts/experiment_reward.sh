@@ -1,11 +1,13 @@
 #! /bin/bash
-# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数]
+# Usage: . bash_scripts/experiment_reward.sh [任意の実行回数] [environment の ファイル名, .py 除く]
 
 DATE=`date +%Y%m%d%H%M` #実験日時を取得
 mkdir trainlog/$DATE #実験日時のディレクトリ作成
 
 N=$1 #標準入力から実験回数を取得
+ENV=$2
 eval "cp config.yaml trainlog/$DATE/config.yaml"
+eval "cp handyrl/envs/$ENV.py trainlog/$DATE/$ENV.py"
 
 ex_base="python3 -u main.py --train | tee trainlog/$DATE/train_log_xxx.txt" #ログを取りながら学習させる
 model_cp="cp models/latest.pth trainlog/$DATE/latest_xxx.pth" #最終モデルも保存
@@ -22,7 +24,7 @@ done
 
 # echo @kumejun $DATE の実験 $N 回やったよ！！ | bash_scripts/slack_alarm.sh #slackに実験が終わったら通知を送る機能（別途で設定する必要あり）
 
-plot_now="timeout 10 python3 scripts/reward_average_plot.py 0 simpletask $DATE" #回数分のログの可視化
+plot_now="timeout 10 python3 scripts/reward_average_plot.py $N $ENV $DATE" #回数分のログの可視化
 eval $plot_now
 cd trainlog
 zip -r $DATE.zip $DATE

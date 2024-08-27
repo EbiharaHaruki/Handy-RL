@@ -2,7 +2,10 @@
 # Licensed under The MIT License [see LICENSE for details]
 
 import numpy as np
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from scipy.optimize import linear_sum_assignment
 
 def map_r(x, callback_fn=None):
     # recursive map function
@@ -61,3 +64,24 @@ def rotate(x, max_depth=1024):
 def softmax(x):
     x = np.exp(x - np.max(x, axis=-1, keepdims=True))
     return x / x.sum(axis=-1, keepdims=True)
+
+
+def hungarian(predictions, targets):
+    # Compute cosine similarity matrix for the entire batch
+    cosine_sim = F.cosine_similarity(predictions.unsqueeze(2), targets.unsqueeze(1), dim=-1) # Shape: (batch_size, predictions_size, targets_size)
+
+    
+    # Convert cosine similarity to a cost matrix for the Hungarian algorithm
+    cost_matrix = ((1 - cosine_sim)/2).detach().numpy()  # Shape: (batch_size, predictions_size, targets_size)
+
+    # Solve the linear sum assignment problem (Hungarian algorithm)
+    index = torch.Tensor([linear_sum_assignment(cost_matrix[i, :, :]) for i in range(predictions.size(0))]).to(torch.long)
+    # Store indices
+    row_indices = index[:, 0, :].to(predictions.device)
+    col_indices = index[:, 1, :].to(predictions.device)
+    
+    # Gather matched predictions and targets
+    matched_predictions = predictions.gather(1, row_indices.unsqueeze(-1).expand(-1, -1, predictions.size(-1)))
+    matched_targets = targets.gather(1, col_indices.unsqueeze(-1).expand(-1, -1, predictions.size(-1)))
+
+    return matched_predictions, matched_targets

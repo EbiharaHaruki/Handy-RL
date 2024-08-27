@@ -37,8 +37,12 @@ class Worker:
         self.evaluator = Evaluator(self.env, self.args)
         self.num_global_episodes = 0
 
-        self.count = 0
+        self.episode_count = 0
         self.metadata_id = 0
+
+        self.play_subagent_prob = self.args['agent']['play_subagent_base_prob'] if 'play_subagent_base_prob' in self.args['agent'].keys() else 0.0
+        self.play_subagent_lower_prob = self.args['agent']['play_subagent_lower_prob'] if 'play_subagent_lower_prob' in self.args['agent'].keys() else 0.0
+        self.play_subagent_decay_per_ep = args['agent']['play_subagent_decay_per_ep'] if 'play_subagent_decay_per_ep' in args['agent'].keys() else 1.0
 
         random.seed(args['seed'] + wid)
 
@@ -68,7 +72,7 @@ class Worker:
                         self.env.reset()
                         obs = self.env.observation(self.env.players()[0])
                         # 学習が始まるまではランダム model
-                        model = RandomModel(model, obs)
+                        model = RandomModel(model, {'o':obs})
                     # モデルを格納する
                     model_pool[model_id] = ModelWrapper(model)
                     # update latest model
@@ -96,21 +100,22 @@ class Worker:
                         self.latest_metadata = metadata_id, metadata_pool[metadata_id]
         return metadata_pool
 
-    def uns_woker(self):
-        print("worker_uns : ")
-        self.env.uns()
+    # TODO: 正しい非定常環境として今後再実装
+    # def uns_woker(self):
+    #     print("worker_uns : ")
+    #     self.env.uns()
 
     def run(self):
         while True:
-            #self.count += 1
-            #print("woeker_episodes: ",self.count)
-            #if self.count % 1000 == 0:
-                #print("count : ", self.count)
-                #self.uns_woker()
             args = send_recv(self.conn, ('args', None))
             if args is None:
                 break
             role = args['role']
+            args['play_subagent_prob'] = self.play_subagent_prob
+
+            self.episode_count += 1
+            if self.episode_count % self.args['saving_env_status_interval_episodes'] == 0:
+                self.env.fprint_env_status(role, self.worker_id) # 環境の状態ログを出力            
 
             models = {}
             if 'model_id' in args:
@@ -135,10 +140,12 @@ class Worker:
                 episode, return_metadata = self.generator.execute(models, metadataset, args)
                 send_recv(self.conn, ('episode', episode))
                 send_recv(self.conn, ('return_metadata', return_metadata))
+                self.play_subagent_prob = max(self.play_subagent_prob - self.play_subagent_decay_per_ep, self.play_subagent_lower_prob)
             elif role == 'e':
                 result, return_metadata = self.evaluator.execute(models, metadataset, args)
                 send_recv(self.conn, ('result', result))
                 # send_recv(self.conn, ('metadata', return_metadata))
+
 
 
 def make_worker_args(args, n_ga, gaid, base_wid, wid, conn):

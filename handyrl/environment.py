@@ -12,6 +12,7 @@ ENVS = {
     'ParallelTicTacToe': 'handyrl.envs.parallel_tictactoe',
     'HungryGeese':       'handyrl.envs.kaggle.hungry_geese',
     'simpletask':        'handyrl.envs.simpletask',
+    'simple_pyramid':    'handyrl.envs.simple_pyramid',
 }
 
 
@@ -144,3 +145,21 @@ class BaseEnvironment:
     #
     def update(self, info, reset):
         raise NotImplementedError()
+
+    #
+    # Should be defined if you want to make the environment non-stationary
+    #
+    def shift_env(self, num_episodes):
+        raise False
+
+    #
+    # Should be defined if you want to display the environment's status
+    #
+    def fprint_env_status(self, role, worker_id):
+        return False
+
+    #
+    # Should be defined if you want to retrieve the seed set for the environment
+    #
+    def get_seed(self):
+        return {}

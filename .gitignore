@@ -1,5 +1,8 @@
 *.pyc
 *.pth
 trainlog/*
+env_status_log/*
+feature_rng_seed.txt
+*.DS_Store
 !trainlog/.gitkeep
 .vscode
