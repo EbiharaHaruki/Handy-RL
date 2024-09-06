@@ -8,6 +8,7 @@ import glob
 import csv
 import pprint
 
+# TODO: このハードコードを動的に求めるようにしたい
 n = 15
 
 def kernel(n):
