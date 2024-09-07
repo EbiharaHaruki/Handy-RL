@@ -41,7 +41,7 @@ def get_reward_list(path):
             epoch_data_list.append({})
             for e in elms[2:]:
                 name, loss = e.split(':')
-                if name == "ent_c_nn" or name=="ent_c_reg" or name=="entropy_c_mixed":
+                if name == "ent" or name == "ent_c_nn" or name=="ent_c_reg" or name=="entropy_c_mixed":
                     loss = float(loss)
                     epoch_data_list[-1][name] = loss
         if line.startswith('epoch '):
@@ -88,6 +88,7 @@ print(logs[:a]) #平均を出すlog
 nn_mean = 0 #平均を仮で入れる
 reg_mean = 0
 mix_mean = 0
+policy_mean = 0
 nn_flag = False
 reg_flag = False
 for i in logs[:a]:
@@ -101,6 +102,8 @@ for i in logs[:a]:
         reg_flag = True
     if 'entropy_c_mixed' in averaged_loss_lists:
         mix_mean += averaged_loss_lists['entropy_c_mixed']
+    if 'ent' in averaged_loss_lists:
+        policy_mean += averaged_loss_lists['ent']
 
 nn_mean =  nn_mean / a #平均を取る
 reg_mean =  reg_mean / a
@@ -113,7 +116,7 @@ elif nn_flag == False and reg_flag == True:
     averaged_loss_lists = {"ent_c_reg" : reg_mean}
 else:
     print("Not Regional!")
-    sys.exit()
+averaged_loss_lists = {"ent": policy_mean}
 print("log_average = ",averaged_loss_lists) #指定した個数のファイルの平均勝率を表示
 
 opponents_ = list(averaged_loss_lists.keys())
@@ -142,6 +145,9 @@ for opponent in opponents:
         np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
     elif opponent == 'entropy_c_mixed':
         np.savetxt(path + 'entropy_mix.csv', [loss_list[start:]], delimiter=',', fmt='%.5f')
+        np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
+    elif opponent == 'policy_ent':
+        np.savetxt(path + 'entropy_policy.csv', [loss_list[start:]], delimiter=',', fmt='%.5f')
         np.savetxt(path + 'en_episodes.csv', [clipped_game_list[start:]], delimiter=',', fmt='%d')
     else:
         np.savetxt(path + 'retruns_' + opponent + '.csv', loss_list[start:], delimiter='', fmt='%.5f')
