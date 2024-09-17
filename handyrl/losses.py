@@ -72,7 +72,8 @@ def temporal_difference_q_hardmax(values, qvalues, returns, rewards, teaminals, 
         # TD(0), λ = 0 なら 1 step buckup のみをする
         # 現在は基本 λ = 0 の運用を想定
         target_values.appendleft(reward + bonus + not_teaminals * gamma * ((1 - lmb) * max_qvalues[:, i + 1] + lmb * target_values[0]))
-
+    target_values = torch.stack(tuple(target_values), dim=1)
+    
     return {
         'target_values': target_values, 
         'advantages': target_values - values, 
