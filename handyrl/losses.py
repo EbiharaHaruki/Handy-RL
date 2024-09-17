@@ -30,7 +30,9 @@ def temporal_difference(values, returns, rewards, teaminals, bonuses, lmb, gamma
     return {'target_values': target_values, 'advantages': target_values - values}
 
 
-def temporal_difference_q(values, qavlues, returns, rewards, teaminals, bonuses, lmb, gamma):
+def temporal_difference_q(values, qvalues, returns, rewards, teaminals, bonuses, lmb, gamma):
+    _rewards = rewards if rewards is not None else 0
+    _bonuses = bonuses if bonuses is not None else 0
     # 終端 return から
     # multi-step reward は別の場所で計算
     target_values = deque([returns[:, -1]])
@@ -45,16 +47,20 @@ def temporal_difference_q(values, qavlues, returns, rewards, teaminals, bonuses,
         target_values.appendleft(reward + bonus + not_teaminals * gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
 
     target_values = torch.stack(tuple(target_values), dim=1)
+    target_values_t_plus_1 = torch.cat([target_values[:, 1:], returns[:, -1:]], dim=1)
+    target_q_value = _rewards + _bonuses + gamma * target_values_t_plus_1
+    advantages = target_q_value - values
 
     return {
         'target_values': target_values, 
-        'advantages': target_values - values, 
-        'qvalue': target_values, 
-        'target_advantage_for_q': target_values - values
+        'advantages': advantages, 
+        'qvalue': target_q_value, 
+        'target_advantage_for_q': advantages
         }
 
 
-def temporal_difference_q_hardmax(values, qavlues, returns, rewards, teaminals, bonuses, lmb, gamma):
+def temporal_difference_q_hardmax(values, qvalues, returns, rewards, teaminals, bonuses, lmb, gamma):
+    max_qvalues = (torch.max(qvalues, dim=-1, keepdim=True)).values if qvalues is not None else 0
     # 終端 return から
     # multi-step reward は別の場所で計算
     target_values = deque([returns[:, -1]])
@@ -62,13 +68,10 @@ def temporal_difference_q_hardmax(values, qavlues, returns, rewards, teaminals, 
         # 計算効率の面からも target_values を後ろから計算していく
         reward = rewards[:, i] if rewards is not None else 0
         bonus = bonuses[:, i] if bonuses is not None else 0
-        max_qavlues = (torch.max(qavlues, dim=-1, keepdim=True)).values if qavlues is not None else 0
         not_teaminals = (1.0 - teaminals[:, i+1]) if teaminals is not None else 1
         # TD(0), λ = 0 なら 1 step buckup のみをする
         # 現在は基本 λ = 0 の運用を想定
-        target_values.appendleft(reward + bonus + not_teaminals * gamma * ((1 - lmb) * max_qavlues[:, i + 1] + lmb * target_values[0]))
-
-    target_values = torch.stack(tuple(target_values), dim=1)
+        target_values.appendleft(reward + bonus + not_teaminals * gamma * ((1 - lmb) * max_qvalues[:, i + 1] + lmb * target_values[0]))
 
     return {
         'target_values': target_values, 
@@ -108,9 +111,14 @@ def vtrace(values, returns, rewards, teaminals, bonuses, lmb, gamma, rhos, cs):
     multi_step_deltas = torch.stack(tuple(multi_step_deltas), dim=1)
     target_values = multi_step_deltas + values
     target_values_t_plus_1 = torch.cat([target_values[:, 1:], returns[:, -1:]], dim=1)
-    advantages = rewards + bonuses + gamma * target_values_t_plus_1 - values
+    target_q_value = rewards + bonuses + gamma * target_values_t_plus_1
+    #advantages = rewards + bonuses + gamma * target_values_t_plus_1 - values
+    advantages = target_q_value - values
 
-    return {'target_values': target_values, 'advantages': advantages}
+    return {'target_values': target_values,
+            'advantages': advantages,
+            'qvalue': target_q_value, 
+            'target_advantage_for_q': advantages}
 
 
 def compute_rnd(embed_state, embed_state_fix):
