@@ -59,11 +59,15 @@ def temporal_difference_q(values, qvalues, returns, rewards, teaminals, bonuses,
         }
 
 
-def temporal_difference_q_hardmax(values, qvalues, returns, rewards, teaminals, bonuses, lmb, gamma):
-    max_qvalues = (torch.max(qvalues, dim=-1, keepdim=True)).values if qvalues is not None else 0
+def temporal_difference_q_hardmax(values, qvalues, target_qvalues, returns, rewards, teaminals, bonuses, lmb, gamma):
     # 終端 return から
     # multi-step reward は別の場所で計算
     target_values = deque([returns[:, -1]])
+    if qvalues is not None:
+        best_actions = torch.argmax(qvalues, dim=-1, keepdim=True)
+        max_qvalues = target_qvalues.gather(-1,best_actions)
+    else:
+        max_qvalues = 0
     for i in range(values.size(1) - 2, -1, -1):
         # 計算効率の面からも target_values を後ろから計算していく
         reward = rewards[:, i] if rewards is not None else 0
@@ -73,7 +77,7 @@ def temporal_difference_q_hardmax(values, qvalues, returns, rewards, teaminals, 
         # 現在は基本 λ = 0 の運用を想定
         target_values.appendleft(reward + bonus + not_teaminals * gamma * ((1 - lmb) * max_qvalues[:, i + 1] + lmb * target_values[0]))
     target_values = torch.stack(tuple(target_values), dim=1)
-    
+
     return {
         'target_values': target_values, 
         'advantages': target_values - values, 
@@ -126,7 +130,7 @@ def compute_rnd(embed_state, embed_state_fix):
     return (embed_state - embed_state_fix) ** 2
 
 
-def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, rhos, cs, qavlues=None, bonuses=None):
+def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, rhos, cs, qvalues=None, target_qvalues=None, bonuses=None):
     if values is None:
         # In the absence of a baseline, Monte Carlo returns are used.
         return {'target_values': returns, 'advantages': returns}
@@ -136,9 +140,9 @@ def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, r
     elif algorithm == 'TD':
         return temporal_difference(values, returns, rewards, teaminals, bonuses, lmb, gamma)
     elif algorithm == 'TD-Q':
-        return temporal_difference_q(values, qavlues, returns, rewards, teaminals, bonuses, lmb, gamma)
+        return temporal_difference_q(values, target_qvalues, returns, rewards, teaminals, bonuses, lmb, gamma)
     elif algorithm == 'TD-Q-HARDMAX':
-        return temporal_difference_q_hardmax(values, qavlues, returns, rewards, teaminals, bonuses, lmb, gamma)
+        return temporal_difference_q_hardmax(values, qvalues, target_qvalues, returns, rewards, teaminals, bonuses, lmb, gamma)
     elif algorithm == 'UPGO':
         return upgo(values, returns, rewards, teaminals, bonuses, lmb, gamma)
     elif algorithm == 'VTRACE':
