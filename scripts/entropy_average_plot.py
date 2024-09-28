@@ -116,7 +116,6 @@ elif nn_flag == False and reg_flag == True:
     averaged_loss_lists = {"ent_c_reg" : reg_mean}
 else:
     print("Not Regional!")
-averaged_loss_lists = {"ent": policy_mean}
 print("log_average = ",averaged_loss_lists) #指定した個数のファイルの平均勝率を表示
 
 opponents_ = list(averaged_loss_lists.keys())
