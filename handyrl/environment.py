@@ -13,6 +13,7 @@ ENVS = {
     'HungryGeese':       'handyrl.envs.kaggle.hungry_geese',
     'simpletask':        'handyrl.envs.simpletask',
     'simple_pyramid':    'handyrl.envs.simple_pyramid',
+    'CartPole':          'handyrl.envs.gym.cart_pole',
 }
 
 

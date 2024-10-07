@@ -84,9 +84,14 @@ python main.py --eval models/1.pth 100 4
 - bash 環境名はグラフの出力時のタイトルになります．
 - 実行時に `環境名.py` と `config.yaml` が日付名ディレクトリにコピーされ保存されます
     - ハイパーパラメータとモデル構造を保存するため
+    - gym 環境は `gym/環境名` で指定する必要あり
 
-```
+``` 
+# simple_pyramid の場合
 . bash_scripts/experiment_reward.sh 10 simple_pyramid
+
+# gym/cart_pole の場合
+. bash_scripts/experiment_reward.sh 10 cart_pole
 ```
 
 ## アルゴリズムの指定方法

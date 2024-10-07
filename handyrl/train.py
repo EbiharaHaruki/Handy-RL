@@ -534,9 +534,9 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
         # TODO: 対戦ゲームに未対応
         outputs['selected_qvalue'] = outputs['qvalue'].gather(-1, actions) * emasks
         if use_target_model:
-            targets['qvalue'] = target_outputs_nograd['qvalue'] * emasks
+            targets['target_qvalue'] = target_outputs_nograd['qvalue'] * emasks
         else:
-            targets['qvalue'] = outputs_nograd['qvalue'] * emasks
+            targets['target_qvalue'] = outputs_nograd['qvalue'] * emasks
 
 
     if 'embed_state' in outputs_nograd:
@@ -581,7 +581,7 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
     # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
     # 割引率付き Return からの学習を定義（outcome と reward, return を統合したのでこれのみ）
     # model forward 計算の value, 割引率付き return, reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c, bonus
-    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs, targets.get('qvalue', None), outputs.get('bonus', None)
+    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs, outputs_nograd.get('qvalue', None), targets.get('target_qvalue', None), outputs.get('bonus', None)
     # model forward 計算の return, 生の return, 生の reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
     # return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
 
