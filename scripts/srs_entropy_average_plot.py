@@ -61,10 +61,14 @@ def get_reward_list(path):
     kn = kernel(n)
     averaged_loss_lists = {} #平均報酬のリスト
     start_epoch = {}
-    for name in epoch_data_list[0].keys():
-        data = [d[name] for d in epoch_data_list]
-        averaged_loss_lists[name] = np.convolve(data, kn, mode='valid')
-        start_epoch[name] = 0
+    try:
+        for name in epoch_data_list[0].keys():
+            data = [d[name] for d in epoch_data_list]
+            averaged_loss_lists[name] = np.convolve(data, kn, mode='valid')
+            start_epoch[name] = 0
+    except:
+        print("Not SRS!")
+        sys.exit()
     return clipped_epoch_list, clipped_step_list, clipped_game_list, averaged_loss_lists, start_epoch
 
 
