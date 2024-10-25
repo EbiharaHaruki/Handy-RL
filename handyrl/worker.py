@@ -33,11 +33,13 @@ class Worker:
         self.latest_metadata = -1, None
 
         self.env = make_env({**args['env'], 'id': wid})
+        self.env_e = copy.deepcopy(self.env)
         self.generator = Generator(self.env, self.args)
-        self.evaluator = Evaluator(self.env, self.args)
+        self.evaluator = Evaluator(self.env_e, self.args)
         self.num_global_episodes = 0
 
-        self.episode_count = 0
+        self.generate_count = 0
+        self.eval_count = 0
         self.metadata_id = 0
 
         self.play_subagent_prob = self.args['agent']['play_subagent_base_prob'] if 'play_subagent_base_prob' in self.args['agent'].keys() else 0.0
@@ -111,11 +113,7 @@ class Worker:
             if args is None:
                 break
             role = args['role']
-            args['play_subagent_prob'] = self.play_subagent_prob
-
-            self.episode_count += 1
-            if self.episode_count % self.args['saving_env_status_interval_episodes'] == 0:
-                self.env.fprint_env_status(role, self.worker_id) # 環境の状態ログを出力            
+            args['play_subagent_prob'] = self.play_subagent_prob          
 
             models = {}
             if 'model_id' in args:
@@ -140,10 +138,16 @@ class Worker:
                 episode, return_metadata = self.generator.execute(models, metadataset, args)
                 send_recv(self.conn, ('episode', episode))
                 send_recv(self.conn, ('return_metadata', return_metadata))
+                self.generate_count += 1
+                if self.generate_count % self.args['saving_env_status_interval_episodes'] == 0:
+                    self.env.fprint_env_status(role, self.worker_id) # 環境の状態ログを出力  
                 self.play_subagent_prob = max(self.play_subagent_prob - self.play_subagent_decay_per_ep, self.play_subagent_lower_prob)
             elif role == 'e':
                 result, return_metadata = self.evaluator.execute(models, metadataset, args)
                 send_recv(self.conn, ('result', result))
+                self.eval_count += 1
+                if self.eval_count % self.args['saving_env_status_interval_episodes'] == 0:
+                    self.env_e.fprint_env_status(role, self.worker_id) # 環境の状態ログを出力 
                 # send_recv(self.conn, ('metadata', return_metadata))
 
 
