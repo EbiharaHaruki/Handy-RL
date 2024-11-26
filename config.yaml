@@ -47,9 +47,9 @@ train_args:
         update_param: 0.001
     update_episodes: 500
     batch_size: 128 # 256
-    minimum_episodes: 10000
-    maximum_episodes: 20000
-    epochs: 10000 # 最低でも15以上である必要がある
+    minimum_episodes: 1000
+    maximum_episodes: 2000
+    epochs: 20 # 最低でも15以上である必要がある
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
@@ -57,16 +57,16 @@ train_args:
     worker:
         num_parallel: 1
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
-    policy_target: 'TD-Q-HARDMAX' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
-    value_target: 'TD-Q-HARDMAX' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    value_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
     agent:
-        type: 'ASC' # 'BASE' 'QL' 'RSRS' 'ASC'
+        type: 'SAC' # 'BASE' 'QL' 'RSRS' 'ASC'
         use_RND: True
-        meta_policy: 'e-greedy' # 'e-greedy' 'softmax'
+        meta_policy: #'e-greedy' # 'e-greedy' 'softmax'
         mp_param: [0.8] # [0.1]
         subtype: 'QL' # 'BASE' 'QL' 'RSRS'
         play_subagent_base_prob: 1.0 # サブエージェントが軌跡を生成する確率の初期値

@@ -68,6 +68,40 @@ class PVQModel(nn.Module):
             'policy': p, 'value': v, 
             'advantage_for_q': a, 'qvalue': q, 'rl_latent': h_l}
 
+class SACModel(nn.Module):
+    def __init__(self, args, input_dim, action_num):
+        super().__init__()
+        self.relu = nn.ReLU()
+        #100 ,256, 512 ,1024, 2048, 4096
+        nn_size = 512
+        self.fc1 = nn.Linear(input_dim,nn_size)
+        #self.fc2 = nn.Linear(input_dim + action_num, nn_size) # 入力層 = 状態 + 行動
+        #self.fc3 = nn.Linear(input_dim + action_num, nn_size)
+        self.fc2 = nn.Linear(input_dim, nn_size)
+        self.fc3 = nn.Linear(input_dim, nn_size)
+        self.head_p = nn.Linear(nn_size, action_num) # policy
+        self.head_mean = nn.Linear(nn_size, action_num)
+        self.head_std = nn.Linear(nn_size, action_num)
+        self.head_q1 = nn.Linear(nn_size,1)
+        self.head_q2 = nn.Linear(nn_size,1)
+
+    def forward(self, x, hidden=None):
+        # x = 状態
+        # action = 行動
+        # new_x = torch.cat((x, action), dim=1)
+        o = x.get('o', None)
+        #print(x,'*************')
+        #print(o,'*******************')
+        h1 = F.relu(self.fc1(o))
+        h2 = F.relu(self.fc2(o))
+        h3 = F.relu(self.fc3(o))
+        p = self.head_p(h1)
+        mean = self.head_mean(h1)
+        std = self.head_mean(h1)
+        q1 = self.head_q1(h2)
+        q2 = self.head_q2(h3)
+        # return {'policy': p, 'value': torch.tanh(v)}
+        return {'policy': p,'mean': mean, 'std': std, 'q1':q1, 'q2':q2}
 
 # RSRS
 class PVQCModel(nn.Module):
@@ -1001,8 +1035,10 @@ class Environment(BaseEnvironment):
 
         if agent_type == 'BASE':
             rl_model = SimpleModel(args, self.input_dim, self.action_num)
-        elif agent_type == 'QL' or agent_type == 'SAC':
+        elif agent_type == 'QL':
             rl_model = PVQModel(args, self.input_dim, self.action_num)
+        elif agent_type == 'SAC':
+            rl_model = SACModel(args, self.input_dim, self.action_num)
         elif agent_type == 'RSRS':
             rl_model = PVQCModel(args, self.input_dim, self.action_num)
         elif agent_type == 'R4D-RSRS':

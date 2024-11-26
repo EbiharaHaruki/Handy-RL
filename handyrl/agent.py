@@ -12,7 +12,7 @@ import numpy as np
 from .util import softmax
 
 def agent_class(args):
-    if args['type'] == 'BASE':
+    if args['type'] == 'BASE' or args['type'] == 'SAC':
         return Agent
     elif args['type'] == 'QL':
         return QAgent

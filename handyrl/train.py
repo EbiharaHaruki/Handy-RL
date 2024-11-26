@@ -175,6 +175,7 @@ def forward_prediction(model, hidden, batch, args):
         obs = map_r(observations, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         act = map_r(actions, lambda o: o.flatten(0, 2))  # (..., B * T * P or 1, ...)
         inputs = {'o':obs, 'a':act}
+        #print(f'input = {inputs}')
         if use_ASC:
             # obs_set = observations_set.squeeze(dim=2) 
             # act_set = actions_set.squeeze(dim=2) 
