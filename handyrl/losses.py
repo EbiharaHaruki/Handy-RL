@@ -9,7 +9,7 @@
 # algorithms and losses
 
 from collections import deque
-
+import torch.nn.functional as F
 import torch
 
 
@@ -125,12 +125,56 @@ def vtrace(values, returns, rewards, teaminals, bonuses, lmb, gamma, rhos, cs):
             'qvalue': target_q_value, 
             'target_advantage_for_q': advantages}
 
+def sac(values, q1, q2, log,  returns, rewards, teaminals, bonuses, lmb, gamma):
+    alpha = 0.2
+    _rewards = rewards if rewards is not None else 0
+    _bonuses = bonuses if bonuses is not None else 0
+    # 終端 return から
+    # multi-step reward は別の場所で計算
+    target_values = deque([returns[:, -1]])
+    #print(f'q1 = {q1},q2 = {q2},log = {log}')
+    for i in range(values.size(1) - 2, -1, -1):
+        # 計算効率の面からも target_values を後ろから計算していく
+        reward = rewards[:, i] if rewards is not None else 0
+        bonus = bonuses[:, i] if bonuses is not None else 0
+        not_teaminals = (1.0 - teaminals[:, i+1]) if teaminals is not None else 1
+        # TD(0), λ = 0 なら 1 step buckup のみをする
+        # TD(0), λ = 0 なら割引率を累乗された return のみを使う 
+        # target_values[0] は appendleft されていくので常に一つ後の状態の価値になる
+        
+        
+        #action_distribution = torch.distributions.Categorical(prob)
+        #action = action_distribution.sample()
+        #log_prob = action_distribution.log_prob(action)
+        #target_q = reward + (1 - lmb) * gamma * v
+        target_values.appendleft(reward + bonus + not_teaminals * gamma * ((1 - lmb) * values[:, i + 1] + lmb * target_values[0]))
+        #target_values.appendleft(reward + bonus + not_teaminals * gamma * (target_q))
+        #print(f'{target_values}')
+
+    prob = F.softmax(log, dim=-1)
+    log_prob = F.log_softmax(prob,dim=-1)
+    min_q = torch.min(q1,q2)
+    v = (prob * (min_q - alpha * log_prob)).sum(dim=-1, keepdim=True)
+    #print(f"reward shape: {rewards.shape}")
+    #print(f"value shape: {v.shape}")
+    target_q = rewards + (1 - lmb) * gamma * v
+    #print(f"targetq = {target_q}")
+    target_values = torch.stack(tuple(target_values), dim=1)
+    #print(f"targetv = {target_values}")
+    advantages = target_values - values
+    
+
+    return {
+        'target_values': target_q, 
+        'advantages': 0, 
+        }
+
 
 def compute_rnd(embed_state, embed_state_fix):
     return (embed_state - embed_state_fix) ** 2
 
 
-def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, rhos, cs, qvalues=None, target_qvalues=None, bonuses=None):
+def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, rhos, cs, qvalues=None, q1=None,q2=None,log=None,target_qvalues=None, bonuses=None):
     if values is None:
         # In the absence of a baseline, Monte Carlo returns are used.
         return {'target_values': returns, 'advantages': returns}
@@ -147,5 +191,7 @@ def compute_target(algorithm, values, returns, rewards, teaminals, lmb, gamma, r
         return upgo(values, returns, rewards, teaminals, bonuses, lmb, gamma)
     elif algorithm == 'VTRACE':
         return vtrace(values, returns, rewards, teaminals, bonuses, lmb, gamma, rhos, cs)
+    elif algorithm == 'SAC':
+        return sac(values, q1, q2, log, returns, rewards, teaminals, bonuses, lmb, gamma)
     else:
         print('No algorithm named %s' % algorithm)

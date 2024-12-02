@@ -99,9 +99,14 @@ class Agent:
         # learning = (action_log is not None)
         obs = env.observation(player)
         outputs = self.plan(obs) # reccurent model 対応
+        #key = outputs.keys()
+        #print(key)
         actions = env.legal_actions(player)
         v = outputs.get('value', None)
-        p = outputs['policy']
+        if 'log' in outputs: 
+            p = outputs['log']
+        else:
+            p = outputs['policy']
         action_mask = np.ones_like(p) * 1e32
         action_mask[actions] = 0
         p = p - action_mask

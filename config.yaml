@@ -7,7 +7,7 @@ env_args:
     #env: 'CartPole'
     param:
         depth: 6 # 深度(変更可能)
-        hyperplane_dim: 2 # 超平面次元数(変更可能)
+        hyperplane_dim: 1 # 超平面次元数(変更可能)
         general_seed: -1 # 初期状態や報酬に関する乱数発生器の seed 
         start_random: True # 初期地点をランダムにするか固定にするか / True: ランダムにする, False: 固定する
         features:
@@ -16,7 +16,7 @@ env_args:
             obs_var: 0.01 # 状態特徴の観測時に乗るノイズ（標準正規分布の分散）
         rewards: 
             depth: [6] # 報酬の深度(変更可能)，深度は内部で 1 から数える, depth と同値なら終端報酬 list 形式で複数設置可能
-            coordinates: [[1, 1]] # 報酬の超平面座標(変更可能), () ならランダムな超平面座標に設置
+            coordinates: [[1]] # 報酬の超平面座標(変更可能), () ならランダムな超平面座標に設置
             type: ['fix'] # 報酬関数の種類, binominal（二項分布）/ normal（正規分布）/ fix（固定値）
             mu: [1.0] # 報酬平均, binominal（二項分布）では報酬確率 / normal（正規分布）では平均 / fix（固定値）では固定値
             var: [0.0] # 報酬分散, normal（正規分布）では分散 / 他は使わない
@@ -34,7 +34,7 @@ train_args:
     default_learning_rate: 3.0e-8 # default: 3.0e-8 
     turn_based_training: False
     observation: False
-    return_buckup: True # QL or AC or SAC => True, PG => False
+    return_buckup: False # QL or AC or SAC => True, PG => False
     gamma: 1.0
     forward_steps: 2 # QL => 2
     burn_in_steps: 0  # for RNNs
@@ -47,9 +47,9 @@ train_args:
         update_param: 0.001
     update_episodes: 500
     batch_size: 128 # 256
-    minimum_episodes: 1000
-    maximum_episodes: 2000
-    epochs: 20 # 最低でも15以上である必要がある
+    minimum_episodes: 10000
+    maximum_episodes: 20000
+    epochs: 500 # 最低でも15以上である必要がある
     saving_interval_epochs: 50
     num_batchers: 1
     eval_rate: 0.1
@@ -57,25 +57,25 @@ train_args:
     worker:
         num_parallel: 1
     lambda: 0.0 # TD-Q-HARDMAX => 0.0
-    policy_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
-    value_target: 'TD' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC'
+    policy_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC''SAC'
+    value_target: 'TD-Q' # 'UPGO' 'VTRACE' 'TD' 'TD-Q' 'TD-Q-HARDMAX' 'MC''SAC'
     eval:
         opponent: ['random']
     seed: 0
     restart_epoch: 0
     agent:
-        type: 'SAC' # 'BASE' 'QL' 'RSRS' 'ASC'
-        use_RND: True
+        type: 'RSRS' # 'BASE' 'QL' 'RSRS' 'ASC'
+        use_RND: False
         meta_policy: #'e-greedy' # 'e-greedy' 'softmax'
-        mp_param: [0.8] # [0.1]
-        subtype: 'QL' # 'BASE' 'QL' 'RSRS'
-        play_subagent_base_prob: 1.0 # サブエージェントが軌跡を生成する確率の初期値
-        play_subagent_lower_prob: 0.5 # サブエージェントが軌跡を生成する確率の下限
-        play_subagent_decay_per_ep: 0.000001 # サブエージェントが軌跡を生成する確率のエピソードごとの減少値
-        ASC_type: 'VQ-SeTranVAE' # '', 'SeTranVAE', 'VQ-SeTranVAE'
-        ASC_trajectory_length: 5 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
-        ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
-        ASC_dropout: 0.2 # ASC model の dropout 率
+        mp_param: [0.1] # [0.1]
+        #subtype: 'QL' # 'BASE' 'QL' 'RSRS'
+        #play_subagent_base_prob: 1.0 # サブエージェントが軌跡を生成する確率の初期値
+        #play_subagent_lower_prob: 0.5 # サブエージェントが軌跡を生成する確率の下限
+        #play_subagent_decay_per_ep: 0.000001 # サブエージェントが軌跡を生成する確率のエピソードごとの減少値
+        #ASC_type: 'VQ-SeTranVAE' # '', 'SeTranVAE', 'VQ-SeTranVAE'
+        ASC_trajectory_length: 0 # ASC_trajectory_length = 0 is not use, ASC_trajectory_length > 0 
+        #ASC_mask_probabirity: 0.2 #  集合要素 2 以上の場合の 2 つめ以降の mask 率 TODO: 現在実装されていない
+        #ASC_dropout: 0.2 # ASC model の dropout 率
     contrastive_learning: 
         use: True # Whether to perform contrastive learning
         temperature: 0.5 # The temperature parameter in contrastive learning
@@ -94,14 +94,14 @@ train_args:
     metadata:
         name: []
         # name: ['rnd_weight'] # Unimplemented
-        # name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
-        # knn:
-        #     size: 5000
-        #     k: 32
-        # regional_weight: 0.5
-        # global_aleph: 1.0
-        # global_return_size: 100
-        # rnd_weight: 2.0 # Unimplemented
+        name: ['knn', 'global_aleph', 'regional_weight', 'global_return_size']
+        knn:
+            size: 5000
+            k: 32
+        regional_weight: 0.5
+        global_aleph: 1.0
+        global_return_size: 100
+        rnd_weight: 2.0 # Unimplemented
 
 worker_args:
     server_address: '192.168.2.24'

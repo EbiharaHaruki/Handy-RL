@@ -74,34 +74,57 @@ class SACModel(nn.Module):
         self.relu = nn.ReLU()
         #100 ,256, 512 ,1024, 2048, 4096
         nn_size = 512
+        #print(f'action_num = {action_num}')
         self.fc1 = nn.Linear(input_dim,nn_size)
-        #self.fc2 = nn.Linear(input_dim + action_num, nn_size) # 入力層 = 状態 + 行動
-        #self.fc3 = nn.Linear(input_dim + action_num, nn_size)
-        self.fc2 = nn.Linear(input_dim, nn_size)
-        self.fc3 = nn.Linear(input_dim, nn_size)
+        self.fc2 = nn.Linear(input_dim + 1, nn_size) # 入力層 = 状態 + 行動
+        self.fc3 = nn.Linear(input_dim + 1, nn_size)
+        #self.fc2 = nn.Linear(input_dim, nn_size)
+        #self.fc3 = nn.Linear(input_dim, nn_size)
+        self.head_v = nn.Linear(nn_size, 1) # value
         self.head_p = nn.Linear(nn_size, action_num) # policy
         self.head_mean = nn.Linear(nn_size, action_num)
-        self.head_std = nn.Linear(nn_size, action_num)
+        self.head_log = nn.Linear(nn_size, action_num)
         self.head_q1 = nn.Linear(nn_size,1)
         self.head_q2 = nn.Linear(nn_size,1)
 
     def forward(self, x, hidden=None):
-        # x = 状態
+        # o = 状態
         # action = 行動
         # new_x = torch.cat((x, action), dim=1)
         o = x.get('o', None)
+        a = x.get('a', None)
+        
+        #print(f"Input tensor device: {o.device}")
+        #print(f"Model weight device: {self.fc1.weight.device}")
+        if a is None:
+            a = torch.tensor([[0]])
+        o = o.to(self.fc1.weight.device)
+        a = a.to(self.fc1.weight.device)
         #print(x,'*************')
         #print(o,'*******************')
+        #print(a,'*******************')
+        #print(f"a: {a}, type: {type(a)}")
+        new_x = torch.cat((o, a), dim=1)
+        #print(f'new_x = {new_x}')
+        #print(o.shape)
         h1 = F.relu(self.fc1(o))
-        h2 = F.relu(self.fc2(o))
-        h3 = F.relu(self.fc3(o))
+        h2 = F.relu(self.fc2(new_x))
+        h3 = F.relu(self.fc3(new_x))
+        v = self.head_v(h1)
         p = self.head_p(h1)
         mean = self.head_mean(h1)
-        std = self.head_mean(h1)
+        log = self.head_log(h1)
         q1 = self.head_q1(h2)
         q2 = self.head_q2(h3)
-        # return {'policy': p, 'value': torch.tanh(v)}
-        return {'policy': p,'mean': mean, 'std': std, 'q1':q1, 'q2':q2}
+        
+        prob = F.softmax(log, dim=-1)
+        action_distribution = torch.distributions.Categorical(prob)
+        action = action_distribution.sample()
+        log_prob = action_distribution.log_prob(action)
+        #print(f'log = {log_prob}')
+        return {'policy': p,'value': v, 'q1':q1, 'q2':q2,'mean': mean, 'log': log}
+        #return {'policy': p,'value': v, 'q1':q1, 'q2':q2,'mean': mean, 'logpi': log_prob}
+    
 
 # RSRS
 class PVQCModel(nn.Module):
@@ -644,8 +667,7 @@ class AOVQTranVAE(nn.Module):
 
         noize_one_hot = F.one_hot(torch.randint(low=0, high=tvq_codebook_size, size=(os_in.size(0), tvq_noise_num)), num_classes=tvq_codebook_size).to(torch.float)
         # Noise generation and Reparametrization Trick (detach)
-        noise = torch.bmm(noize_one_hot, re_q['codebook_set']).detach() # codebook から一様乱数で取得した乱数
-
+        noise = torch.bmm(noize_one_hot, re_q['codebook_set']).detach() # codebook から一様乱数で取得した乱数   
         re_p = self.a_decoder(vq_latent, os_in)
         re_s = self.o_decoder(noise, memory)
         return {**re_p, **re_s, **h_l, **re_q}

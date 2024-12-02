@@ -185,7 +185,11 @@ def forward_prediction(model, hidden, batch, args):
             obs_set = map_r(obs_set, lambda o: o.flatten(0, 1))  # (..., B * T * P or 1, ...)
             act_set = map_r(act_set, lambda o: o.flatten(0, 1))  # (..., B * T * P or 1, ...)
             inputs = {** inputs, **{'os': obs_set, 'as': act_set}}
+        #key = inputs.keys()
+        #print(f'input = {key}')
         outputs = model(inputs)
+        #keyy = outputs.keys()
+        #print(f'output = {outputs}')
         if use_ASC:
             outputs_asc = outputs.pop('ASC') # TODO: ASC 飲みを取り出す強引な対応
             outputs = map_r(outputs, lambda o: o.unflatten(0, batch_shape))  # (..., B, T, P or 1, ...)
@@ -223,6 +227,11 @@ def forward_prediction(model, hidden, batch, args):
 
     for k, o in outputs.items():
         if k == 'policy' or k == 'confidence' or k == 're_policy':
+            device = next(model.parameters()).device  # モデルのデバイスを取得
+            batch['turn_mask'] = batch['turn_mask'].to(device)  # デバイスを統一
+            batch['action_mask'] = batch['action_mask'].to(device)
+            batch['observation_mask'] = batch['observation_mask'].to(device)
+            o = o.to(device)  # `o` も同じデバイスに移動
             o = o.mul(batch['turn_mask'])
             if o.size(2) > 1 and batch_shape[2] == 1:  # turn-alternating batch
                 o = o.sum(2, keepdim=True)  # gather turn player's policies
@@ -234,12 +243,13 @@ def forward_prediction(model, hidden, batch, args):
             # mask valid target values and cumulative rewards
             outputs[k] = o.mul(batch['observation_mask'])
         # TODO: policy_vq_latent など特殊な形状になりえるベクトルの形状にも対応する 
-
     return outputs
 
 
 def lastcut_for_buckup(step_masks, teaminals):
     # teaminals を引いて post terminal state(dummy) について伝搬しなくする
+    device = step_masks.device
+    teaminals = teaminals.to(device)
     return step_masks.mul(1.0 - teaminals)
 
 
@@ -288,6 +298,12 @@ def compose_losses(outputs, log_selected_policies, total_advantages, targets, ba
     # rnd embed state loss
     if 'loss_rnd' in outputs:
         losses['rnd'] = outputs['loss_rnd'].mul(tmasks).sum()
+    
+    # SAC loss
+    if 'q1' in outputs:
+        losses['q1'] = ((outputs['q1'] - targets['value']) ** 2).mul(omasks).sum() / 2
+        losses['q2'] = ((outputs['q2'] - targets['value']) ** 2).mul(omasks).sum() / 2
+        losses['v'] = losses['q1'] + losses['q2']
     
     # RS の c loss
     if 'selected_confidence_loss' in outputs:
@@ -538,6 +554,14 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
             targets['target_qvalue'] = target_outputs_nograd['qvalue'] * emasks
         else:
             targets['target_qvalue'] = outputs_nograd['qvalue'] * emasks
+    
+    if 'qvalue2' in outputs_nograd:
+        # TODO: 対戦ゲームに未対応
+        outputs['selected_qvalue2'] = outputs['qvalue2'].gather(-1, actions) * emasks
+        if use_target_model:
+            targets['target_qvalue2'] = target_outputs_nograd['qvalue2'] * emasks
+        else:
+            targets['target_qvalue2'] = outputs_nograd['qvalue2'] * emasks
 
 
     if 'embed_state' in outputs_nograd:
@@ -582,11 +606,14 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
     # value_args = outputs_nograd.get('value', None), batch['outcome'], None, args['lambda'], 1.0, clipped_rhos, cs
     # 割引率付き Return からの学習を定義（outcome と reward, return を統合したのでこれのみ）
     # model forward 計算の value, 割引率付き return, reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c, bonus
-    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs, outputs_nograd.get('qvalue', None), targets.get('target_qvalue', None), outputs.get('bonus', None)
+    #keys = outputs_nograd.keys()
+    #print(keys)
+    value_args = outputs_nograd.get('value', None), batch['return'], batch['reward'], batch['terminal'], args['lambda'], args['gamma'], clipped_rhos, cs, outputs_nograd.get('qvalue', None),outputs_nograd.get('q1', None),outputs_nograd.get('q2', None),outputs_nograd.get('log', None), targets.get('target_qvalue', None), outputs.get('bonus', None)
     # model forward 計算の return, 生の return, 生の reward, 終端フラグ, 適格度トレース値 λ, 割引率 γ, Vtorece で使う ρ, Vtorece で使う c 
     # return_args = outputs_nograd.get('return', None), batch['return'], batch['reward'], args['lambda'], args['gamma'], clipped_rhos, cs
 
     # アルゴリズムに応じて target value を計算する
+    #print("**********",value_args)
     results = compute_target(args['value_target'], *value_args)
     targets['value'], advantages['value'] = results['target_values'], results['advantages']
     if 'qvalue' in outputs_nograd:
@@ -606,9 +633,12 @@ def compute_loss(batch, model, target_model, metadataset, hidden, args):
     # value は現在ほぼ outcome の直接学習
     # return は outputs に return がないと利用できていない
     total_advantages = clipped_rhos * sum(advantages.values())
+    #print(f"adventage = {total_advantages}")
 
     # ここまでは target value, advantage の計算を行うのがメイン
     # 具体的な loss 計算は compose_losses で行う
+    #key = outputs.keys()
+    #print(f"output = {key}")
     return compose_losses(outputs, log_selected_t_policies, total_advantages, targets, batch, metadataset, args)
 
 
@@ -772,6 +802,10 @@ class Trainer:
         if self.gpu > 0:
             self.trained_model.cuda()
         self.trained_model.train()
+        
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.trained_model = self.trained_model.to(device)
+        self.target_model = self.target_model.to(device)
 
         # モデルの学習
         while data_cnt == 0 or not self.update_flag:
